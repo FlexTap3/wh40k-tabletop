@@ -93,6 +93,18 @@ console.log("== unit-level visibility / cover ==");
   T("edge-to-edge distance", approx(d.dist, 9, 1e-9));
 }
 
+console.log("== WP5: floors vs low walls ==");
+{
+  // low wall between observer and target: blocks at ground level, ignored from lvl>=1
+  const wall = G.losPrep([{ kind: "wall", x: 4, y: -10, w: 2, h: 20, rot: 0 }]);
+  const tgt = [{ x: 10, y: 0, r: 0.5 }];
+  T("ground-level observer blocked by low wall", G.losUnitVs([{ x: 0, y: 0, r: 0.5, lvl: 0 }], tgt, wall, false).vis === false);
+  T("lvl 1 observer sees over the low wall", G.losUnitVs([{ x: 0, y: 0, r: 0.5, lvl: 1 }], tgt, wall, false).vis === true);
+  // dense terrain is NOT ignored from height
+  const ruin = G.losPrep([{ kind: "ruin", x: 4, y: -10, w: 2, h: 20, rot: 0 }]);
+  T("lvl 1 observer still blocked by dense (ruin) area", G.losUnitVs([{ x: 0, y: 0, r: 0.5, lvl: 2 }], tgt, ruin, false).vis === false);
+}
+
 /* ===== performance: full-army LoS scan on a real layout, 200 models ===== */
 console.log("== performance (target: full scan < 16 ms, 200 models) ==");
 {
