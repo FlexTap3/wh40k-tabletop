@@ -381,6 +381,76 @@ save/load and every overlay keep working. Marked `/* ==== WP10: ai ==== */`.
   section. Netplay regression: hosting/joining still works (solo button
   disabled once connected — assert in tests via the harness).
 
+### WP11 — Solo polish: defender allocation + meta-doctrine AI  [M–L] — needs WP10
+Two halves. Marked `/* ==== WP11: ... ==== */`; all mutations via `op()`.
+
+**A. Defender allocates casualties (the actual 40k rule).** In solo mode, when an
+AI attack damages the PLAYER's unit, do not auto-apply. Pause the AI action queue
+(generation-safe) and enter allocation mode: a board banner shows the pending
+damage packets ("Bolt rifles: 4 packets of 1 dmg — click your models to
+allocate · A = auto-assign rest"); the player clicks models IN THE TARGET UNIT
+to assign packets one at a time (wounds via `tok~`, slain via `tok-`).
+Rules guardrail: while a model in the unit already has lost wounds, packets are
+redirected there first (with a log note) — that's core allocation law. `A` key or
+banner button auto-finishes (closest-first, sgt/CHARACTER last, same as WP10).
+Setup toggle "Auto-apply my casualties" restores the old hands-off behaviour.
+AI-owned casualties stay auto (the AI is the defender there — same rule).
+Esc does NOT cancel allocation (damage is owed); undo still works after.
+Cancel-safety: clear/load/undo during allocation discards the pending queue.
+
+**B. The AI reads the meta.** Ground truth documents (read them FIRST):
+`~/WH40k/Notes/11th Edition Tournament Meta - Living Notes.md`,
+`~/WH40k/Army Guides/Space Marines - Iron Hands 2000pt Tournament Guide.md`,
+`~/WH40k/Tabletop/Meta Practice Pack/*.txt` (5 import-verified GT lists).
+- **Embedded meta armies**: bake the 5 practice-pack lists verbatim into the
+  HTML as `AI_META_LISTS=[{name,blurb,fid,disposition,text}]` (unit names +
+  points only — game-functional data, fine under §1.1-2). Solo dialog gains an
+  opponent picker: each meta list (with a one-line "what it teaches you" blurb,
+  own words) or "Auto-build" as today. Muster via the existing `importArmyList`
+  path. AI announces its army + game plan in the log at muster.
+- **Plan profiles** (`AI_PLANS`): weight presets over the WP10 scoring, chosen
+  from the list's Force Disposition header (auto-built lists → Take and Hold):
+  *Purge* = aggressive trades, kill-priority; *Take and Hold / Priority
+  Assets* = objective-first, park durable OC on the deciding objectives from
+  round 2, out-attrit; *Reconnaissance* = spread, board-quarter presence,
+  mobility. Primary pressure is front-loaded (11th): objective weights peak
+  rounds 1–3, relax late when ahead.
+- **Doctrine behaviours** (each traced to the notes; comment the source line):
+  1. *Hidden is premium*: after Shooting, toggle `hid` on eligible quiet
+     dense-terrain INFANTRY whose expected shooting was below a threshold;
+     prefer move destinations that keep fragile shooters Hidden-capable.
+  2. *Screening*: when the player has reserves or fast melee, place cheap
+     low-value units as a picket 6–8" in front of high-value units / the
+     backfield objective to deny deep strike and charge lanes.
+  3. *Stage before committing*: round 1 (and 2 if outgunned), shooters prefer
+     out-of-LoS spots within next-turn threat range over open firing lanes
+     when the enemy's expected return fire exceeds their own output.
+  4. *Focus fire, kill units dead*: concentrate shooting to REMOVE units
+     (their OC and actions) rather than spread damage; allow ~30% overkill;
+     when behind on primary tallies, weight targets standing on / moving to
+     contested objectives above pure damage-value targets.
+  5. *Trade math*: a move that exposes a unit is only taken if objective
+     swing + expected damage dealt exceeds its expected loss (don't feed).
+  6. *Don't chase kiters*: never send slower melee after faster shooters that
+     can retreat (compare Mv, ranged output); hold the objective and make
+     them come — (Iron Hands guide, Custodes matchup).
+  7. *Finish shocked-prone units*: prefer finishing below-half units that sit
+     on objectives (battle-shock pressure is real tech in 11th).
+- **Difficulty stays one level**; all new knobs live in `AI_TUNE`/`AI_PLANS`.
+- Help dialog: Solo section gains "The AI's doctrine" — own words, no quotes
+  from GW or article prose.
+- **Acceptance** (`tools/tests/wp11-tests.js` in the runner): allocation flow —
+  packets queue, player clicks apply, wounded-model-first enforced, auto-finish
+  matches WP10 allocation, Setup toggle restores auto, AI queue provably paused
+  during allocation and resumes after, clear/load discards pending; all 5
+  embedded lists muster cleanly via `importArmyList` at their printed points;
+  plan profile picked from disposition header; seeded scenarios: Hidden gets
+  toggled on an eligible quiet unit, a screen deploys between threat and
+  protected unit, focus-fire finishes a wounded unit instead of spreading onto
+  a fresh one, slow melee declines to chase a faster shooter. Full
+  `run_all.sh` green; §5 protocol (node --check, JSON parse); headless
+  screenshot of the allocation banner mid-game.
+
 ---
 
 ## 5. Execution model for agents
