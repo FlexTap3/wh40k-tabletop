@@ -223,6 +223,10 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <div class="row"><label><input type="checkbox" id="strictMove"> Enforce movement caps (snap drags beyond M+6" back)</label></div>
       <div class="small" style="margin-bottom:6px">Dragging models shows the distance moved vs the unit's Move stat — white within M, yellow up to M+6" (advance territory), red beyond. Your opponent sees your drag path live.</div>
       <!-- ==== end WP2 ==== -->
+      <!-- ==== WP5: terrain collision toggle ==== -->
+      <div class="row"><label><input type="checkbox" id="wp5Strict" checked> Enforce impassable terrain (snap illegal drops back)</label></div>
+      <div class="small" style="margin-bottom:6px">Bases may not end a move overlapping a wall or container, and only INFANTRY/BEASTS/SWARM may end inside a ruin footprint.</div>
+      <!-- ==== end WP5 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button>
@@ -397,7 +401,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Line of sight — 👁 tool</b>: click one of your units to see a line to every enemy unit: <b>green</b> = visible, <b>yellow</b> = visible with Benefit of Cover (tick Cover in the Attack tab: −1 to hit), <b>red</b> = not visible (or Hidden beyond 15"). Visibility is 11th-ed <i>area</i> style: a target only counts as out of sight when every sight line crosses a ruin/wood/container/low-wall area, ignoring any area either model is inside — craters never block. Approximations used: sight lines are sampled centre-to-centre plus 4 base-edge points each way; cover = a sight line clipped by an area, or an INFANTRY/BEASTS/SWARM model standing inside one. Select a unit and press <kbd>H</kbd> to toggle <b>Hidden</b> for quiet infantry sitting wholly in dense terrain (ruin/wood/container) — while hidden it reads as not visible beyond 15". The tool advises; you two still apply the exact rules.</li>
       <!-- ==== end WP4 ==== -->
       <!-- ==== WP5: terrain ==== -->
-      <li><b>Terrain physicality</b>: a model can't end a move with its centre on a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (same enforcement toggle in Setup; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle floor level 0–3 (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximation: "overlapping" is judged by base centre.</li>
+      <li><b>Terrain physicality</b>: a model can't end a move with its base overlapping a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (own "impassable terrain" toggle in Setup, on by default; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle floor level 0–3 (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximations: wall/container overlap uses the base circle; "inside a ruin" is judged by base centre.</li>
       <!-- ==== end WP5 ==== -->
       <!-- ==== WP7: phases ==== -->
       <li><b>Turn sequence &amp; reserves</b>: the top-bar phase stepper walks Command→Movement→Shooting→Charge→Fight→End for each player in turn. Entering a Command phase gives both players +1 CP automatically (once per turn — the manual CP buttons still work) and logs a battle-shock reminder listing your units at half strength or less. Click one of your units and use the inspector's <b>→ Reserves</b> to lift it into the Reserves tray (bottom-left); <b>Deploy</b> from the tray shades where it may arrive — from round 2, within 6" of a battlefield edge and more than 8" from enemy models, keeping out of the enemy deployment zone before round 3, or anywhere more than 8" away with the <b>DS</b> box ticked. Shift-click places anyway (logged) if you two agree. Select a CHARACTER and another of your units (shift-click) and press <kbd>A</kbd> (or the inspector's <b>Attach</b>) to attach them — they then move, check coherency and count OC as one unit; <kbd>A</kbd> again (or <b>Detach</b>) splits them back to their original units.</li>
@@ -1775,19 +1779,28 @@ const KW_ENTER_RUINS=["INFANTRY","BEASTS","BEAST","SWARM"];           // may end
 const KW_FLOORS=["INFANTRY","BEASTS","BEAST","SWARM","FLY"];          // may climb ruin floors
 const WP5_NAMES={wall:"low wall",crate:"container",ruin:"ruin footprint (needs INFANTRY/BEASTS/SWARM)"};
 function wp5Enforce(){
-  // Respects the strict-move toggle if WP2 added one ("strictMove"), else the coherency toggle.
-  const el=document.getElementById("strictMove")||document.getElementById("strictCoh");
+  // Own toggle, default ON — impassable terrain is physics, not a house rule
+  // (movement caps stay opt-in under WP2's separate strictMove toggle).
+  const el=document.getElementById("wp5Strict");
   return el?el.checked:true;
 }
+function wp5BaseOverlaps(t,ter){
+  // Token base (circle of tokRadius) vs the rotated terrain rect — true overlap,
+  // not just centre-inside, so thin walls can't hide under a base edge.
+  const cx=ter.x+ter.w/2, cy=ter.y+ter.h/2, a=-(ter.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  const dx=t.x-cx, dy=t.y-cy, lx=dx*c-dy*s, ly=dx*s+dy*c;
+  const qx=Math.max(Math.abs(lx)-ter.w/2,0), qy=Math.max(Math.abs(ly)-ter.h/2,0);
+  return Math.hypot(qx,qy) < tokRadius(t)*0.95; // brushing the edge doesn't count
+}
 function wp5Illegal(t){
-  // A token may not END with its centre on a wall/container, or inside a ruin footprint
-  // unless it has INFANTRY/BEASTS/SWARM. Centre-inside is the documented approximation
-  // of "overlapping". Woods/craters are enterable by everything.
+  // A token may not END overlapping a wall/container (base-overlap test), or inside a
+  // ruin footprint (centre test — "inside the area") unless it has INFANTRY/BEASTS/SWARM.
+  // Woods/craters are enterable by everything.
   // Back-compat: legacy/manual tokens with no keyword info (kw missing or empty) get the
   // benefit of the doubt on ruins — DB-built tokens always carry a real keyword list.
   const okRuin=!(t.kw&&t.kw.length)||tokKw(t).some(k=>KW_ENTER_RUINS.includes(k));
   for(const ter of state.terrain){
-    if(ter.kind==="wall"||ter.kind==="crate"){ if(geomPointInRect(t.x,t.y,ter)) return ter.kind; }
+    if(ter.kind==="wall"||ter.kind==="crate"){ if(wp5BaseOverlaps(t,ter)) return ter.kind; }
     else if(ter.kind==="ruin"&&!okRuin){ if(geomPointInRect(t.x,t.y,ter)) return "ruin"; }
   }
   return null;
