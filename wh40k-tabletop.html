@@ -89,6 +89,11 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #inspector .wtable td:first-child{white-space:normal}
 #inspector .aim{padding:0 6px; font-size:12px; line-height:18px}
 /* ==== end WP3 ==== */
+/* ==== WP7: phases ==== */
+#wp7Tray{position:absolute; left:8px; bottom:8px; width:242px; max-height:45%; overflow-y:auto; background:rgba(29,32,38,.97); border:1px solid var(--edge); border-radius:10px; padding:8px 10px; box-shadow:0 6px 20px rgba(0,0,0,.5); z-index:11; font-size:12px}
+#wp7Tray .title{font-weight:600; display:flex; justify-content:space-between; align-items:center}
+#wp7PhaseBar b{min-width:112px; text-align:center; font-weight:600}
+/* ==== end WP7 ==== */
 </style>
 </head>
 <body>
@@ -96,6 +101,11 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 <div id="topbar">
   <span class="brand">WH40K TABLETOP</span>
   <span class="tracker">Round <button onclick="stepTracker('round',-1)">−</button><b id="tRound">1</b><button onclick="stepTracker('round',1)">+</button></span>
+  <!-- ==== WP7: phases ==== turn/phase stepper (a convenience — every manual tracker still works) -->
+  <span class="tracker" id="wp7PhaseBar" title="Turn sequence: Command→Movement→Shooting→Charge→Fight→End. Entering a Command phase grants both players +1 CP automatically (once per turn) — the manual CP buttons still work.">
+    <button onclick="wp7Step(-1)" title="Previous phase">‹</button><b id="wp7PhaseLabel"><span class="small">Deploy</span></b><button onclick="wp7Step(1)" title="Next phase">›</button>
+  </span>
+  <!-- ==== end WP7 ==== -->
   <span class="tracker"><span class="pname p1" id="n1">Player 1</span>&nbsp; CP <button onclick="stepTracker('cp1',-1)">−</button><b id="tCp1">0</b><button onclick="stepTracker('cp1',1)">+</button> VP <button onclick="stepTracker('vp1',-1)">−</button><b id="tVp1">0</b><button onclick="stepTracker('vp1',1)">+</button></span>
   <span class="tracker"><span class="pname p2" id="n2">Player 2</span>&nbsp; CP <button onclick="stepTracker('cp2',-1)">−</button><b id="tCp2">0</b><button onclick="stepTracker('cp2',1)">+</button> VP <button onclick="stepTracker('vp2',-1)">−</button><b id="tVp2">0</b><button onclick="stepTracker('vp2',1)">+</button></span>
   <span class="tracker">🎲 <input id="qtyDice" type="number" value="6" min="1" max="60" style="width:44px"> <button onclick="quickRoll()">Roll D6</button></span>
@@ -225,6 +235,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
     <!-- ==== WP3: inspector ==== -->
     <div id="inspector" style="display:none"></div>
     <!-- ==== end WP3 ==== -->
+    <!-- ==== WP7: phases ==== reserves tray -->
+    <div id="wp7Tray" style="display:none"></div>
+    <!-- ==== end WP7 ==== -->
   </div>
 </div>
 
@@ -375,6 +388,9 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <!-- ==== WP5: terrain ==== -->
       <li><b>Terrain physicality</b>: a model can't end a move with its centre on a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (same enforcement toggle in Setup; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle floor level 0–3 (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximation: "overlapping" is judged by base centre.</li>
       <!-- ==== end WP5 ==== -->
+      <!-- ==== WP7: phases ==== -->
+      <li><b>Turn sequence &amp; reserves</b>: the top-bar phase stepper walks Command→Movement→Shooting→Charge→Fight→End for each player in turn. Entering a Command phase gives both players +1 CP automatically (once per turn — the manual CP buttons still work) and logs a battle-shock reminder listing your units at half strength or less. Click one of your units and use the inspector's <b>→ Reserves</b> to lift it into the Reserves tray (bottom-left); <b>Deploy</b> from the tray shades where it may arrive — from round 2, within 6" of a battlefield edge and more than 8" from enemy models, keeping out of the enemy deployment zone before round 3, or anywhere more than 8" away with the <b>DS</b> box ticked. Shift-click places anyway (logged) if you two agree. Select a CHARACTER and another of your units (shift-click) and press <kbd>A</kbd> (or the inspector's <b>Attach</b>) to attach them — they then move, check coherency and count OC as one unit; <kbd>A</kbd> again (or <b>Detach</b>) splits them back to their original units.</li>
+      <!-- ==== end WP7 ==== -->
     </ul>
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
   </div>
@@ -399,6 +415,8 @@ let state = {
   trackers:{round:1,cp1:0,cp2:0,vp1:0,vp2:0},
   names:{1:"Player 1",2:"Player 2"},
   cards:{1:[],2:[]}, /* ==== WP0: foundations ==== display-only unit cards per side, synced via "cards" op */
+  reserves:{1:[],2:[]}, /* ==== WP7: phases ==== per-player reserves tray: [{id,owner,name,ds,toks:[…]}], synced via rsv+/rsv- */
+  phase:{side:1,ph:-1,cpDone:{}}, /* ==== WP7: phases ==== ph -1 = Deploy, 0–5 = Command…End; cpDone marks "round:side" CP grants */
 };
 let myArmy = JSON.parse(localStorage.getItem("wh40k_army")||"[]");
 let mySide = 1, myName = localStorage.getItem("wh40k_name")||"Player";
@@ -475,7 +493,7 @@ function applyOp(o,mine){
     case "cardtext": if(mine!==true){ cardText[o.name]=o.text; localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
     case "board": state.board=o.board; fitView(); break;
     case "name": state.names[o.side]=o.name; refreshTrackers(); break;
-    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; break;
+    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ break;
     case "dz": state.dz=o.dz; break;
     /* ==== WP0: foundations ==== */
     case "cards": if(!state.cards)state.cards={1:[],2:[]}; state.cards[o.owner]=o.cards||[]; break;
@@ -486,6 +504,11 @@ function applyOp(o,mine){
     /* ==== WP6: objectives ==== update-by-id (secured flag etc.); idempotent */
     case "obj~": {const ob=O.find(x=>x.id===o.obj.id); if(ob)Object.assign(ob,o.obj);} break;
     /* ==== end WP6 ==== */
+    /* ==== WP7: phases ==== turn/phase stepper + reserves tray; idempotent (replace-by-value / replace-by-id) */
+    case "phase": wp7ApplyPhase(o); break;
+    case "rsv+": { if(!state.reserves)state.reserves={1:[],2:[]}; const L=state.reserves[o.res.owner]||(state.reserves[o.res.owner]=[]); const i=L.findIndex(r=>r.id===o.res.id); if(i>=0)L[i]=o.res; else L.push(o.res); } break;
+    case "rsv-": if(state.reserves) [1,2].forEach(s=>{ const L=state.reserves[s]||[]; const i=L.findIndex(r=>r.id===o.id); if(i>=0)L.splice(i,1); }); break;
+    /* ==== end WP7 ==== */
   }
   if(mine) send({t:"op",op:o});
   draw();
@@ -841,7 +864,8 @@ function deployCard(raw){
       const t={id:uid(),owner:mySide,unit:unitId,name:p.n||u.name,rot:0,wounds:+p.W||1,maxW:+p.W||1,
         x:cx+(col-per/2)*gap, y:cy+(mySide===1?-row:row)*gap, ...b,
         /* ==== WP0: stat-bearing tokens ==== */
-        Mv:mvNum(p.M), OC:+p.OC||0, T:+p.T||0, Sv:p.Sv??"", iv:p.Inv??"-", kw:(u.kw||[]).slice()};
+        Mv:mvNum(p.M), OC:+p.OC||0, T:+p.T||0, Sv:p.Sv??"", iv:p.Inv??"-", kw:(u.kw||[]).slice(),
+        u0:total /* ==== WP7: phases ==== starting strength (models at deploy) for the half-strength battle-shock reminder */};
       if(isLeader) t.sgt=true;
       toks.push(t);
     }
@@ -1377,6 +1401,7 @@ function draw(){
   drawRuler(ruler,"#e8b23a"); drawRuler(theirRuler,"#7ec8ff");
   drawLos(); /* ==== WP4: LoS overlay ==== */
   wp2DrawPaths(); /* ==== WP2: move measure ==== */
+  wp7Overlay(); /* ==== WP7: phases ==== reserves placement shading + phase/tray UI refresh */
   // coherency banner
   if(incoherent.size){
     ctx.font="bold 12px sans-serif"; const msg="⚠ "+incoherent.size+" model"+(incoherent.size>1?"s":"")+" out of unit coherency";
@@ -1793,6 +1818,7 @@ function wp3Inspect(){
   }
   if(card&&card.kw&&card.kw.length) html+=`<div class="small" style="margin-top:4px">${card.kw.map(esc).join(" · ")}</div>`;
   if(card&&card.notes) html+=`<div class="small" style="margin-top:4px">${esc(card.notes)}</div>`;
+  html+=wp7InspectorHtml(tok); /* ==== WP7: phases ==== "→ Reserves" / Attach / Detach actions */
   inspEl.innerHTML=html; inspEl.style.display="block";
 }
 function wp3Aim(wi){
@@ -1912,6 +1938,9 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   /* ==== WP3: inspector ==== */
   if(wp3Aiming&&e.button===0){ wp3PickTarget(ix,iy); return; }
   /* ==== end WP3 ==== */
+  /* ==== WP7: phases ==== deploy-from-reserves placement mode (Shift-click overrides legality, logged) */
+  if(wp7Placing&&e.button===0){ wp7PlaceClick(ix,iy,e.shiftKey); return; }
+  /* ==== end WP7 ==== */
   if(tool==="ruler"){ ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler"}; draw(); return; }
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
@@ -2045,6 +2074,7 @@ function wp1Compat(st){
   st.trackers=Object.assign({round:1,cp1:0,cp2:0,vp1:0,vp2:0},st.trackers||{});
   st.names=Object.assign({1:"Player 1",2:"Player 2"},st.names||{});
   st.cards=st.cards||{1:[],2:[]};
+  if(typeof wp7Compat==="function") wp7Compat(st); /* ==== WP7: phases ==== reserves/phase defaults so old saves and syncs load fine (guard: WP1 block is unit-tested standalone) */
   return st;
 }
 /* ---- autosave (debounced; called from applyOp after every op) ---- */
@@ -2365,6 +2395,281 @@ function wp8Coherency(){
   if(h!==wp8CohSig){ wp8CohSig=h; checkCoherency(); }
 }
 /* ==== end WP8 ==== */
+
+/* ==== WP7: phases — turn/phase engine, reserves tray, attached units ==== */
+const WP7_PHASES=["Command","Movement","Shooting","Charge","Fight","End"];
+let wp7Placing=null;          // {id} of the reserves entry being placed (click the board to arrive)
+let wp7TrayOpen=true, wp7UiSig=null;
+/* ---- back-compat defaults (called from wp1Compat on every load/sync/restore) ---- */
+function wp7Compat(st){
+  st.reserves=st.reserves||{1:[],2:[]};
+  if(!st.reserves[1]) st.reserves[1]=[];
+  if(!st.reserves[2]) st.reserves[2]=[];
+  if(!st.phase||typeof st.phase!=="object") st.phase={side:1,ph:-1,cpDone:{}};
+  if(typeof st.phase.ph!=="number") st.phase.ph=-1;
+  if(st.phase.side!==1&&st.phase.side!==2) st.phase.side=1;
+  if(!st.phase.cpDone) st.phase.cpDone={};
+  return st;
+}
+/* ---- phase engine ---- */
+// The stepper is a convenience, not a cage: it only ever routes through ops, and every
+// manual override (Round/CP/VP buttons, stepTracker) keeps working alongside it.
+function wp7Step(dir){
+  const p=(state.phase&&typeof state.phase==="object")?state.phase:{side:1,ph:-1};
+  let ph=typeof p.ph==="number"?p.ph:-1, side=p.side===2?2:1, round=(state.trackers&&state.trackers.round)||1;
+  if(dir>0){
+    if(ph<0){ ph=0; side=1; }                                  // Deploy → first Command phase (current round)
+    else if(ph>=5){ ph=0; if(side===2){ side=1; round++; } else side=2; } // End → next player's Command; new round after player 2
+    else ph++;
+  } else {
+    if(ph<0){ logSys("Already at Deploy — nothing before the game starts."); return; }
+    if(ph===0){
+      if(side===2){ side=1; ph=5; }
+      else if(round>1){ round--; side=2; ph=5; }
+      else ph=-1;                                              // back to Deploy
+    } else ph--;
+  }
+  op({k:"phase",ph,side,round});
+  const nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+  if(ph>=0) logShared(`⏵ Round ${round} · <b style="color:${side===1?"var(--p1)":"var(--p2)"}">${nm(side)}</b> — <b>${WP7_PHASES[ph]} phase</b>`,"sys");
+  else logShared("⏵ Back to Deploy (pre-game)","sys");
+}
+function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both peers; idempotent
+  wp7Compat(state);
+  state.phase.ph=o.ph; state.phase.side=o.side===2?2:1;
+  if(typeof o.round==="number"&&state.trackers&&o.round!==state.trackers.round)
+    state.trackers.round=Math.max(1,o.round); // WP6's end-of-round log picks this up in draw() — exactly once
+  if(o.ph===0){
+    // auto +1 CP to both on entering a Command phase — exactly once per (round, side), ever
+    const key=(((state.trackers&&state.trackers.round)||1)+":"+state.phase.side);
+    if(!state.phase.cpDone[key]){
+      state.phase.cpDone[key]=1;
+      state.trackers.cp1=(state.trackers.cp1||0)+1;
+      state.trackers.cp2=(state.trackers.cp2||0)+1;
+      logSys("Command phase: +1 CP to both players (auto — adjust with the CP buttons if needed).");
+      wp7ShockReminder();
+    }
+  }
+  refreshTrackers();
+}
+function wp7BelowHalf(owner){
+  // Units at ≤ half strength: multi-model → live models vs starting strength (u0 stamped at deploy;
+  // legacy tokens without u0 fall back to the live count and never flag); single model → wounds vs maxW.
+  const by={};
+  state.tokens.forEach(t=>{ if(t.owner===owner)(by[t.unit]=by[t.unit]||[]).push(t); });
+  const out=[];
+  for(const uk in by){
+    const ms=by[uk];
+    const start=Math.max(0,...ms.map(t=>+t.u0||0))||ms.length;
+    if(start>1){ if(ms.length*2<=start) out.push(ms[0].name+" ("+ms.length+"/"+start+" models)"); }
+    else if((ms[0].maxW||1)>1&&(ms[0].wounds||0)*2<=ms[0].maxW) out.push(ms[0].name+" ("+ms[0].wounds+"/"+ms[0].maxW+" W)");
+  }
+  return out;
+}
+function wp7ShockReminder(){ // logged locally on each peer, so each player sees their own list
+  const list=wp7BelowHalf(mySide);
+  if(list.length) logSys("⚠ Battle-shock reminder — your units at half strength or less must test: "+list.join("; "));
+}
+function wp7RenderPhase(){
+  const el=document.getElementById("wp7PhaseLabel"); if(!el) return;
+  const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(typeof p.ph!=="number"||p.ph<0){ el.innerHTML='<span class="small">Deploy</span>'; return; }
+  const col=p.side===1?"var(--p1)":"var(--p2)";
+  el.innerHTML=`<span style="color:${col}">${esc((state.names&&state.names[p.side])||("Player "+p.side))}</span> · ${WP7_PHASES[p.ph]||"?"}`;
+}
+/* ---- reserves ---- */
+function wp7ToReserves(unitId){
+  const toks=state.tokens.filter(t=>t.unit===unitId);
+  if(!toks.length) return;
+  if(toks[0].owner!==mySide){ logSys("You can only move your own units into Reserves."); return; }
+  const card=wp3CardFor(toks[0]);
+  const ds=!!(card&&/deep\s*strike/i.test(String(card.notes||""))); // pre-tick DS when the card's notes mention it
+  const entry={id:unitId, owner:mySide, name:(card&&card.name)||toks[0].name, ds, toks:JSON.parse(JSON.stringify(toks))};
+  op({k:"rsv+",res:entry});
+  op({k:"tok-",ids:toks.map(t=>t.id)});
+  sel.clear(); wp3Hide();
+  logShared(`· <b>${esc(myName)}</b> put <b>${esc(entry.name)}</b> ×${entry.toks.length} into Reserves`,"sys");
+}
+function wp7SetDs(id,val){
+  const r=((state.reserves&&state.reserves[mySide])||[]).find(x=>x.id===id); if(!r) return;
+  op({k:"rsv+",res:Object.assign(JSON.parse(JSON.stringify(r)),{ds:!!val})});
+}
+function wp7BeginPlace(id){
+  const r=((state.reserves&&state.reserves[mySide])||[]).find(x=>x.id===id); if(!r) return;
+  wp7Placing={id};
+  cv.style.cursor="crosshair";
+  logSys("Placing "+r.name+" from Reserves — click inside the green region (Esc cancels, Shift-click overrides the check).");
+  wp7UiSig=null; draw();
+}
+function wp7CancelPlace(){
+  if(!wp7Placing) return;
+  wp7Placing=null;
+  cv.style.cursor=tool==="select"?"default":"crosshair";
+  wp7UiSig=null; draw();
+}
+function wp7PtInPoly(x,y,poly){ // ray-cast point-in-polygon; poly = [[x,y],…] board inches
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+  }
+  return inside;
+}
+// Arrival legality (returns a reason string, or null when legal). Uses the phase engine's round:
+//  round 1: no arrivals · always: >8" (edge-to-edge) from every enemy model and on the battlefield
+//  Deep Strike (ds): that's all · otherwise: within 6" of a battlefield edge (base centre), and
+//  before round 3 not inside the enemy deployment zone.
+function wp7ArriveIllegal(toks,ds,round,board,enemyDz,enemies){
+  if(round<2) return "Reserves arrive from round 2 (step the round on, or your mission may differ)";
+  for(const t of toks){
+    if(t.x<0||t.y<0||t.x>board.w||t.y>board.h) return "the unit doesn't fit on the battlefield there";
+    for(const e of enemies) if(edgeDist(t,e)<=8.02) return 'every model must arrive more than 8" from enemy models';
+    if(!ds){
+      if(Math.min(t.x,t.y,board.w-t.x,board.h-t.y)>6.02) return 'must arrive within 6" of a battlefield edge (or tick DS for Deep Strike)';
+      if(round<3&&enemyDz&&enemyDz.length&&wp7PtInPoly(t.x,t.y,enemyDz)) return "can't arrive in the enemy deployment zone before round 3";
+    }
+  }
+  return null;
+}
+function wp7PlaceClick(ix,iy,force){
+  const entry=((state.reserves&&state.reserves[mySide])||[]).find(r=>r.id===(wp7Placing&&wp7Placing.id));
+  if(!entry){ wp7CancelPlace(); return; }
+  const toks=JSON.parse(JSON.stringify(entry.toks||[]));
+  if(!toks.length){ op({k:"rsv-",id:entry.id}); wp7CancelPlace(); return; }
+  const cx=toks.reduce((s,t)=>s+t.x,0)/toks.length, cy=toks.reduce((s,t)=>s+t.y,0)/toks.length;
+  toks.forEach(t=>{ t.x+=ix-cx; t.y+=iy-cy; });
+  const enemies=state.tokens.filter(t=>t.owner!==entry.owner);
+  const enemyDz=(state.dz||[])[entry.owner===1?1:0];
+  const round=(state.trackers&&state.trackers.round)||1;
+  const bad=wp7ArriveIllegal(toks,!!entry.ds,round,state.board,enemyDz,enemies);
+  if(bad&&!force){ logSys("Illegal arrival: "+bad+". Shift-click to place anyway."); return; }
+  op({k:"rsv-",id:entry.id});
+  op({k:"tok+",toks});
+  if(bad) logShared(`⚠ <b>${esc(myName)}</b> placed <b>${esc(entry.name)}</b> from Reserves, overriding: ${esc(bad)}`,"sys");
+  else logShared(`· <b>${esc(myName)}</b> deployed <b>${esc(entry.name)}</b> from Reserves${entry.ds?" (Deep Strike)":""}`,"sys");
+  wp7CancelPlace();
+}
+/* ---- attached units (CHARACTER joins a bodyguard unit) ---- */
+function wp7Attach(){
+  const selToks=state.tokens.filter(t=>sel.has(t.id));
+  const units=[...new Set(selToks.map(t=>t.unit))];
+  if(!units.length){ logSys("Attach: select a CHARACTER and the unit to join (shift-click), then press A."); return; }
+  if(units.length===1){
+    if(state.tokens.some(t=>t.unit===units[0]&&t.attachedFrom)){ wp7Detach(units[0]); return; }
+    logSys("Attach: select the CHARACTER unit AND the unit it joins (shift-click both), then press A.");
+    return;
+  }
+  if(units.length!==2){ logSys("Attach works on exactly two of your units — a CHARACTER and the unit it joins."); return; }
+  const g=units.map(uk=>state.tokens.filter(t=>t.unit===uk));
+  if(g.some(x=>x[0].owner!==mySide)){ logSys("Attach: both units must be yours."); return; }
+  const isChar=x=>x.every(t=>tokKw(t).includes("CHARACTER"));
+  const ci= isChar(g[0])&&!isChar(g[1])?0 : isChar(g[1])&&!isChar(g[0])?1 : (isChar(g[0])&&isChar(g[1])?(g[0].length<=g[1].length?0:1):-1);
+  if(ci<0){ logSys("Attach: neither selected unit has the CHARACTER keyword."); return; }
+  const chr=g[ci], body=g[1-ci];
+  op({k:"tok~",toks:chr.map(t=>({id:t.id,attachedFrom:t.unit,unit:body[0].unit}))});
+  logShared(`· <b>${esc(myName)}</b> attached <b>${esc(chr[0].name)}</b> to <b>${esc(body[0].name)}</b> — they move, check coherency and count OC as one unit (A or Detach splits them)`,"sys");
+  wp3Hide();
+}
+function wp7Detach(unitId){
+  const toks=state.tokens.filter(t=>t.unit===unitId&&t.attachedFrom);
+  if(!toks.length){ logSys("Nothing is attached in that unit."); return; }
+  op({k:"tok~",toks:toks.map(t=>({id:t.id,unit:t.attachedFrom,attachedFrom:null}))});
+  logShared(`· <b>${esc(myName)}</b> detached <b>${esc(toks[0].name)}</b> back to its own unit`,"sys");
+  sel.clear(); wp3Hide();
+}
+/* ---- inspector actions (appended by wp3Inspect) ---- */
+function wp7InspectorHtml(tok){
+  if(tok.owner!==mySide) return "";
+  const attached=state.tokens.some(t=>t.unit===tok.unit&&t.attachedFrom);
+  const selUnits=[...new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit))];
+  let b=`<div class="row" style="margin-top:6px;margin-bottom:0"><button onclick="wp7ToReserves('${tok.unit}')" title="Lift this unit off the table into the Reserves tray">→ Reserves</button>`;
+  if(attached) b+=` <button onclick="wp7Detach('${tok.unit}')" title="Split the attached CHARACTER back out (A)">Detach</button>`;
+  else if(selUnits.length===2) b+=` <button onclick="wp7Attach()" title="Attach the selected CHARACTER to the other selected unit (A)">Attach</button>`;
+  return b+`</div>`;
+}
+/* ---- board overlay + UI refresh (called from draw()) ---- */
+function wp7SyncUi(){ // phase label + tray, memoized so draw() stays cheap
+  const R=state.reserves||{1:[],2:[]}, p=state.phase||{ph:-1,side:1};
+  const sig=[p.ph,p.side,(state.trackers&&state.trackers.round)||1,
+    (R[1]||[]).map(r=>r.id+":"+(r.ds?1:0)+":"+(r.toks||[]).length).join(","),
+    (R[2]||[]).map(r=>r.id+":"+(r.ds?1:0)+":"+(r.toks||[]).length).join(","),
+    wp7Placing&&wp7Placing.id, wp7TrayOpen,
+    (state.names&&state.names[1])||"", (state.names&&state.names[2])||""].join("|");
+  if(sig===wp7UiSig) return;
+  wp7UiSig=sig;
+  wp7RenderPhase(); wp7RenderTray();
+}
+function wp7ToggleTray(){ wp7TrayOpen=!wp7TrayOpen; wp7UiSig=null; draw(); }
+function wp7RenderTray(){
+  const el=document.getElementById("wp7Tray"); if(!el) return;
+  const R=state.reserves||{1:[],2:[]};
+  const n=((R[1]||[]).length+(R[2]||[]).length);
+  if(!n){ el.style.display="none"; return; }
+  el.style.display="block";
+  const opp=mySide===1?2:1;
+  let html=`<div class="title" style="cursor:pointer" onclick="wp7ToggleTray()"><span>Reserves (${n})</span><span class="small">${wp7TrayOpen?"▾":"▸"}</span></div>`;
+  if(wp7TrayOpen){
+    [mySide,opp].forEach(side=>{
+      const L=R[side]||[]; if(!L.length) return;
+      const col=side===1?"var(--p1)":"var(--p2)";
+      html+=`<div class="small" style="color:${col};margin-top:5px"><b>${esc((state.names&&state.names[side])||("Player "+side))}</b>${side===mySide?"":" <span style='color:var(--dim)'>(opponent)</span>"}</div>`;
+      L.forEach(r=>{
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;padding:3px 0;border-top:1px solid var(--edge)"><span>${esc(r.name)} <span class="small">×${(r.toks||[]).length}</span></span>`;
+        if(side===mySide)
+          html+=`<span style="white-space:nowrap"><label class="small" title="Deep Strike: may arrive anywhere more than 8&quot; from enemy models"><input type="checkbox" onchange="wp7SetDs('${r.id}',this.checked)"${r.ds?" checked":""}> DS</label> <button onclick="wp7BeginPlace('${r.id}')" title="Place on the battlefield (legal region shades green)">Deploy</button></span>`;
+        html+=`</div>`;
+      });
+    });
+  }
+  el.innerHTML=html;
+}
+function wp7Overlay(){ // draw() hook: keep the phase/tray UI fresh, shade the legal arrival region while placing
+  wp7SyncUi();
+  if(!wp7Placing) return;
+  const entry=((state.reserves&&state.reserves[mySide])||[]).find(r=>r.id===wp7Placing.id);
+  if(!entry){ wp7Placing=null; return; }
+  const round=(state.trackers&&state.trackers.round)||1;
+  const [bx,by]=px(0,0), bw=state.board.w*view.s, bh=state.board.h*view.s;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(bx,by,bw,bh); ctx.clip();
+  if(round<2){ ctx.fillStyle="rgba(216,74,74,.10)"; ctx.fillRect(bx,by,bw,bh); }
+  else{
+    ctx.fillStyle="rgba(95,191,111,.13)";
+    if(entry.ds) ctx.fillRect(bx,by,bw,bh);
+    else{
+      const s6=6*view.s;
+      ctx.fillRect(bx,by,bw,s6); ctx.fillRect(bx,by+bh-s6,bw,s6);
+      ctx.fillRect(bx,by+s6,s6,bh-2*s6); ctx.fillRect(bx+bw-s6,by+s6,s6,bh-2*s6);
+    }
+    if(!entry.ds&&round<3){ // enemy DZ off-limits before round 3
+      const poly=(state.dz||[])[entry.owner===1?1:0];
+      if(poly&&poly.length){
+        ctx.beginPath(); poly.forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); });
+        ctx.closePath(); ctx.fillStyle="rgba(216,74,74,.18)"; ctx.fill();
+      }
+    }
+    ctx.fillStyle="rgba(216,74,74,.22)"; // 8" exclusion around every enemy model
+    state.tokens.forEach(t=>{
+      if(t.owner===entry.owner) return;
+      const [tx,ty]=px(t.x,t.y);
+      ctx.beginPath(); ctx.arc(tx,ty,(8+tokRadius(t))*view.s,0,7); ctx.fill();
+    });
+  }
+  ctx.restore();
+  ctx.font="bold 12px sans-serif";
+  const msg=round<2?"Reserves arrive from round 2 — step the round on (Shift-click overrides)"
+    :"Placing "+entry.name+" — click the green region"+(entry.ds?' (Deep Strike: anywhere >8" from enemies)':"");
+  const w=ctx.measureText(msg).width;
+  ctx.fillStyle="rgba(16,18,22,.85)"; ctx.fillRect(bx+bw/2-w/2-8,by+6,w+16,22);
+  ctx.fillStyle=round<2?"#ff7060":"#5fbf6f"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(msg,bx+bw/2,by+17);
+}
+window.addEventListener("keydown",e=>{ /* WP7: A = attach/detach, Esc cancels reserve placement (own listener; shared handler untouched) */
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
+  if(e.key==="a"||e.key==="A") wp7Attach();
+  else if(e.key==="Escape") wp7CancelPlace();
+});
+/* ==== end WP7 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
