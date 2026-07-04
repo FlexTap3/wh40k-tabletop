@@ -364,7 +364,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
 const uid = () => Math.random().toString(36).slice(2,9);
 let state = {
   board:{w:60,h:44},
-  tokens:[],     // {id,owner,unit,name,shape:'c'|'r',dmm|wIn/hIn,x,y,rot,wounds,maxW}
+  tokens:[],     // {id,owner,unit,name,shape:'c'|'r',dmm|wIn/hIn,x,y,rot,wounds,maxW, WP0: Mv,OC,T,Sv,iv,kw (may be absent on old saves)}
   terrain:[],    // {id,kind,x,y,w,h,rot}
   objectives:[], // {id,x,y}
   dz:[],         // deployment zones: [redPoly, bluePoly] in board inches
@@ -372,6 +372,7 @@ let state = {
   mission:null,  // {name, m} current primary mission from loaded layout
   trackers:{round:1,cp1:0,cp2:0,vp1:0,vp2:0},
   names:{1:"Player 1",2:"Player 2"},
+  cards:{1:[],2:[]}, /* ==== WP0: foundations ==== display-only unit cards per side, synced via "cards" op */
 };
 let myArmy = JSON.parse(localStorage.getItem("wh40k_army")||"[]");
 let mySide = 1, myName = localStorage.getItem("wh40k_name")||"Player";
@@ -416,7 +417,7 @@ function send(m){ if(conn && conn.open) conn.send(m); }
 function onMsg(m){
   switch(m.t){
     case "hello": state.names[m.side]=m.name; refreshTrackers(); logSys(m.name+" joined as "+(m.side==1?"Red":"Blue")+"."); break;
-    case "state": state=m.state; if(!state.sec)state.sec=[]; fitView(); refreshTrackers(); renderCards(); draw(); break;
+    case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ fitView(); refreshTrackers(); renderCards(); draw(); break;
     case "op": applyOp(m.op,false); break;
     case "chat": logChat(m.name,m.text,false); break;
     case "log": logEntry(m.html,m.cls); break;
@@ -443,8 +444,11 @@ function applyOp(o,mine){
     case "cardtext": if(mine!==true){ cardText[o.name]=o.text; localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
     case "board": state.board=o.board; fitView(); break;
     case "name": state.names[o.side]=o.name; refreshTrackers(); break;
-    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; break;
+    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; break;
     case "dz": state.dz=o.dz; break;
+    /* ==== WP0: foundations ==== */
+    case "cards": if(!state.cards)state.cards={1:[],2:[]}; state.cards[o.owner]=o.cards||[]; break;
+    /* ==== end WP0 ==== */
   }
   if(mine) send({t:"op",op:o});
   draw();
@@ -619,7 +623,7 @@ function addFromDb(fid,idx,forcedSize,quiet){
     const opt=u.p[Math.min(u.p.length,Math.max(1,pick))-1];
     const m=opt[0].match(/(\d+)/); size=m?+m[1]:null; pts=opt[1];
   } else if(u.p&&u.p.length) pts=u.p[0][1];
-  const card={name:u.n, pts, profiles:profilesFromDb(u,size), weapons:weaponLines(u), notes:u.r||""};
+  const card={name:u.n, pts, profiles:profilesFromDb(u,size), weapons:weaponLines(u), notes:u.r||"", kw:(u.k||[]).slice() /* WP0: card carries DB keywords */};
   myArmy.push(card); localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy();
   return card;
 }
@@ -659,6 +663,7 @@ function importArmyList(){
   const deploy=document.getElementById("listDeploy").checked;
   myArmy=[]; // the Army tab mirrors the imported list
   found.forEach(f=>{ const c=addFromDb(fid,f.idx,f.size||undefined,true); if(c&&deploy) deployCard(c); });
+  broadcastCards(); /* WP0: card sync on list import */
   document.getElementById("listDlg").close();
   logShared(`· <b>${esc(myName)}</b> imported a list: ${found.length} unit${found.length!==1?"s":""} matched${missed.length?", "+missed.length+" not found: "+esc(missed.join("; ")):""}`,"sys");
 }
@@ -715,8 +720,8 @@ function loadLayout(){
 /* ============ army / unit cards ============ */
 let editIdx=-1;
 function migrateCard(u){
-  if(u.profiles) return u;
-  return {name:u.name, pts:u.pts||"", weapons:u.weapons||"", notes:u.notes||"",
+  if(u.profiles){ if(!u.kw) u.kw=[]; /* WP0: manual/legacy cards default to no keywords */ return u; }
+  return {name:u.name, pts:u.pts||"", weapons:u.weapons||"", notes:u.notes||"", kw:u.kw||[],
     profiles:[{n:u.name,count:u.count||1,base:u.base||"32mm",M:u.M,T:u.T,Sv:u.Sv,Inv:u.Inv,W:u.W||1,Ld:u.Ld,OC:u.OC}]};
 }
 let editorTarget="army";
@@ -776,6 +781,12 @@ function renderArmy(){
   if(!myArmy.length) el.innerHTML='<div class="small">No army yet. Build one in the Builder and hit Muster — this tab becomes your quick reference: every unit\'s stats, weapons, enhancement and loadout at a glance.</div>';
 }
 function deployUnit(i){ deployCard(migrateCard(myArmy[i])); }
+/* ==== WP0: foundations ==== */
+// Parse a Move stat: '6"' -> 6, "-" -> 0, missing -> 0.
+function mvNum(v){ const n=parseFloat(String(v??"").replace(/[^0-9.]/g,"")); return isNaN(n)?0:n; }
+// Broadcast my army's cards (display-only copies) so the opponent can inspect my units.
+function broadcastCards(){ op({k:"cards", owner:mySide, cards:JSON.parse(JSON.stringify(myArmy.map(migrateCard)))}); }
+/* ==== end WP0 ==== */
 function deployCard(raw){
   const u=migrateCard(raw), toks=[], unitId=uid();
   const total=u.profiles.reduce((s,p)=>s+(+p.count||0),0)||1;
@@ -789,7 +800,9 @@ function deployCard(raw){
     for(let c=0;c<(+p.count||0);c++){
       const col=k%per, row=Math.floor(k/per); k++;
       const t={id:uid(),owner:mySide,unit:unitId,name:p.n||u.name,rot:0,wounds:+p.W||1,maxW:+p.W||1,
-        x:cx+(col-per/2)*gap, y:cy+(mySide===1?-row:row)*gap, ...b};
+        x:cx+(col-per/2)*gap, y:cy+(mySide===1?-row:row)*gap, ...b,
+        /* ==== WP0: stat-bearing tokens ==== */
+        Mv:mvNum(p.M), OC:+p.OC||0, T:+p.T||0, Sv:p.Sv??"", iv:p.Inv??"-", kw:(u.kw||[]).slice()};
       if(isLeader) t.sgt=true;
       toks.push(t);
     }
@@ -798,7 +811,7 @@ function deployCard(raw){
   logShared("· <b>"+esc(myName)+"</b> deployed "+esc(u.name)+" ×"+total,"sys");
 }
 function exportArmy(){ dl("army.json",JSON.stringify(myArmy,null,1)); }
-function importArmy(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ myArmy=JSON.parse(t); localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy(); }); inp.value=""; }
+function importArmy(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ myArmy=JSON.parse(t); localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy(); broadcastCards(); /* WP0: card sync on army import */ }); inp.value=""; }
 function dl(name,text){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text])); a.download=name; a.click(); }
 
 /* ============ army list builder ============ */
@@ -966,6 +979,7 @@ function bToGame(){
     }
   });
   localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy(); showTab("army"); closeBuilder();
+  broadcastCards(); /* WP0: card sync on muster */
   logShared(`· <b>${esc(myName)}</b> mustered their army: ${n} units, ${bTotalPts()} pts`,"sys");
 }
 function bExportText(){
@@ -1162,7 +1176,7 @@ function setSide(v){ mySide=+v; op({k:"name",side:mySide,name:myName}); }
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
 function clearTable(){ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
-function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ state=JSON.parse(t); refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
+function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
 function showTab(name){
   document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.id==="tab-"+name));
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
