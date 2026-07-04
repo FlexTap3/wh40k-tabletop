@@ -12,6 +12,7 @@ node ../test_geometry.js
 node harness.js wp2-tests.js
 node harness.js wp3-tests.js
 node harness.js wp5-tests.js
+node harness.js wp10-tests.js
 node test_wp1.js
 node test_wp6.js
 node test_wp7.js
