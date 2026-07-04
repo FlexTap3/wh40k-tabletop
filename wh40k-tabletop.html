@@ -103,6 +103,7 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
     <span class="dot" id="connDot"></span><span id="connText">Offline</span>
     <button id="btnHost" onclick="hostGame()">Host</button>
     <button id="btnJoin" onclick="joinPrompt()">Join</button>
+    <button id="btnReconnect" style="display:none" onclick="wp1Reconnect()" title="Rejoin the last game under the same room code">⟳ Reconnect</button><!-- WP1: resilience -->
     <button onclick="document.getElementById('helpDlg').showModal()">?</button>
   </span>
 </div>
@@ -407,7 +408,7 @@ document.getElementById("myName").value = myName;
 let peer=null, conn=null, isHost=false;
 function setConn(on,txt){ document.getElementById("connDot").className="dot"+(on?" on":""); document.getElementById("connText").textContent=txt; }
 function hostGame(){
-  const code = "wh40k-"+Math.random().toString(36).slice(2,7);
+  const code = wp1HostCode(); /* WP1: stable room code so a dropped game can be re-hosted */
   peer = new Peer(code);
   peer.on("open", id=>{
     const short=id.replace("wh40k-","").toUpperCase();
@@ -417,16 +418,17 @@ function hostGame(){
     isHost=true;
   });
   peer.on("connection", c=>{ conn=c; wireConn(); });
-  peer.on("error", e=>{ setConn(false,"Error"); logSys("Connection error: "+e.type); });
+  peer.on("error", e=>{ setConn(false,"Error"); logSys("Connection error: "+e.type); wp1PeerError(e); /* WP1 */ });
 }
 function joinPrompt(){
   const code = prompt("Enter room code:"); if(!code) return;
+  wp1SaveRoom("wh40k-"+code.trim().toLowerCase(),false); /* WP1: remember the room for reconnect */
   peer = new Peer();
   peer.on("open", ()=>{
     conn = peer.connect("wh40k-"+code.trim().toLowerCase(), {reliable:true});
     wireConn();
   });
-  peer.on("error", e=>{ setConn(false,"Error"); logSys("Connection error: "+e.type); });
+  peer.on("error", e=>{ setConn(false,"Error"); logSys("Connection error: "+e.type); wp1PeerError(e); /* WP1 */ });
 }
 function wireConn(){
   conn.on("open", ()=>{
@@ -434,15 +436,16 @@ function wireConn(){
     logSys("Connected!");
     send({t:"hello", name:myName, side:mySide});
     if(isHost) send({t:"state", state});
+    wp1OnConnect(); /* WP1 */
   });
   conn.on("data", onMsg);
-  conn.on("close", ()=>{ setConn(false,"Disconnected"); logSys("Opponent disconnected."); conn=null; });
+  conn.on("close", ()=>{ setConn(false,"Disconnected"); logSys("Opponent disconnected."); conn=null; wp1OnDisconnect(); /* WP1 */ });
 }
 function send(m){ if(conn && conn.open) conn.send(m); }
 function onMsg(m){
   switch(m.t){
     case "hello": state.names[m.side]=m.name; refreshTrackers(); logSys(m.name+" joined as "+(m.side==1?"Red":"Blue")+"."); break;
-    case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ fitView(); refreshTrackers(); renderCards(); draw(); break;
+    case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ fitView(); refreshTrackers(); renderCards(); draw(); break;
     case "op": applyOp(m.op,false); break;
     case "chat": logChat(m.name,m.text,false); break;
     case "log": logEntry(m.html,m.cls); break;
@@ -453,7 +456,7 @@ function onMsg(m){
   }
 }
 /* ops mutate state identically on both ends */
-function op(o){ applyOp(o,true); }
+function op(o){ wp1Snapshot(); /* WP1: undo snapshot before local ops */ applyOp(o,true); }
 function applyOp(o,mine){
   const T=state.tokens, R=state.terrain, O=state.objectives;
   switch(o.k){
@@ -477,9 +480,13 @@ function applyOp(o,mine){
     /* ==== WP0: foundations ==== */
     case "cards": if(!state.cards)state.cards={1:[],2:[]}; state.cards[o.owner]=o.cards||[]; break;
     /* ==== end WP0 ==== */
+    /* ==== WP1: resilience ==== full-state replace (undo / recovery); idempotent */
+    case "restore": wp1ApplyRestore(o.state); break;
+    /* ==== end WP1 ==== */
   }
   if(mine) send({t:"op",op:o});
   draw();
+  wp1Autosave(); /* ==== WP1: resilience ==== debounced autosave after every op */
 }
 
 /* ============ log / chat / dice ============ */
@@ -1194,7 +1201,7 @@ function saveSecDeck(){ secDeck=document.getElementById("secDeckText").value.spl
 function resetSecDeck(){ document.getElementById("secDeckText").value=DEFAULT_SEC.join("\n"); }
 
 /* ============ trackers / setup ============ */
-function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(state.trackers[key]||0)+dv); refreshTrackers(); send({t:"op",op:{k:"track",trackers:state.trackers}}); }
+function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(state.trackers[key]||0)+dv); refreshTrackers(); op({k:"track",trackers:state.trackers}); /* WP1: route through applyOp so autosave (and redraws) fire */ }
 function refreshTrackers(){
   const t=state.trackers, g=id=>document.getElementById(id);
   g("tRound").textContent=t.round; g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
@@ -1206,7 +1213,7 @@ function setSide(v){ mySide=+v; op({k:"name",side:mySide,name:myName}); }
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
 function clearTable(){ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
-function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
+function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
 function showTab(name){
   document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.id==="tab-"+name));
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
@@ -1894,6 +1901,7 @@ cv.addEventListener("wheel",e=>{
   view.x=e.offsetX-ix*view.s; view.y=e.offsetY-iy*view.s; draw();
 },{passive:false});
 cv.addEventListener("mousedown",e=>{
+  wp1PreMutate(); /* WP1: capture pre-gesture state so drag moves are undoable */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   if(e.button===2||e.button===1||(e.button===0&&e.altKey)){ panning={x:e.clientX,y:e.clientY}; return; }
   /* ==== WP3: inspector ==== */
@@ -2018,9 +2026,132 @@ window.addEventListener("keydown",e=>{
   else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ draw(); }
 });
 
+/* ==== WP1: resilience — autosave, resume, reconnect, undo ==== */
+const WP1_AUTOSAVE_KEY="wh40k_autosave", WP1_ROOM_KEY="wh40k_room", WP1_UNDO_DEPTH=30;
+let wp1SaveTimer=null, wp1UndoStack=[], wp1Pending=null, wp1Batch=false, wp1SkipSnap=false, wp1ReTries=0, wp1ReTimer=null;
+// Fill defaults so old saves / partial states never crash anything (back-compat, invariant §1.1.4).
+function wp1Compat(st){
+  st=st||{};
+  st.board=st.board||{w:60,h:44};
+  st.tokens=st.tokens||[]; st.terrain=st.terrain||[]; st.objectives=st.objectives||[];
+  st.dz=st.dz||[]; st.sec=st.sec||[]; if(st.mission===undefined)st.mission=null;
+  st.trackers=Object.assign({round:1,cp1:0,cp2:0,vp1:0,vp2:0},st.trackers||{});
+  st.names=Object.assign({1:"Player 1",2:"Player 2"},st.names||{});
+  st.cards=st.cards||{1:[],2:[]};
+  return st;
+}
+/* ---- autosave (debounced; called from applyOp after every op) ---- */
+function wp1Autosave(){
+  wp1Pending=null; // an applied op invalidates any pre-gesture snapshot not yet consumed
+  clearTimeout(wp1SaveTimer);
+  wp1SaveTimer=setTimeout(()=>{
+    try{ localStorage.setItem(WP1_AUTOSAVE_KEY,JSON.stringify({v:1,ts:Date.now(),side:mySide,state})); }
+    catch(e){ /* storage full or blocked — autosave is best-effort */ }
+  },400);
+}
+/* ---- room persistence + reconnect ---- */
+function wp1SaveRoom(code,host){ try{ localStorage.setItem(WP1_ROOM_KEY,JSON.stringify({code,host:!!host,ts:Date.now()})); }catch(e){} }
+function wp1Room(){ try{ return JSON.parse(localStorage.getItem(WP1_ROOM_KEY)||"null"); }catch(e){ return null; } }
+function wp1HostCode(){ // reuse the last hosted code (≤12h old) so "Reconnect"/re-Host lands in the same room
+  const r=wp1Room();
+  if(r&&r.host&&r.code&&Date.now()-(r.ts||0)<12*36e5){ wp1SaveRoom(r.code,true); return r.code; }
+  const code="wh40k-"+Math.random().toString(36).slice(2,7);
+  wp1SaveRoom(code,true); return code;
+}
+function wp1ShowReconnect(show){ const b=document.getElementById("btnReconnect"); if(b) b.style.display=show?"":"none"; }
+function wp1OnConnect(){ wp1ReTries=0; clearTimeout(wp1ReTimer); wp1ShowReconnect(false); const r=wp1Room(); if(r) wp1SaveRoom(r.code,r.host); /* refresh ts */ }
+function wp1OnDisconnect(){
+  if(wp1Room()) wp1ShowReconnect(true);
+  if(isHost) logSys("Still hosting the same room — your opponent can hit ⟳ Reconnect (or Join with the same code).");
+}
+function wp1PeerError(e){
+  if(e&&e.type==="unavailable-id"){ try{ localStorage.removeItem(WP1_ROOM_KEY); }catch(err){} logSys("That room code is still registered elsewhere (old tab?). Click Host for a fresh code."); }
+  else if(wp1Room()) wp1ShowReconnect(true);
+}
+function wp1Reconnect(){
+  const r=wp1Room();
+  if(!r||!r.code){ logSys("No previous room on record — use Host or Join."); wp1ShowReconnect(false); return; }
+  if(conn&&conn.open){ wp1ShowReconnect(false); return; }
+  if(r.host){
+    // Host path: keep (or recreate) the Peer under the SAME code; full state re-sends on connection open (wireConn).
+    if(peer&&!peer.destroyed&&!peer.disconnected){
+      setConn(false,"Room "+r.code.replace("wh40k-","").toUpperCase()+" — waiting…");
+      logSys("Still hosting room "+r.code.replace("wh40k-","").toUpperCase()+" — waiting for your opponent to rejoin.");
+      return;
+    }
+    if(peer){ try{ peer.destroy(); }catch(e){} peer=null; }
+    hostGame(); // wp1HostCode() reuses the saved code
+  } else {
+    if(peer){ try{ peer.destroy(); }catch(e){} peer=null; }
+    setConn(false,"Rejoining…");
+    peer=new Peer();
+    peer.on("open",()=>{ conn=peer.connect(r.code,{reliable:true}); wireConn(); });
+    peer.on("error",e=>{ setConn(false,"Error"); logSys("Reconnect failed: "+e.type); wp1PeerError(e); wp1GuestRetry(); });
+  }
+}
+function wp1GuestRetry(){ // automatic retries while the host re-hosts
+  if(conn&&conn.open) return;
+  if(wp1ReTries>=5){ logSys("Gave up after 5 attempts — click ⟳ Reconnect to try again."); wp1ReTries=0; return; }
+  wp1ReTries++;
+  clearTimeout(wp1ReTimer);
+  wp1ReTimer=setTimeout(()=>{ if(!(conn&&conn.open)){ logSys("Retrying reconnect… ("+wp1ReTries+"/5)"); wp1Reconnect(); } },3000);
+}
+/* ---- undo: ring buffer of pre-op snapshots, Ctrl/Cmd+Z, broadcast restore ---- */
+function wp1PreMutate(){ wp1Pending=JSON.stringify(state); } // gesture start: state not yet mutated by the drag
+function wp1Snapshot(){ // called by op() BEFORE the local apply; bursts in one tick = one undo step
+  if(wp1SkipSnap||wp1Batch) return;
+  wp1Batch=true; setTimeout(()=>{ wp1Batch=false; },0);
+  const snap=wp1Pending!==null?wp1Pending:JSON.stringify(state);
+  wp1Pending=null;
+  wp1UndoStack.push(snap);
+  if(wp1UndoStack.length>WP1_UNDO_DEPTH) wp1UndoStack.shift();
+}
+function wp1Undo(){
+  if(!wp1UndoStack.length){ logSys("Nothing to undo."); return; }
+  const snap=wp1UndoStack.pop();
+  wp1SkipSnap=true;
+  try{ op({k:"restore",state:JSON.parse(snap)}); } finally{ wp1SkipSnap=false; }
+  wp1Pending=null;
+  logShared("↶ <b>"+esc(myName)+"</b> undid the last action","sys");
+}
+function wp1ApplyRestore(st){ // idempotent full-state replace (undo on either peer; both converge)
+  state=wp1Compat(JSON.parse(JSON.stringify(st)));
+  sel.clear(); refreshTrackers(); renderCards(); // draw() runs at the end of applyOp
+}
+window.addEventListener("keydown",e=>{ /* WP1: Ctrl/Cmd+Z = undo (own listener; shared handler untouched) */
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&(e.key==="z"||e.key==="Z")){
+    if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
+    e.preventDefault(); wp1Undo();
+  }
+});
+/* ---- resume prompt (runs once at startup, after init) ---- */
+function wp1MaybeResume(){
+  let auto=null; try{ auto=JSON.parse(localStorage.getItem(WP1_AUTOSAVE_KEY)||"null"); }catch(e){}
+  if(!auto||!auto.state) return;
+  const st=auto.state;
+  if(!((st.tokens&&st.tokens.length)||(st.terrain&&st.terrain.length)||(st.sec&&st.sec.length))) return; // trivial — skip
+  const mins=Math.max(0,Math.round((Date.now()-(auto.ts||0))/6e4));
+  const age=mins<1?"moments":mins<60?mins+" min":Math.round(mins/60)+" h";
+  const r=wp1Room();
+  let msg="Resume last game? ("+(st.tokens?st.tokens.length:0)+" models on the table, saved "+age+" ago)";
+  if(r) msg+="\n\nRoom "+r.code.replace("wh40k-","").toUpperCase()+" — after resuming, click ⟳ Reconnect to relink with your opponent.";
+  if(confirm(msg)){
+    state=wp1Compat(st);
+    if(auto.side===1||auto.side===2){ mySide=auto.side; const s=document.getElementById("mySide"); if(s) s.value=String(mySide); }
+    refreshTrackers(); renderCards(); fitView();
+    if(r) wp1ShowReconnect(true);
+    logSys("Game restored from autosave."+(r&&r.host?" Hosting again reuses room "+r.code.replace("wh40k-","").toUpperCase()+".":""));
+  } else {
+    try{ const cur=localStorage.getItem(WP1_AUTOSAVE_KEY); if(cur) localStorage.setItem(WP1_AUTOSAVE_KEY+"_prev",cur); }catch(e){} // one-shot backup
+    try{ localStorage.removeItem(WP1_AUTOSAVE_KEY); }catch(e){}
+  }
+}
+/* ==== end WP1 ==== */
+
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
+wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
 </script>
 </body>
 </html>
