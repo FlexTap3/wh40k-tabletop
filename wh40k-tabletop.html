@@ -188,6 +188,10 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <div class="row"><label>Terrain type</label><select id="terrKind"><option value="ruin">Ruin (dense)</option><option value="wood">Wood (dense)</option><option value="crate">Container (dense)</option><option value="wall">Low wall (light)</option><option value="crater">Crater (exposed)</option></select></div>
       <h3>Rules aids</h3>
       <div class="row"><label><input type="checkbox" id="strictCoh" checked> Enforce unit coherency (snap illegal moves back)</label></div>
+      <!-- ==== WP2: move measure ==== -->
+      <div class="row"><label><input type="checkbox" id="strictMove"> Enforce movement caps (snap drags beyond M+6" back)</label></div>
+      <div class="small" style="margin-bottom:6px">Dragging models shows the distance moved vs the unit's Move stat — white within M, yellow up to M+6" (advance territory), red beyond. Your opponent sees your drag path live.</div>
+      <!-- ==== end WP2 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button>
@@ -422,6 +426,9 @@ function onMsg(m){
     case "chat": logChat(m.name,m.text,false); break;
     case "log": logEntry(m.html,m.cls); break;
     case "ruler": theirRuler=m.r; draw(); if(theirRulerTimer)clearTimeout(theirRulerTimer); theirRulerTimer=setTimeout(()=>{theirRuler=null;draw();},4000); break;
+    /* ==== WP2: move measure ==== */
+    case "movepath": wp2TheirPath(m.mp); break;
+    /* ==== end WP2 ==== */
   }
 }
 /* ops mutate state identically on both ends */
@@ -1332,6 +1339,7 @@ function draw(){
     ctx.strokeRect(...px(Math.min(marquee.x0,marquee.x1),Math.min(marquee.y0,marquee.y1)),Math.abs(marquee.x1-marquee.x0)*view.s,Math.abs(marquee.y1-marquee.y0)*view.s); ctx.setLineDash([]); }
   // rulers
   drawRuler(ruler,"#e8b23a"); drawRuler(theirRuler,"#7ec8ff");
+  wp2DrawPaths(); /* ==== WP2: move measure ==== */
   // coherency banner
   if(incoherent.size){
     ctx.font="bold 12px sans-serif"; const msg="⚠ "+incoherent.size+" model"+(incoherent.size>1?"s":"")+" out of unit coherency";
@@ -1353,6 +1361,87 @@ function drawRuler(r,color){
   ctx.fillStyle=color; ctx.textAlign="center"; ctx.fillText(label,mx,myy-8);
 }
 const initials=s=>s.split(/\s+/).map(w=>w[0]||"").join("").slice(0,3).toUpperCase();
+
+/* ==== WP2: move measure ==== */
+// Live move measurement: while dragging tokens, track the cumulative drag-path length
+// and compare it to the dragged unit's Move stat (WP0 stamps Mv on tokens).
+let wp2Move=null;                 // {pts:[[x,y]…], dist, cap, mixed} during a token drag
+let wp2Their=null, wp2TheirTimer=null, wp2LastSend=0;
+const WP2_JITTER=0.05;            // inches — micro-jitter below this doesn't count
+function wp2Cap(){
+  // lowest Mv among the dragged (selected) tokens; cap=null if none carry stats (legacy tokens)
+  const vals=state.tokens.filter(t=>sel.has(t.id)&&typeof t.Mv==="number").map(t=>t.Mv);
+  if(!vals.length) return {cap:null,mixed:false};
+  return {cap:Math.min(...vals), mixed:new Set(vals).size>1};
+}
+function wp2DragStart(ix,iy){
+  const c=wp2Cap();
+  wp2Move={pts:[[ix,iy]], dist:0, cap:c.cap, mixed:c.mixed};
+}
+function wp2DragMove(ix,iy){
+  if(!wp2Move) return;
+  const last=wp2Move.pts[wp2Move.pts.length-1];
+  const seg=Math.hypot(ix-last[0],iy-last[1]);
+  if(seg<WP2_JITTER) return;      // wait until micro-movements add up to something real
+  wp2Move.pts.push([ix,iy]); wp2Move.dist+=seg;
+  const now=Date.now();
+  if(now-wp2LastSend>90){ wp2LastSend=now; send({t:"movepath",mp:{p:wp2Move.pts,d:wp2Move.dist,cap:wp2Move.cap,mixed:wp2Move.mixed}}); }
+}
+function wp2DragEnd(){
+  if(!wp2Move) return;
+  wp2Move=null;
+  send({t:"movepath",mp:null});
+}
+// On drop with strict mode: snap back if the path exceeded M+6" (advance cap). Returns true if snapped.
+function wp2DropCheck(){
+  if(!wp2Move||wp2Move.cap===null) return false;
+  if(wp2Move.dist>wp2Move.cap+6+WP2_JITTER && document.getElementById("strictMove").checked){
+    op({k:"tok~",toks:drag.snap});
+    logSys(`Move undone: ${wp2Move.dist.toFixed(1)}" is beyond M+6" (M ${wp2Move.cap}"). Untick "Enforce movement caps" in Setup to allow it.`);
+    return true;
+  }
+  return false;
+}
+// After a move that stood, log advance-territory moves (M < d ≤ M+6 is a legal advance — never block).
+function wp2LogMove(){
+  if(!wp2Move||wp2Move.cap===null) return;
+  const d=wp2Move.dist, cap=wp2Move.cap;
+  if(d<=cap+WP2_JITTER) return;
+  if(d<=cap+6+WP2_JITTER) logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" (M ${cap}") — advance? (M+D6", no shooting or charging)`,"sys");
+  else logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" — beyond M+6" (M ${cap}")`,"sys");
+}
+function wp2TheirPath(mp){
+  wp2Their=mp||null; draw();
+  if(wp2TheirTimer) clearTimeout(wp2TheirTimer);
+  if(wp2Their) wp2TheirTimer=setTimeout(()=>{wp2Their=null;draw();},4000);
+}
+function wp2Color(m){
+  if(m.cap===null||m.d<=m.cap+WP2_JITTER) return "#fff";
+  return m.d<=m.cap+6+WP2_JITTER?"#e8b23a":"#ff5050";
+}
+function wp2DrawOne(m,pathCol){
+  if(!m||!m.p||m.p.length<2) return;
+  ctx.strokeStyle=pathCol; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+  ctx.beginPath();
+  m.p.forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); });
+  ctx.stroke(); ctx.setLineDash([]);
+  const end=px(m.p[m.p.length-1][0],m.p[m.p.length-1][1]);
+  let label=m.d.toFixed(1)+'"';
+  if(m.cap!==null){
+    label+=` / ${m.cap}"${m.mixed?"+":""}`;
+    if(m.d>m.cap+WP2_JITTER && m.d<=m.cap+6+WP2_JITTER) label+=" +D6?";
+  }
+  ctx.font="bold 13px sans-serif";
+  const w=ctx.measureText(label).width;
+  ctx.fillStyle="rgba(16,18,22,.9)"; ctx.fillRect(end[0]+12,end[1]-24,w+10,18);
+  ctx.fillStyle=wp2Color(m); ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(label,end[0]+17,end[1]-15);
+}
+function wp2DrawPaths(){
+  if(wp2Move) wp2DrawOne({p:wp2Move.pts,d:wp2Move.dist,cap:wp2Move.cap,mixed:wp2Move.mixed},"rgba(232,178,58,.45)");
+  if(wp2Their) wp2DrawOne(wp2Their,"rgba(126,200,255,.45)");
+}
+/* ==== end WP2 ==== */
 
 /* ============ board input ============ */
 function hitToken(ix,iy){
@@ -1393,6 +1482,7 @@ cv.addEventListener("mousedown",e=>{
     drag={mode:"tokens",lx:ix,ly:iy,moved:false,
       snap:state.tokens.filter(t=>units.has(t.unit)).map(t=>({id:t.id,x:t.x,y:t.y})),
       cohBefore:new Set([...units].filter(unitCoherent))};
+    wp2DragStart(ix,iy); /* ==== WP2: move measure ==== */
     draw(); return;
   }
   const tr=hitTerrain(ix,iy);
@@ -1411,6 +1501,7 @@ window.addEventListener("mousemove",e=>{
   else if(drag.mode==="tokens"){
     const dx=ix-drag.lx, dy=iy-drag.ly; drag.lx=ix; drag.ly=iy; drag.moved=true;
     state.tokens.forEach(t=>{ if(sel.has(t.id)){ t.x+=dx; t.y+=dy; } });
+    wp2DragMove(ix,iy); /* ==== WP2: move measure ==== */
     draw();
   }
   else if(drag.mode==="terrainMove"){
@@ -1429,6 +1520,9 @@ window.addEventListener("mouseup",e=>{
     marquee=null;
   }
   else if(drag.mode==="tokens"&&drag.moved){
+    /* ==== WP2: move measure ==== */
+    if(wp2DropCheck()){ wp2DragEnd(); drag=null; draw(); return; }
+    /* ==== end WP2 ==== */
     checkCoherency();
     const broken=[...drag.cohBefore].filter(uk=>!unitCoherent(uk));
     if(broken.length && document.getElementById("strictCoh").checked){
@@ -1436,6 +1530,7 @@ window.addEventListener("mouseup",e=>{
       logSys("Move undone: that would break unit coherency (2\" of a squadmate, 9\" of every squadmate). Untick enforcement in Setup to allow it.");
     } else {
       op({k:"tok~",toks:state.tokens.filter(t=>sel.has(t.id)).map(t=>({id:t.id,x:t.x,y:t.y}))});
+      wp2LogMove(); /* ==== WP2: move measure ==== */
     }
   }
   else if(drag.mode==="terrainMove"){
@@ -1446,6 +1541,7 @@ window.addEventListener("mouseup",e=>{
     if(w>.5&&h>.5) op({k:"ter+",ter:{id:drag.id,kind:document.getElementById("terrKind").value,x,y,w,h,rot:0}});
     marquee=null; setTool("select");
   }
+  wp2DragEnd(); /* ==== WP2: move measure ==== */
   drag=null; draw();
 });
 cv.addEventListener("dblclick",e=>{
