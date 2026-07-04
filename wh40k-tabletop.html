@@ -203,6 +203,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <button id="tool-ruler" title="Tape measure (T) — drag to measure" onclick="setTool('ruler')">📏</button>
       <button id="tool-terrain" title="Place terrain — drag a rectangle" onclick="setTool('terrain')">⬛</button>
       <button id="tool-objective" title="Place objective marker — click" onclick="setTool('objective')">◎</button>
+      <!-- ==== WP4: visibility ==== -->
+      <button id="tool-los" title="Line of sight — click one of your units to see visibility &amp; cover to every enemy unit" onclick="setTool('los')">👁</button>
+      <!-- ==== end WP4 ==== -->
       <button title="Zoom to fit" onclick="fitView()">⤢</button>
     </div>
   </div>
@@ -349,6 +352,9 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Cards tab</b>: a shared scoreboard (VP/CP/round, synced with the top bar), the current primary mission, and a Tactical secondary deck you draw from — both players see each other's hands. Tap 📖 on any card to read its summary; the text is editable so you can paste the exact scoring from the deck you own, and it syncs to your opponent.</li>
       <li><b>Attack tab</b>: enter the weapon profile and target; it rolls the whole 11th-edition sequence (crits, Sustained, Lethal, Dev Wounds, Anti-X, Twin-linked, invulns, FNP) and logs the dice for both players.</li>
       <li><b>Save game</b> (Setup tab) downloads the whole table state; either player can reload it later.</li>
+      <!-- ==== WP4: visibility ==== -->
+      <li><b>Line of sight — 👁 tool</b>: click one of your units to see a line to every enemy unit: <b>green</b> = visible, <b>yellow</b> = visible with Benefit of Cover (tick Cover in the Attack tab: −1 to hit), <b>red</b> = not visible (or Hidden beyond 15"). Visibility is 11th-ed <i>area</i> style: a target only counts as out of sight when every sight line crosses a ruin/wood/container/low-wall area, ignoring any area either model is inside — craters never block. Approximations used: sight lines are sampled centre-to-centre plus 4 base-edge points each way; cover = a sight line clipped by an area, or an INFANTRY/BEASTS/SWARM model standing inside one. Select a unit and press <kbd>H</kbd> to toggle <b>Hidden</b> for quiet infantry sitting wholly in dense terrain (ruin/wood/container) — while hidden it reads as not visible beyond 15". The tool advises; you two still apply the exact rules.</li>
+      <!-- ==== end WP4 ==== -->
     </ul>
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
   </div>
@@ -1316,6 +1322,7 @@ function draw(){
       ctx.strokeStyle="#ff4040"; ctx.lineWidth=2; ctx.setLineDash([5,3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.restore();
     }
+    if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
     // wound badge
     if(t.maxW>1){
       const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
@@ -1332,6 +1339,7 @@ function draw(){
     ctx.strokeRect(...px(Math.min(marquee.x0,marquee.x1),Math.min(marquee.y0,marquee.y1)),Math.abs(marquee.x1-marquee.x0)*view.s,Math.abs(marquee.y1-marquee.y0)*view.s); ctx.setLineDash([]); }
   // rulers
   drawRuler(ruler,"#e8b23a"); drawRuler(theirRuler,"#7ec8ff");
+  drawLos(); /* ==== WP4: LoS overlay ==== */
   // coherency banner
   if(incoherent.size){
     ctx.font="bold 12px sans-serif"; const msg="⚠ "+incoherent.size+" model"+(incoherent.size>1?"s":"")+" out of unit coherency";
@@ -1353,6 +1361,170 @@ function drawRuler(r,color){
   ctx.fillStyle=color; ctx.textAlign="center"; ctx.fillText(label,mx,myy-8);
 }
 const initials=s=>s.split(/\s+/).map(w=>w[0]||"").join("").slice(0,3).toUpperCase();
+
+/* ==== WP4: visibility & cover (11th-ed area rules) ==== */
+/* WP4-GEOM-BEGIN — pure geometry + LoS core. NO DOM/state access in this block:
+   tools/test_geometry.js extracts it verbatim from this file and unit-tests it in node. */
+function geomSegSeg(ax,ay,bx,by,cx,cy,dx,dy){
+  // Segment AB vs segment CD proper-intersection test (grazes along a parallel edge don't count).
+  const rx=bx-ax, ry=by-ay, sx=dx-cx, sy=dy-cy;
+  const den=rx*sy-ry*sx;
+  if(den===0) return false;
+  const qx=cx-ax, qy=cy-ay;
+  const t=(qx*sy-qy*sx)/den, u=(qx*ry-qy*rx)/den;
+  return t>=0&&t<=1&&u>=0&&u<=1;
+}
+function geomCorners(r){
+  // Rotated rect {x,y,w,h,rot°} — x,y is the UNROTATED top-left, rotation about the centre (app convention).
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, a=(r.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  return [[-r.w/2,-r.h/2],[r.w/2,-r.h/2],[r.w/2,r.h/2],[-r.w/2,r.h/2]]
+    .map(p=>[cx+p[0]*c-p[1]*s, cy+p[0]*s+p[1]*c]);
+}
+function geomEdges(r){ const C=geomCorners(r); return C.map((p,i)=>[p[0],p[1],C[(i+1)%4][0],C[(i+1)%4][1]]); }
+function geomPointInRect(px,py,r){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, a=-(r.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  const dx=px-cx, dy=py-cy, lx=dx*c-dy*s, ly=dx*s+dy*c;
+  return Math.abs(lx)<=r.w/2 && Math.abs(ly)<=r.h/2;
+}
+function geomSegHitsEdges(x1,y1,x2,y2,edges){
+  for(let i=0;i<4;i++){ const e=edges[i]; if(geomSegSeg(x1,y1,x2,y2,e[0],e[1],e[2],e[3])) return true; }
+  return false;
+}
+const LOS_OBSC={ruin:1,wood:1,crate:1,wall:1};  // obscuring terrain-area kinds; crater = exposed, never obscures
+const LOS_DENSE={ruin:1,wood:1,crate:1};        // dense features (Hidden eligibility); wall = light
+function losPrep(terrain){
+  // Precompute per-terrain edge lists once per scan — perf requirement for full-army scans.
+  const out=[];
+  for(const t of (terrain||[])) if(LOS_OBSC[t.kind]) out.push({t, edges:geomEdges(t), wall:t.kind==="wall", dense:!!LOS_DENSE[t.kind]});
+  return out;
+}
+function losSamples(m){ // model {x,y,r} → centre + 4 cardinal base-edge points
+  const r=m.r||0;
+  return [[m.x,m.y],[m.x,m.y-r],[m.x+r,m.y],[m.x,m.y+r],[m.x-r,m.y]];
+}
+function losPair(a,b,prep,ignoreWalls){
+  // 9 sampled sight lines: centre↔centre + centre↔4 cardinal points, both ways.
+  // NOT visible iff every line crosses ≥1 obscuring rect, excluding rects containing a or b
+  // (area rules: crossing an area blocks; into/out of an area doesn't).
+  const rel=[];
+  for(let i=0;i<prep.length;i++){ const p=prep[i];
+    if(ignoreWalls&&p.wall) continue;
+    if(geomPointInRect(a.x,a.y,p.t)||geomPointInRect(b.x,b.y,p.t)) continue;
+    rel.push(p);
+  }
+  if(!rel.length) return {vis:true,part:false};
+  const A=losSamples(a), B=losSamples(b);
+  let clear=false, blocked=false;
+  for(let li=0;li<9;li++){
+    const s=li<5?A[0]:A[li-4], e=li<5?B[li]:B[0];
+    let hit=false;
+    for(let i=0;i<rel.length&&!hit;i++) hit=geomSegHitsEdges(s[0],s[1],e[0],e[1],rel[i].edges);
+    if(hit) blocked=true; else clear=true;
+    if(clear&&blocked) break;
+  }
+  return {vis:clear, part:blocked};
+}
+function losUnitVs(msA,msB,prep,coverKw){
+  // Unit-level: B is visible if ANY sampled model pair is visible.
+  // Cover (documented approximation): a visible pair had sight lines clipped by an obscuring
+  // area, or (coverKw: target has INFANTRY/BEASTS/SWARM) a target model's centre is inside one.
+  // Returns {vis,cover,dist(edge-to-edge),ai,bi} — ai/bi = closest pair indices.
+  let vis=false, cover=false, dist=Infinity, ai=0, bi=0;
+  for(let j=0;j<msB.length;j++) for(let i=0;i<msA.length;i++){
+    const d=Math.hypot(msA[i].x-msB[j].x,msA[i].y-msB[j].y)-(msA[i].r||0)-(msB[j].r||0);
+    if(d<dist){ dist=d; ai=i; bi=j; }
+  }
+  outer:
+  for(let i=0;i<msA.length;i++){
+    const ig=(msA[i].lvl||0)>=1; // WP5 hook: raised models see over low (wall) areas; lvl absent → 0
+    for(let j=0;j<msB.length;j++){
+      const r=losPair(msA[i],msB[j],prep,ig);
+      if(r.vis){ vis=true; if(r.part) cover=true; }
+      if(vis&&cover) break outer;
+    }
+  }
+  if(vis&&!cover&&coverKw)
+    cover=msB.some(b=>prep.some(p=>geomPointInRect(b.x,b.y,p.t)));
+  return {vis,cover,dist:Math.max(0,dist),ai,bi};
+}
+/* WP4-GEOM-END */
+let losSrc=null; // unit id currently observed with the 👁 tool
+const KW_COVER=["INFANTRY","BEASTS","BEAST","SWARM"];
+const tokKw=t=>(t.kw||[]).map(k=>String(k).toUpperCase());
+const unitHasKw=(toks,list)=>toks.some(t=>tokKw(t).some(k=>list.includes(k)));
+function tokLosModel(t){ return {x:t.x,y:t.y,r:tokRadius(t),lvl:t.lvl||0}; }
+function unitHiddenEligible(toks){
+  const dense=losPrep(state.terrain).filter(p=>p.dense);
+  return toks.length>0 && unitHasKw(toks,KW_COVER) && toks.every(t=>dense.some(p=>geomPointInRect(t.x,t.y,p.t)));
+}
+function losCheckUnits(unitA,unitB){
+  // Public API (used by the wired attack flow, WP3): visibility/cover between two units on the table.
+  const A=state.tokens.filter(t=>t.unit===unitA), B=state.tokens.filter(t=>t.unit===unitB);
+  if(!A.length||!B.length) return null;
+  const res=losUnitVs(A.map(tokLosModel),B.map(tokLosModel),losPrep(state.terrain),unitHasKw(B,KW_COVER));
+  if(res.vis && B.every(t=>t.hid) && res.dist>15){ res.vis=false; res.hidden=true; }
+  return res;
+}
+function losToolClick(ix,iy){
+  const tk=hitToken(ix,iy);
+  losSrc=tk?tk.unit:null;
+  if(tk && tk.owner===mySide){
+    const toks=state.tokens.filter(t=>t.unit===tk.unit);
+    if(!toks.every(t=>t.hid) && unitHiddenEligible(toks))
+      logSys(tk.name+" is wholly inside dense terrain — press H to mark it Hidden (reads as undetectable beyond 15\" while it stays quiet).");
+  }
+  draw();
+}
+function toggleHidden(){
+  const units=[...new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit))];
+  if(!units.length){ logSys("Select a unit first, then press H to toggle Hidden."); return; }
+  units.forEach(uk=>{
+    const toks=state.tokens.filter(t=>t.unit===uk); if(!toks.length) return;
+    const on=!toks.every(t=>t.hid);
+    op({k:"tok~",toks:toks.map(t=>({id:t.id,hid:on}))});
+    if(on && !unitHiddenEligible(toks)) logSys("Note: "+toks[0].name+" doesn't look wholly inside a dense terrain area with INFANTRY/BEASTS/SWARM — check the Hidden conditions.");
+    logShared("· <b>"+esc(myName)+"</b> "+(on?"marks":"unmarks")+" <b>"+esc(toks[0].name)+"</b> "+(on?"Hidden 🙈":"visible"),"sys");
+  });
+}
+function drawHiddenBadge(t){
+  const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+  ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+  const br=Math.max(5,view.s*.35);
+  ctx.beginPath(); ctx.arc(-r*.75,-r*.75,br,0,7); ctx.fillStyle="#3a4250"; ctx.fill();
+  ctx.strokeStyle="#9aa4b2"; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle="#cfd6df"; ctx.font="bold "+Math.max(7,view.s*.45)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("H",-r*.75,-r*.75+.5);
+  ctx.restore();
+}
+function drawLos(){
+  if(tool!=="los"||!losSrc) return;
+  const src=state.tokens.filter(t=>t.unit===losSrc);
+  if(!src.length){ losSrc=null; return; }
+  const prep=losPrep(state.terrain), msA=src.map(tokLosModel), owner=src[0].owner;
+  ctx.save();
+  src.forEach(t=>{ const [tx,ty]=px(t.x,t.y); ctx.beginPath(); ctx.arc(tx,ty,tokRadius(t)*view.s+4,0,7); ctx.strokeStyle="rgba(126,200,255,.9)"; ctx.lineWidth=2; ctx.stroke(); });
+  const byUnit={};
+  state.tokens.forEach(t=>{ if(t.owner!==owner) (byUnit[t.unit]=byUnit[t.unit]||[]).push(t); });
+  for(const uk in byUnit){
+    const toks=byUnit[uk], msB=toks.map(tokLosModel);
+    const res=losUnitVs(msA,msB,prep,unitHasKw(toks,KW_COVER));
+    let col="#5fbf6f", note="visible";
+    if(res.vis && toks.every(t=>t.hid) && res.dist>15){ res.vis=false; note="hidden"; }
+    if(!res.vis){ col="#ff5050"; if(note!=="hidden") note="no LoS"; }
+    else if(res.cover){ col="#e8b23a"; note="cover"; }
+    const a=src[res.ai]||src[0], b=toks[res.bi]||toks[0];
+    const [ax,ay]=px(a.x,a.y),[bx2,by2]=px(b.x,b.y);
+    ctx.strokeStyle=col; ctx.lineWidth=1.6; if(!res.vis) ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx2,by2); ctx.stroke(); ctx.setLineDash([]);
+    const label=res.dist.toFixed(1)+'" · '+note;
+    ctx.font="bold 11px sans-serif"; const w=ctx.measureText(label).width;
+    const mx=(ax+bx2)/2, myy=(ay+by2)/2;
+    ctx.fillStyle="rgba(16,18,22,.85)"; ctx.fillRect(mx-w/2-3,myy-8,w+6,15);
+    ctx.fillStyle=col; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,mx,myy);
+  }
+  ctx.restore();
+}
+/* ==== end WP4 ==== */
 
 /* ============ board input ============ */
 function hitToken(ix,iy){
@@ -1383,6 +1555,7 @@ cv.addEventListener("mousedown",e=>{
   if(tool==="ruler"){ ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler"}; draw(); return; }
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
+  if(tool==="los"){ losToolClick(ix,iy); return; } /* ==== WP4: 👁 tool ==== */
   // select tool
   const tk=hitToken(ix,iy);
   if(tk){
@@ -1479,7 +1652,8 @@ window.addEventListener("keydown",e=>{
       if(v!==null) op({k:"tok~",toks:toks.map(t=>({id:t.id,tag:v.trim().slice(0,4)}))});
     }
   }
-  else if(e.key==="Escape"){ sel.clear(); ruler=null; draw(); }
+  else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
+  else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ draw(); }
 });
 
 /* ============ init ============ */
