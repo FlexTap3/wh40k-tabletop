@@ -322,6 +322,65 @@ Sizes: S (≤½ day), M (~1 day), L (2–3 days) for one focused agent.
 - Keyboard cheat-sheet overlay (`?` key).
 - Objective/DZ color-blind palette toggle.
 
+### WP10 — Solo mode: AI opponent with real tactics  [L] — needs everything above
+A local AI that plays side 2 so the owner can practise alone. No network: a
+"⚔ Solo vs AI" button beside Host/Join enters solo mode (disabled while a peer
+is connected, and vice versa). The AI is a LOCAL actor: it mutates state ONLY
+via `op()`/`applyOp` (send() is a harmless no-op offline), so autosave, undo,
+save/load and every overlay keep working. Marked `/* ==== WP10: ai ==== */`.
+
+- **Setup dialog**: pick AI faction + points (500–2000). `aiBuildList(fid,pts)`
+  builds a sane list greedily from DB: 1–2 CHARACTERs, 2–3 BATTLELINE units,
+  1–2 heavies (VEHICLE/MONSTER), fill with infantry; respects `p` size/cost
+  lines; deploys it into the side-2 DZ via the normal card path (`addFromDb` →
+  `deployCard` with mySide temporarily 2 — restore afterwards). Broadcast-safe:
+  `state.cards[2]` gets the AI cards so the inspector works on AI units.
+- **Turn loop**: hooks WP7's phase engine. When `state.phase.side===2` in solo
+  mode the AI plays its phases automatically with visible pacing (~500–800ms
+  between actions, setTimeout chain; a "⏸/▶" control and a "skip" button).
+  Player turns stay fully manual. AI never acts during the player's turn.
+- **Tactics engine** (the point of the WP — score, don't script):
+  - *Roles* per unit from stats/kw: holder (high OC INFANTRY/BATTLELINE),
+    shooter (ranged dmg/pt), assassin (melee threat), screen (cheap bodies),
+    support (CHARACTER — attach where legal via WP7 attach).
+  - *Objective math each turn*: per objective compute my OC / their OC / dist;
+    value = swing toward holding more objectives than the player at round end
+    (WP6 tallies are authoritative). Assign holders/contesters greedily.
+  - *Movement per unit*: candidate destinations (objective ring, cover spots
+    near dest, keep-away arcs from melee threats for shooters); score =
+    objective gain + expected shooting from the new spot (needs LoS via
+    `losCheckUnits` semantics) + cover bonus − expected incoming threat −
+    advance penalty if it forfeits shooting. Execute as a formation move
+    (unit tokens keep their relative grid, clamped to coherency 2"), reject
+    spots failing `wp5Illegal`, never end within 1" of enemies unless charging.
+  - *Shooting*: for each weapon×target compute expected damage from the real
+    ability parser semantics (rapid fire in half range, blast vs 5+, anti-X,
+    torrent, twin-linked, dev wounds, lethal) × target priority (points value,
+    OC threat on contested objectives, "can it hurt me back"); anti-tank goes
+    to VEHICLE/MONSTER, blast to hordes. Fire via the same math `rollAttack`
+    uses (real dice), log one short WHY line per action: "AI: Boyz onto Obj 3
+    (OC 20 v 8)". **Auto-apply casualties in solo mode** (allocate to closest
+    models, leader last) for BOTH sides' attacks — solo QoL; never in netplay.
+  - *Charges*: melee units charge when expected profit (2D6 real roll vs
+    distance, fail = stay); pile-in = move into base contact approximation.
+  - *Command*: battle-shock tests for below-half AI units (real 2D6 vs Ld,
+    sets `bs` flag); spends nothing else (stratagems out of scope, note it).
+  - *Reserves*: if list has Deep Strike-capable units, hold 1 in reserve,
+    arrive rounds 2–3 at the best legal spot (WP7 legality helpers).
+- **Difficulty**: one good level. A single `AI_TUNE` object of weights at the
+  top of the module so tuning is one place.
+- **Determinism for tests**: all AI randomness through a seedable RNG
+  (`aiRng`); dice stay real dice in play, but the test suite seeds both.
+- **Acceptance**: `tools/tests/wp10-tests.js` in the runner — scripted solo
+  game on Official 1A with a fixed seed: AI deploys legally in its DZ; over 2
+  full AI turns every AI unit ends moves legally (no `wp5Illegal`, coherency
+  holds), shooting only at units in range+LoS, casualties allocated correctly,
+  CP ticks, battle-shock rolled when below half; a 5-round fuzz run (random
+  seed) throws no exceptions and ends with a logged score line. Headless
+  screenshot of mid-game solo board for the report. Help dialog gets a Solo
+  section. Netplay regression: hosting/joining still works (solo button
+  disabled once connected — assert in tests via the harness).
+
 ---
 
 ## 5. Execution model for agents
