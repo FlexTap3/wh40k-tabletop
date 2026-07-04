@@ -1,0 +1,361 @@
+# WH40k Tabletop — Implementation Plan v1
+
+A work plan for turning `wh40k-tabletop.html` from a shared whiteboard-with-a-calculator
+into an app that can genuinely referee a game of Warhammer 40,000 (11th edition).
+Written to be executed by multiple independent agents who have NOT seen the
+conversation that produced this app. Read this whole file before touching code.
+
+---
+
+## 1. What this app is
+
+A **single self-contained HTML file** (`wh40k-tabletop.html`, ~1.4 MB) implementing a
+peer-to-peer virtual tabletop for two players:
+
+- **Board**: canvas-rendered battlefield (default 60"×44"), per-model tokens at true
+  base sizes, terrain rectangles, objective markers, deployment-zone polygons,
+  tape measure, range rings, unit-coherency checking with snap-back.
+- **Data**: an embedded JSON unit database (all 25 factions, 1,710 datasheets:
+  profiles, weapons, points, base sizes, wargear option lines, keywords, detachment
+  names, enhancement names+costs) built from Wahapedia's machine-readable CSV export
+  by `tools/build_db.py`. Also 47 embedded terrain layouts (45 official Event
+  Companion maps + 2 custom) with objectives, DZs, and mission names.
+- **Play aids**: full-screen army builder (points, sizes, detachments, enhancements,
+  wargear notes), army-list text import/export, Army quick-reference tab, 11th-ed
+  attack-sequence dice roller, battle-shock roller, VP/CP/round trackers, secondary
+  card deck (draw/discard/shared hands, user-supplied card text), shared log + chat.
+- **Netcode**: PeerJS (WebRTC). Host creates room `wh40k-XXXXX`; guest joins by code.
+  All mutations flow through a small op protocol (see §2.3).
+
+### 1.1 Non-negotiable invariants — breaking these fails review
+
+1. **Single file.** The app must remain one `.html` file a player can email. No build
+   step for the app itself (the Python tool only re-injects data). No external
+   requests at runtime except the PeerJS CDN script + PeerJS cloud signalling.
+2. **Copyright line.** The file may contain game-functional data only: names, stat
+   numbers, points, base sizes, weapon profiles, ability identifiers, option lines,
+   keywords, detachment/enhancement names+costs, layout geometry. It must NEVER
+   contain Games Workshop rules paragraphs, lore text, or mission-card scoring prose.
+   User-pasted text (card reader, wargear notes) is fine — the user supplies it.
+3. **Both peers converge.** Any new mutable state must (a) live in `state`, (b) be
+   mutated only via `applyOp`, (c) survive `{t:"state"}` full-sync on join, and
+   (d) default sanely when absent (older saves load fine).
+4. **Backwards-compatible saves.** `saveGame()`/`loadGame()` round-trips `state` as
+   JSON; localStorage holds roster/army/deck/cardtext. Never rename existing fields;
+   only add, with fallbacks.
+5. **Verify before done.** See §5 verification protocol. `node --check` on the
+   extracted script is mandatory; the two-window P2P smoke test is mandatory for
+   anything touching state/ops/rendering.
+
+---
+
+## 2. Architecture map (function/anchor index)
+
+All code is in `wh40k-tabletop.html`. Sections appear in this order:
+
+| Section | Anchors (search strings) |
+|---|---|
+| CSS | `:root{`, `#builderOverlay`, `.bCard` |
+| Top bar / trackers HTML | `id="topbar"`, `stepTracker` |
+| Sidebar tabs HTML | `id="tabs"`, panes `tab-army`, `tab-cards`, `tab-attack`, `tab-setup` |
+| Builder overlay HTML | `id="builderOverlay"` |
+| Dialogs | `unitDlg`, `bulkDlg`, `cardDlg`, `secDeckDlg`, `wgDlg`, `listDlg`, `helpDlg` |
+| Embedded data | `<script id="layouts40k-data">` (47 layouts), `<script id="db40k-data">` (unit DB) |
+| State & net | `let state =`, `hostGame`, `joinPrompt`, `wireConn`, `onMsg`, `function op(`, `applyOp` |
+| Log/dice | `logShared`, `quickRoll`, `rollLeadership`, `parseDice`, `rollAttack` |
+| Unit DB helpers | `let DB=`, `norm`, `baseFrom`, `weaponLines`, `profilesFromDb`, `addFromDb`, `matchUnit`, `importArmyList` |
+| Layouts | `let LAYOUTS=`, `populateLayouts`, `loadLayout`, `layoutPdfPage` |
+| Cards/secondaries | `DEFAULT_SEC`, `CARD_SUMMARY`, `renderCards`, `renderScore`, `drawSecondary`, `openCardReader`, `bulkImportCards` |
+| Army cards | `migrateCard`, `openUnitEditor`, `saveUnitCard`, `renderArmy`, `deployUnit`, `deployCard` |
+| Builder | `myList`, `bInit`, `bPopDet`, `renderBrowser`, `renderRoster`, `bItemInfo`, `bEnhance`, `bWargear`, `bToGame`, `bExportText` |
+| Board render | `function draw()`, `checkCoherency`, `drawRuler`, `TERR_ORDER` |
+| Input | `cv.addEventListener("mousedown"`, `"mousemove"`, `"mouseup"`, `"dblclick"`, `window.addEventListener("keydown"` |
+| Init | `populateFactions(); populateLayouts(); bInit();` |
+
+### 2.1 `state` shape (synced)
+
+```js
+state = {
+  board:{w,h},                       // inches
+  tokens:[{id,owner:1|2,unit,name,shape:'c'|'r',dmm|wIn+hIn,x,y,rot,wounds,maxW,sgt?,tag?}],
+  terrain:[{id,kind,x,y,w,h,rot,locked?}],   // kind: ruin|wood|crate (dense, enterable*), wall (light), crater (exposed)
+  objectives:[{id,x,y}],             // 40mm markers
+  dz:[redPoly,bluePoly],             // arrays of [x,y] inches
+  sec:[{id,owner,name}],             // drawn secondary cards
+  mission:{name,m}|null,             // loaded layout name + mission names "A / B"
+  trackers:{round,cp1,cp2,vp1,vp2},
+  names:{1,2},
+}
+```
+Local-only (NOT synced): `myArmy` (unit cards), `myList` (builder roster), `secDeck`,
+`cardText` (partially synced via `cardtext` op), `mySide`, `myName`, `view`, `sel`.
+
+### 2.2 Token geometry
+
+Coordinates are in **inches**; `view={x,y,s}` maps to pixels (`s` = px/inch).
+`tokRadius(t)`, `edgeDist(a,b)` exist for coherency. `mmIn(mm)` converts base mm.
+Rect tokens rotate about center; badges un-rotate before drawing.
+
+### 2.3 Op protocol
+
+`op(o)` = `applyOp(o, mine=true)` → applies locally then `send({t:"op",op:o})`.
+Existing kinds: `tok+ tok~ tok- ter+ ter~ ter- obj+ obj- dz mission sec+ sec- cardtext
+track name board clear`. Add new kinds in `applyOp`'s switch; keep them idempotent
+(replace-by-id). On guest connect, host sends `{t:"state", state}` — anything not in
+`state` will NOT reach the guest.
+
+### 2.4 Unit DB shape (embedded JSON, id `db40k-data`)
+
+```js
+DB = { factions:[[id,name]...],
+       det:{fid:[names]}, enh:{fid:[{n,c,d}]},
+       units:{fid:[{n,r,m:[{n,M,T,Sv,iv,W,Ld,OC,b}],w:[[name,rng,'R'|'M',A,BS,S,AP,D,abilities]],
+                    c:[compLines], p:[[sizeDesc,cost]], o:[optionLines], k:[KEYWORDS]}]} }
+```
+`k` is a whitelisted keyword list (INFANTRY, VEHICLE, MONSTER, CHARACTER, FLY,
+TITANIC, TOWERING, SMOKE, GRENADES/EXPLOSIVES, etc.) — added specifically for the
+work below. Rebuild/refresh with `python3 tools/build_db.py` (uses curl; `--no-dl`
+reuses `tools/csv/`).
+
+### 2.5 Known quirks (don't "discover" these as bugs)
+
+- Layout terrain/objectives are eyeball-traced from the Event Companion diagrams,
+  accurate to ~±1". Do not "fix" positions to look nicer — fidelity beats tidiness.
+- Terrain rects legitimately overlap: light walls sit ON dense footprints (that's
+  how the official maps work). Draw order handles it (`TERR_ORDER`).
+- `addFromDb(fid, idx, forcedSize, quiet)` returns the card AND pushes to `myArmy`.
+- Both players can currently claim the same side; nothing prevents it (see WP8).
+- The Edit-your-own-deck / card-reader text is user-supplied; never seed it with
+  official card prose.
+- `sgt` (squad leader) detection = minority profile in a multi-profile unit. Known
+  imperfect; acceptable.
+
+---
+
+## 3. Reassessment (what changed since the last review)
+
+1. **Line of sight is 2D, not 3D.** 11th edition visibility is *area-based*
+   (Core Rules 13.07–13.11): models aren't visible if **every** sight line between
+   them crosses an obscuring terrain **area** (any area containing light/dense
+   features), excluding areas either model is inside. The Solid rule and Hidden
+   (15" detection for quiet infantry in dense areas) are also area/keyword tests.
+   All of it is segment-vs-rectangle math on data the app already has. LoS therefore
+   moves from "hardest, maybe never" to **WP4, very buildable** — and it's the
+   prerequisite that makes terrain verticality/collision *meaningful*.
+2. **Resilience was underweighted.** A dropped WebRTC link currently loses the game
+   session; there's no autosave, no undo. For two brothers mid-game this is worse
+   than any missing rule. Promoted into WP1 (foundations).
+3. **The build pipeline was ephemeral** (lived in a session scratchpad). Now checked
+   in as `tools/build_db.py` + `tools/csv/`. The layout data pipeline is documented
+   as "already embedded; edit JSON in place if ever needed."
+4. **Tokens must carry stats.** Nearly every feature below (move caps, OC totals,
+   LoS keywords, inspector) needs M/OC/keywords ON the token. That's the true WP0.
+
+---
+
+## 4. Work packages
+
+Sizes: S (≤½ day), M (~1 day), L (2–3 days) for one focused agent.
+"Anchor" = where to start reading/editing.
+
+### WP0 — Foundations: stat-bearing tokens + repo hygiene  [M] — BLOCKS EVERYTHING
+- **Git**: `git init` in `~/WH40k/Tabletop` (if not already), commit current file as
+  baseline, one branch per WP, PR-style merges. The app being one file means merge
+  conflicts are the main coordination risk — see §5.
+- **Tokens carry stats.** In `deployCard`, stamp each token with its profile's
+  gameplay stats: `Mv` (parse `6"` → 6, `-` → 0), `OC` (int), `T`, `Sv`, `iv`, and
+  `kw` (the card's DB keywords — pass them through `addFromDb`→card→`deployCard`;
+  store card-level `kw` on the card in `addFromDb` from `u.k`). Manual-card path
+  (`migrateCard`) defaults: `kw:[]`, numbers parsed from profile fields.
+- **Card sync.** New op `cards` `{k:"cards",owner,cards:[...]}` broadcast on muster/
+  import so the opponent can inspect your units (WP3). Store in `state.cards={1:[],2:[]}`
+  (add to initial state + `clear` + join sync). Keep it display-only.
+- **Back-compat**: tokens without stats must not crash anything (`??` fallbacks).
+- **Acceptance**: deploy Boyz → tokens have `Mv:6, OC:2, kw:["BATTLELINE","GRENADES","INFANTRY"]`;
+  old saved games still load; two-window sync test passes; git history exists.
+
+### WP1 — Resilience: autosave, restore, reconnect, undo  [M] — parallel-safe after WP0
+- **Autosave**: debounce-write `state` to `localStorage("wh40k_autosave")` after every
+  `applyOp`. On startup, if an autosave exists and is non-trivial, offer "Resume last
+  game?" (host side restores + re-syncs on next join).
+- **Reconnect**: on `conn` close, show a "Reconnect" button; host re-hosts under the
+  SAME room code (persist the code for the session); guest retries join. On success
+  host re-sends full state.
+- **Undo**: ring buffer (depth ~30) of `JSON.stringify(state)` snapshots taken before
+  each *local* op batch; `Ctrl/Cmd+Z` restores previous snapshot **and broadcasts a
+  full `{t:"op",op:{k:"restore",state}}`** (new op kind) so peers converge. Undo is
+  host-authoritative if both attempt simultaneously (last-write-wins is acceptable).
+- **Acceptance**: kill one window mid-game → reopen → resume + reconnect works;
+  Ctrl+Z reverts a deletion on BOTH screens; autosave adds no visible lag (measure
+  with 300 tokens).
+
+### WP2 — Live move measurement  [M] — needs WP0
+- While dragging tokens (`drag.mode==="tokens"`), render a badge near the cursor:
+  `X.X" / M"` where distance = **cumulative path length** (sample the drag path,
+  sum segments, ignore micro-jitter < 0.05"), M = max `Mv` among dragged tokens'
+  *minimum*… no: show per the dragged unit's `Mv` (all same unit normally; if mixed
+  selection, show the lowest `Mv` and note `+`).
+- Color: text ≤ M white; > M yellow (advance territory: show `M + D6?`); > M+6 red.
+- Draw a faint path polyline during the drag; clear on drop.
+- **Optional strict mode** checkbox next to coherency in Setup: "Enforce movement
+  caps" — on drop beyond M+6, snap back (reuse the coherency snapback pattern:
+  `drag.snap` already exists). Beyond M but ≤ M+6, never block (advances are legal);
+  just log "moved X" — advance?".
+- Ruler broadcast already exists (`{t:"ruler"}`); reuse its style for the badge.
+- **Acceptance**: dragging a 6" Move unit 8.3" shows yellow `8.3" / 6"`; strict mode
+  snaps back a 14" drag; opponent sees your drag path via the existing ruler channel
+  or a new transient `movepath` message; group drags show one badge.
+
+### WP3 — Unit inspector + wired attack tool  [L] — needs WP0
+- **Inspector**: single-click selecting a token shows a compact floating panel
+  (bottom-right of board): unit name, profile line(s), weapon table, wounds,
+  enhancement/notes — sourced from `myArmy` for your units and `state.cards[opp]`
+  for the opponent's. Close on deselect/Esc. Do NOT open on drag (only on click
+  without movement).
+- **Wired attack flow**: in the inspector, each RANGED/MELEE weapon row gets a ⚔
+  button → enters "targeting" mode → click an enemy token → the Attack tab is
+  pre-filled: A/BS/S/AP/D + abilities parsed from the weapon's ability string
+  (`rapid fire X`→checkbox+X, `twin-linked`, `lethal hits`, `sustained hits X`,
+  `devastating wounds`, `anti-x Y+`, `torrent`→BS auto, `blast`→+attacks per 5
+  models in target unit — count target unit's models from `state.tokens`), and
+  the target side filled from the target's `T`, `Sv`, `iv`. Switch to Attack tab
+  with everything staged; user just clicks roll. Log line includes attacker/target
+  unit names.
+- Range sanity hint: show distance between closest models of the two units next to
+  the weapon's range (green in range / red out) — pure info, don't block.
+- **Acceptance**: full flow (click Intercessor → ⚔ bolt rifle → click Boyz → roll)
+  produces a correctly pre-filled sequence incl. rapid-fire at half range prompt;
+  opponent inspecting your unit sees the same card; no regression to manual entry.
+
+### WP4 — Visibility & cover (11th-ed area rules)  [L] — needs WP0; unlocks WP5
+- **Model**: each terrain feature is an obscuring "terrain area" if kind ∈
+  {ruin, wood, crate, wall}; crater = exposed (never obscures). A model is "inside"
+  an area if its center is within the (rotated) rect.
+- **Visible(a,b)**: sample sight lines between model hulls (center-to-center plus
+  center-to-4-cardinal-edge-points both ways is sufficient); the pair is NOT visible
+  iff **every** sampled line crosses ≥1 obscuring rect, excluding rects containing
+  a or b. Segment-vs-rotated-rect intersection helper required (write it pure +
+  unit-test it in node, see §5).
+- **Unit-level**: unit B visible to model a if any model in B visible. "Fully
+  visible" (for Benefit of Cover): every sampled sight line to every model in B is
+  unobstructed AND target models outside terrain areas… implement the practical
+  subset: cover if (target INFANTRY/BEASTS/SWARM by `kw` and center inside any
+  terrain area) OR (any sampled line to it crosses an obscuring rect that doesn't
+  fully block). Document the approximation in the help dialog.
+- **Hidden**: toggleable badge (key `H`) on units, auto-suggested when all its
+  INFANTRY models are inside a dense-feature area; while hidden, LoS tool reports
+  "not visible beyond 15"" for it. (Automatic shot-tracking is out of scope.)
+- **UI**: new toolbar tool 👁: click your unit → live lines to each enemy unit:
+  green (visible, no cover), yellow (visible, cover), red (not visible). Feed the
+  cover result into WP3's staged attack (cover = −1 BS worsen, i.e. hit-mod −1).
+- **Acceptance**: node unit tests for the geometry helper (10+ cases incl. rotated
+  rects, model-inside-area exclusion); on Official layout 1A, a unit behind the
+  central ruin is red to a unit across it and yellow when peeking; performance:
+  full-army LoS scan < 16ms with 200 models (precompute per-terrain edge lists).
+
+### WP5 — Terrain physicality: collision + floors  [M] — needs WP4's geometry helper
+- **Collision**: on move end (drop / deploy / paste), a token may not END overlapping
+  a `wall` or `crate` rect, or the enclosed footprint of a `ruin` **unless** it has
+  INFANTRY/BEASTS/SWARM in `kw` (they enter ruins; nothing enters walls/crates).
+  Violations snap back with a log line (reuse strict-move pattern; respects the
+  same Setup toggle).
+- **Floors**: tokens get `lvl` (0–3), cycled with key `F` when selected; render a
+  small `▲2` badge. Changing level adds 3" per level to WP2's measured distance for
+  that drag (batched: prompt-free — pressing F mid-drag adjusts the badge). Only
+  allowed while inside a ruin area and only for INFANTRY/BEASTS/SWARM/FLY `kw`.
+  Plunging Fire hint: WP3 inspector shows "+1 BS (Plunging Fire)" suggestion when
+  attacker `lvl≥1` (≥3" up) and target `lvl===0`.
+- LoS interaction (approximation, document it): a model at `lvl≥1` ignores
+  obscuring rects whose kind is `wall` (low light terrain) for outgoing lines.
+- **Acceptance**: a tank cannot end on a wall and snaps back; a Boy can stand in a
+  ruin at L2 with the badge; moving up 2 floors adds 6" to the move readout.
+
+### WP6 — Objective control auto-scoring  [S–M] — needs WP0
+- After every op that moves/removes tokens (cheap: recompute in `draw()` like
+  coherency), for each objective: sum `OC` of each side's models within 3"
+  (edge-of-marker to base edge, horizontal). Battle-shocked units: add token/unit
+  flag `bs` (key `B` toggles, shown as grey skull badge) → OC counts as 0.
+- Render: objective ring glows owner color; small `8–5` tally beside it. "Secured"
+  (sticky control) as a manual right-click/keyboard toggle per objective for
+  factions with secure abilities.
+- Cards tab primary panel lists each objective + holder; end-of-turn log line
+  ("End of turn: Red holds 3, Blue holds 1") when the round tracker changes.
+- **Acceptance**: contested objective shows correct tallies live while dragging;
+  battle-shocking a unit flips control instantly; syncs to both windows.
+
+### WP7 — Turn/phase engine + reserves + attached units  [L] — needs WP0, ideally WP6
+- **Phase stepper**: top-bar control: Round N › [Command→Movement→Shooting→Charge→
+  Fight→End] with whose-turn indicator. Advancing to Command auto-+1 CP to both
+  (once), logs the phase, and fires the battle-shock reminder: list friendly units
+  at ≤half strength (computable: unit's live model count / wounds vs starting).
+  All manual overrides still work; the stepper is a convenience, not a cage.
+- **Reserves**: a tray panel (collapsible, per player) listing undeployed units;
+  "→ Reserves" action on table units (removes tokens to tray, marks unit); deploying
+  from tray enters placement mode that shades the LEGAL region: within 6" of edges
+  & >8" from enemies (rounds 2–3; not enemy DZ before round 3), or anywhere >8" if
+  the unit card notes Deep Strike (checkbox on tray entry). Uses the phase engine's
+  round number.
+- **Attached units**: select a CHARACTER unit + one other friendly unit → key `A` or
+  inspector button "Attach" → both take the same `unit` id (store `attachedFrom` for
+  detach); coherency, dragging, OC, and inspector then treat them as one. "Detach"
+  restores original ids.
+- **Acceptance**: full 5-round game flow with a Deep Strike arrival in round 2
+  rejected at 7.5" from an enemy and accepted at 8.5"; attached Captain+Intercessors
+  move as one and show a merged inspector; CP ticks up each Command phase exactly once.
+
+### WP8 — Multiplayer & input hardening  [M] — parallel-safe anytime after WP1
+- **Side claiming**: on connect, if both players have the same `mySide`, guest is
+  auto-flipped + toast. Side switch broadcasts.
+- **Touch/tablet**: convert mouse handlers to Pointer Events; pinch-zoom; long-press
+  = right-drag pan; hit targets ≥40px for toolbar. Test on iPad Safari.
+- **Spectator-safe rendering**: guard all `state.names[side]` etc. for undefined.
+- **Perf pass**: `draw()` currently runs coherency O(n²) every frame — memoize per
+  token-move; target 60fps with 300 tokens on an M1 MacBook + iPad.
+- **Acceptance**: playable start-to-finish on an iPad paired with a laptop.
+
+### WP9 — Polish backlog (grab-bag, any time)  [S each]
+- Waypoint measuring (click while ruler-dragging to bend the tape).
+- Dice log filters + per-player dice stats (fun + catches "cursed dice" arguments).
+- Terrain visual upgrade: procedural ruin footprints (broken-wall outlines) instead
+  of flat boxes — cosmetic only, must not move footprint geometry.
+- Export game summary (rounds, VP graph, kills) as a text/HTML report.
+- Keyboard cheat-sheet overlay (`?` key).
+- Objective/DZ color-blind palette toggle.
+
+---
+
+## 5. Execution model for agents
+
+**Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
+tracks: **A:** WP2→WP3 · **B:** WP4→WP5 · **C:** WP1, WP6, WP8 (any order).
+WP7 goes last (touches everything). WP9 items slot into any idle time.
+
+**Coordination on a single file.** One git branch per WP; rebase onto main before
+merging; merges go through one designated integrator agent. Keep every WP's edits
+inside clearly-marked section comments (`/* ==== WPn: name ==== */`) and NEVER
+reformat code you don't own — the diff is the merge currency. If two WPs must touch
+the same function (`draw()`, `applyOp`, keydown), the integrator merges those hunks
+manually; keep such hunks minimal and append-only where possible (e.g., add new
+`case` clauses at the END of `applyOp`'s switch).
+
+**Verification protocol (every WP, before merge):**
+1. Extract + syntax check:
+   `python3 - <<'EOF'` … extract last `<script>` block → `node --check`.
+2. Data intact: JSON in `db40k-data` and `layouts40k-data` still parses.
+3. **Two-window smoke test**: open the file in two browser windows, Host in one,
+   Join in the other (PeerJS loopback works locally). Verify: your WP's feature
+   syncs both ways; deploy/move/dice/draw-card still work; refresh guest → rejoin →
+   state resyncs.
+4. Regression sweep (5 min): muster an Ork list via Builder; load Official 1A;
+   move a unit (coherency snap still works); roll an attack; draw a secondary;
+   save + load the game file.
+5. `git commit` with a message naming the WP.
+
+**When stuck** on intent or a rules question: the 11th-ed core rules text is at
+`../Free Rules Downloads/01 Core Rules/Core Rules.pdf` (visibility §13, objectives
+§14, reserves §20, attached units §19, monsters/vehicles §17) and a distilled
+summary at `../Notes/11th Edition Core Rules - Study Notes.md`. Prefer the rules
+over guesses; prefer shipping the documented approximation over stalling.
+
+**Data refresh** (points/new units): `python3 tools/build_db.py` (needs curl).
+Layout JSON is hand-traced — do not regenerate it programmatically.
