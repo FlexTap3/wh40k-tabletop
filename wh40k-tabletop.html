@@ -419,7 +419,7 @@ function wireConn(){
 function send(m){ if(conn && conn.open) conn.send(m); }
 function onMsg(m){
   switch(m.t){
-    case "hello": state.names[m.side]=m.name; refreshTrackers(); logSys(m.name+" joined as "+(m.side==1?"Red":"Blue")+"."); break;
+    case "hello": state.names[m.side]=m.name; refreshTrackers(); logSys(m.name+" joined as "+(m.side==1?"Red":"Blue")+"."); wp8SideClaim(m); /* WP8 */ break;
     case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ fitView(); refreshTrackers(); renderCards(); draw(); break;
     case "op": applyOp(m.op,false); break;
     case "chat": logChat(m.name,m.text,false); break;
@@ -1109,7 +1109,7 @@ function bulkImportCards(){
 }
 function renderScore(){
   const el=document.getElementById("scoreboard"); if(!el) return;
-  const t=state.trackers;
+  const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}; /* WP8: spectator/legacy-safe */
   el.innerHTML=[1,2].map(s=>{
     const nm=esc(state.names[s]||("Player "+s)), col=s===1?"var(--p1)":"var(--p2)";
     return `<div class="card" style="padding:8px;margin-bottom:6px;border-left:3px solid ${col}">
@@ -1176,9 +1176,9 @@ function resetSecDeck(){ document.getElementById("secDeckText").value=DEFAULT_SE
 /* ============ trackers / setup ============ */
 function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(state.trackers[key]||0)+dv); refreshTrackers(); op({k:"track",trackers:state.trackers}); /* WP1: route through applyOp so autosave (and redraws) fire */ }
 function refreshTrackers(){
-  const t=state.trackers, g=id=>document.getElementById(id);
+  const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}, g=id=>document.getElementById(id); /* WP8: spectator/legacy-safe */
   g("tRound").textContent=t.round; g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
-  g("n1").textContent=state.names[1]; g("n2").textContent=state.names[2];
+  g("n1").textContent=(state.names&&state.names[1])||"Player 1"; g("n2").textContent=(state.names&&state.names[2])||"Player 2"; /* WP8: spectator/legacy-safe */
   renderScore();
 }
 function setName(v){ myName=v||"Player"; localStorage.setItem("wh40k_name",myName); op({k:"name",side:mySide,name:myName}); }
@@ -1227,7 +1227,7 @@ const inch=(cx,cy)=>[(cx-view.x)/view.s,(cy-view.y)/view.s];
 const mmIn=mm=>mm/25.4;
 const TERR_COLORS={ruin:"#3a4250",wood:"#2f4434",crate:"#4a4436",wall:"#44484e",crater:"#3c3640"};
 function draw(){
-  checkCoherency();
+  wp8Coherency(); /* WP8: memoized — full O(n²) checkCoherency() only when tokens actually changed */
   const W=cv.width/devicePixelRatio,H=cv.height/devicePixelRatio;
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle="#101216"; ctx.fillRect(0,0,W,H);
@@ -1388,7 +1388,8 @@ cv.addEventListener("wheel",e=>{
   view.s=Math.max(3,Math.min(60,view.s*f));
   view.x=e.offsetX-ix*view.s; view.y=e.offsetY-iy*view.s; draw();
 },{passive:false});
-cv.addEventListener("mousedown",e=>{
+cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic unchanged */
+  if(wp8PointerDown(e)) return; /* WP8: multi-touch (pinch) / gesture bookkeeping */
   wp1PreMutate(); /* WP1: capture pre-gesture state so drag moves are undoable */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   if(e.button===2||e.button===1||(e.button===0&&e.altKey)){ panning={x:e.clientX,y:e.clientY}; return; }
@@ -1414,7 +1415,8 @@ cv.addEventListener("mousedown",e=>{
   }
   sel.clear(); marquee={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"marquee"}; draw();
 });
-window.addEventListener("mousemove",e=>{
+window.addEventListener("pointermove",e=>{ /* WP8: was "mousemove" — handler logic unchanged */
+  if(wp8PointerMove(e)) return; /* WP8: pinch-zoom in progress */
   if(panning){ view.x+=e.clientX-panning.x; view.y+=e.clientY-panning.y; panning={x:e.clientX,y:e.clientY}; draw(); return; }
   if(!drag) return;
   const rect=cv.getBoundingClientRect(), [ix,iy]=inch(e.clientX-rect.left,e.clientY-rect.top);
@@ -1432,7 +1434,8 @@ window.addEventListener("mousemove",e=>{
   else if(drag.mode==="terrain"){ drag.x1=ix; drag.y1=iy;
     marquee={x0:drag.x0,y0:drag.y0,x1:ix,y1:iy}; draw(); }
 });
-window.addEventListener("mouseup",e=>{
+window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic unchanged */
+  if(wp8PointerUp(e)) return; /* WP8: pinch end / touch double-tap */
   if(panning){ panning=null; return; }
   if(!drag) return;
   if(drag.mode==="marquee"){
@@ -1724,6 +1727,108 @@ cv.addEventListener("contextmenu",e=>{ /* WP6: right-click an objective cycles S
   mi.parentNode.insertBefore(d,mi.nextSibling);
 })();
 /* ==== end WP6 ==== */
+
+/* ==== WP8: hardening — touch input, side claiming, spectator safety, perf ==== */
+cv.style.touchAction="none"; // stop iPad Safari from scrolling/zooming the page instead of the board
+document.head.insertAdjacentHTML("beforeend",
+  "<style>@media(pointer:coarse){#toolbar button{min-width:44px;min-height:44px;font-size:20px}#topbar button{min-height:34px;min-width:30px}}</style>");
+/* ---- multi-touch: pinch-zoom, long-press pan, double-tap wounds ---- */
+let wp8Ptrs=new Map(), wp8Pinch=null, wp8LPTimer=null, wp8LastTap=null;
+function wp8PointerDown(e){ // returns true when the main pointerdown handler must skip this event
+  if(e.pointerType==="mouse") return false;
+  e.preventDefault(); // suppress compatibility mouse events — touch is handled purely via pointers
+  wp8Ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,t0:Date.now()});
+  if(wp8Ptrs.size===2){ // second finger: abandon any single-finger gesture, start pinch-zoom
+    clearTimeout(wp8LPTimer);
+    drag=null; marquee=null; panning=null; ruler=null;
+    const p=[...wp8Ptrs.values()];
+    wp8Pinch={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};
+    draw();
+    return true;
+  }
+  if(wp8Ptrs.size>2||wp8Pinch) return true; // ignore extra fingers
+  // single touch: arm long-press → pan (only when the press would otherwise start a marquee)
+  clearTimeout(wp8LPTimer);
+  const pid=e.pointerId;
+  wp8LPTimer=setTimeout(()=>{
+    const p=wp8Ptrs.get(pid);
+    if(p&&Math.hypot(p.x-p.sx,p.y-p.sy)<8&&drag&&drag.mode==="marquee"){
+      drag=null; marquee=null; panning={x:p.x,y:p.y}; draw();
+    }
+  },450);
+  return false;
+}
+function wp8PointerMove(e){ // returns true while a pinch owns the gesture
+  const p=wp8Ptrs.get(e.pointerId);
+  if(p){ p.x=e.clientX; p.y=e.clientY; }
+  if(!wp8Pinch) return false;
+  if(wp8Ptrs.size>=2){
+    const q=[...wp8Ptrs.values()];
+    const d=Math.hypot(q[0].x-q[1].x,q[0].y-q[1].y), cx=(q[0].x+q[1].x)/2, cy=(q[0].y+q[1].y)/2;
+    if(d>0&&wp8Pinch.d>0){
+      const rect=cv.getBoundingClientRect();
+      const [ix,iy]=inch(wp8Pinch.cx-rect.left,wp8Pinch.cy-rect.top); // board point under the old midpoint
+      view.s=Math.max(3,Math.min(60,view.s*(d/wp8Pinch.d)));
+      view.x=(cx-rect.left)-ix*view.s; view.y=(cy-rect.top)-iy*view.s;   // …lands under the new midpoint
+    }
+    wp8Pinch={d,cx,cy};
+    draw();
+  }
+  return true;
+}
+function wp8PointerUp(e){ // returns true when the main pointerup handler must skip this event
+  const p=wp8Ptrs.get(e.pointerId);
+  wp8Ptrs.delete(e.pointerId);
+  clearTimeout(wp8LPTimer);
+  if(wp8Pinch){ if(wp8Ptrs.size<2) wp8Pinch=null; drag=null; marquee=null; return true; }
+  if(p&&e.pointerType!=="mouse"){ // tap bookkeeping → double-tap = wounds prompt (dblclick may not fire for touch)
+    const now=Date.now();
+    if(Math.hypot(e.clientX-p.sx,e.clientY-p.sy)<10&&now-p.t0<350){
+      if(wp8LastTap&&now-wp8LastTap.t<350&&Math.hypot(e.clientX-wp8LastTap.x,e.clientY-wp8LastTap.y)<24){
+        wp8LastTap=null;
+        const rect=cv.getBoundingClientRect(), [ix,iy]=inch(e.clientX-rect.left,e.clientY-rect.top);
+        drag=null; marquee=null; wp8WoundPrompt(ix,iy); draw();
+        return true;
+      }
+      wp8LastTap={t:now,x:e.clientX,y:e.clientY};
+    } else wp8LastTap=null;
+  }
+  return false;
+}
+function wp8WoundPrompt(ix,iy){ // touch mirror of the desktop dblclick handler
+  const tk=hitToken(ix,iy); if(!tk) return;
+  const v=prompt(`${tk.name} — wounds remaining (max ${tk.maxW}):`,tk.wounds);
+  if(v===null) return;
+  op({k:"tok~",toks:[{id:tk.id,wounds:Math.max(0,Math.min(tk.maxW,parseInt(v)||0))}]});
+}
+window.addEventListener("pointercancel",e=>{ // OS stole the gesture — reset everything cleanly
+  wp8Ptrs.delete(e.pointerId); clearTimeout(wp8LPTimer);
+  if(wp8Ptrs.size<2) wp8Pinch=null;
+  drag=null; marquee=null; panning=null; draw();
+});
+/* ---- side claiming: no more two Reds ---- */
+function wp8SideClaim(m){ // called from onMsg "hello"
+  if(m.side!==mySide) return;
+  if(isHost){ state.names[mySide]=myName; refreshTrackers(); } // host keeps its claim; guest will flip
+  else{
+    mySide=(mySide===1?2:1);
+    const s=document.getElementById("mySide"); if(s) s.value=String(mySide);
+    setTimeout(()=>op({k:"name",side:mySide,name:myName}),300); // after the host's full-state sync lands
+    logSys("⚠ Both players had picked the same side — you are now "+(mySide===1?"Red (P1)":"Blue (P2)")+". Change it in Setup if needed.");
+  }
+}
+/* ---- perf: memoized coherency (draw() ran O(n²) every frame, incl. pan/zoom) ---- */
+let wp8CohSig=null;
+function wp8Coherency(){
+  const T=state.tokens; let h=T.length|0;
+  for(let i=0;i<T.length;i++){ const t=T[i];
+    h=(Math.imul(h,31)+(t.x*1000|0))|0;
+    h=(Math.imul(h,31)+(t.y*1000|0))|0;
+    const u=t.unit||""; for(let j=0;j<u.length;j++) h=(Math.imul(h,31)+u.charCodeAt(j))|0;
+  }
+  if(h!==wp8CohSig){ wp8CohSig=h; checkCoherency(); }
+}
+/* ==== end WP8 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
