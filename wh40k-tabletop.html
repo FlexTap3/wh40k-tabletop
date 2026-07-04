@@ -355,6 +355,9 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <!-- ==== WP4: visibility ==== -->
       <li><b>Line of sight — 👁 tool</b>: click one of your units to see a line to every enemy unit: <b>green</b> = visible, <b>yellow</b> = visible with Benefit of Cover (tick Cover in the Attack tab: −1 to hit), <b>red</b> = not visible (or Hidden beyond 15"). Visibility is 11th-ed <i>area</i> style: a target only counts as out of sight when every sight line crosses a ruin/wood/container/low-wall area, ignoring any area either model is inside — craters never block. Approximations used: sight lines are sampled centre-to-centre plus 4 base-edge points each way; cover = a sight line clipped by an area, or an INFANTRY/BEASTS/SWARM model standing inside one. Select a unit and press <kbd>H</kbd> to toggle <b>Hidden</b> for quiet infantry sitting wholly in dense terrain (ruin/wood/container) — while hidden it reads as not visible beyond 15". The tool advises; you two still apply the exact rules.</li>
       <!-- ==== end WP4 ==== -->
+      <!-- ==== WP5: terrain ==== -->
+      <li><b>Terrain physicality</b>: a model can't end a move with its centre on a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (same enforcement toggle in Setup; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle floor level 0–3 (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximation: "overlapping" is judged by base centre.</li>
+      <!-- ==== end WP5 ==== -->
     </ul>
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
   </div>
@@ -814,6 +817,7 @@ function deployCard(raw){
     }
   });
   op({k:"tok+",toks});
+  wp5DeployWarn(toks); /* ==== WP5: deploy collision warning ==== */
   logShared("· <b>"+esc(myName)+"</b> deployed "+esc(u.name)+" ×"+total,"sys");
 }
 function exportArmy(){ dl("army.json",JSON.stringify(myArmy,null,1)); }
@@ -1323,6 +1327,7 @@ function draw(){
       ctx.restore();
     }
     if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
+    if(t.lvl) drawLvlBadge(t); /* ==== WP5: floor badge ==== */
     // wound badge
     if(t.maxW>1){
       const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
@@ -1526,6 +1531,72 @@ function drawLos(){
 }
 /* ==== end WP4 ==== */
 
+/* ==== WP5: terrain physicality (collision + floors) ==== */
+const KW_ENTER_RUINS=["INFANTRY","BEASTS","BEAST","SWARM"];           // may end a move inside ruin footprints
+const KW_FLOORS=["INFANTRY","BEASTS","BEAST","SWARM","FLY"];          // may climb ruin floors
+const WP5_NAMES={wall:"low wall",crate:"container",ruin:"ruin footprint (needs INFANTRY/BEASTS/SWARM)"};
+function wp5Enforce(){
+  // Respects the strict-move toggle if WP2 added one ("strictMove"), else the coherency toggle.
+  const el=document.getElementById("strictMove")||document.getElementById("strictCoh");
+  return el?el.checked:true;
+}
+function wp5Illegal(t){
+  // A token may not END with its centre on a wall/container, or inside a ruin footprint
+  // unless it has INFANTRY/BEASTS/SWARM. Centre-inside is the documented approximation
+  // of "overlapping". Woods/craters are enterable by everything.
+  // Back-compat: legacy/manual tokens with no keyword info (kw missing or empty) get the
+  // benefit of the doubt on ruins — DB-built tokens always carry a real keyword list.
+  const okRuin=!(t.kw&&t.kw.length)||tokKw(t).some(k=>KW_ENTER_RUINS.includes(k));
+  for(const ter of state.terrain){
+    if(ter.kind==="wall"||ter.kind==="crate"){ if(geomPointInRect(t.x,t.y,ter)) return ter.kind; }
+    else if(ter.kind==="ruin"&&!okRuin){ if(geomPointInRect(t.x,t.y,ter)) return "ruin"; }
+  }
+  return null;
+}
+function wp5BlockDrop(dr){
+  // Called from mouseup on a token drop. True = drop was illegal and snapped back.
+  const bad=state.tokens.filter(t=>sel.has(t.id)).map(t=>({t,why:wp5Illegal(t)})).filter(x=>x.why);
+  if(!bad.length) return false;
+  if(!wp5Enforce()){ logSys("⚠ "+bad.length+" model(s) ended on impassable terrain ("+WP5_NAMES[bad[0].why]+")."); return false; }
+  op({k:"tok~",toks:dr.snap});
+  logSys("Move undone: "+bad[0].t.name+" can't end on a "+WP5_NAMES[bad[0].why]+". Untick enforcement in Setup to allow it.");
+  return true;
+}
+function wp5DeployWarn(toks){
+  const n=toks.filter(t=>wp5Illegal(t)).length;
+  if(n) logSys("⚠ "+n+" deployed model(s) landed on impassable terrain — drag them clear.");
+}
+function cycleFloor(){
+  // F cycles floor level 0→1→2→3→0 on selected models; ruins only, right keywords only.
+  const toks=state.tokens.filter(t=>sel.has(t.id));
+  if(!toks.length){ logSys("Select models first, then press F to cycle their floor level (0–3)."); return; }
+  const ups=[]; let denied=0, maxStep=0;
+  toks.forEach(t=>{
+    const okKw=!(t.kw&&t.kw.length)||tokKw(t).some(k=>KW_FLOORS.includes(k)); // kw unknown → allow
+    const inRuin=state.terrain.some(ter=>ter.kind==="ruin"&&geomPointInRect(t.x,t.y,ter));
+    if(!okKw||!inRuin){ denied++; return; }
+    const nl=((t.lvl||0)+1)%4;
+    maxStep=Math.max(maxStep,Math.abs(nl-(t.lvl||0)));
+    ups.push({id:t.id,lvl:nl});
+  });
+  if(denied) logSys(denied+" model(s) can't change floors — needs INFANTRY/BEASTS/SWARM/FLY and the model inside a ruin footprint.");
+  if(!ups.length) return;
+  op({k:"tok~",toks:ups});
+  if(drag&&drag.mode==="tokens") drag.lvlExtra=(drag.lvlExtra||0)+3*maxStep; // WP2 hook: move readout adds drag.lvlExtra inches
+  logShared("· <b>"+esc(myName)+"</b> sets "+ups.length+" model(s) to floor level "+ups[0].lvl+" (each level counts 3\" of movement)","sys");
+}
+function plungingFire(aTok,bTok){ return (aTok.lvl||0)>=1&&(bTok.lvl||0)===0; } // WP3 inspector hook: suggest "+1 BS (Plunging Fire)"
+function drawLvlBadge(t){
+  const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+  ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+  const label="▲"+t.lvl; ctx.font="bold "+Math.max(8,view.s*.45)+"px sans-serif";
+  const w=ctx.measureText(label).width;
+  ctx.fillStyle="rgba(16,18,22,.85)"; ctx.fillRect(-r*.75-w/2-2,r*.45,w+4,Math.max(10,view.s*.55));
+  ctx.fillStyle="#7ec8ff"; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillText(label,-r*.75,r*.45+1);
+  ctx.restore();
+}
+/* ==== end WP5 ==== */
+
 /* ============ board input ============ */
 function hitToken(ix,iy){
   for(let i=state.tokens.length-1;i>=0;i--){ const t=state.tokens[i];
@@ -1596,6 +1667,9 @@ window.addEventListener("mousemove",e=>{
 window.addEventListener("mouseup",e=>{
   if(panning){ panning=null; return; }
   if(!drag) return;
+  /* ==== WP5: terrain collision — illegal drops snap back ==== */
+  if(drag.mode==="tokens"&&drag.moved&&wp5BlockDrop(drag)){ drag=null; draw(); return; }
+  /* ==== end WP5 ==== */
   if(drag.mode==="marquee"){
     const x0=Math.min(marquee.x0,marquee.x1),x1=Math.max(marquee.x0,marquee.x1),y0=Math.min(marquee.y0,marquee.y1),y1=Math.max(marquee.y0,marquee.y1);
     state.tokens.forEach(t=>{ if(t.x>=x0&&t.x<=x1&&t.y>=y0&&t.y<=y1) sel.add(t.id); });
@@ -1653,6 +1727,7 @@ window.addEventListener("keydown",e=>{
     }
   }
   else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
+  else if(e.key==="f"||e.key==="F"){ cycleFloor(); } /* ==== WP5: floor level ==== */
   else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ draw(); }
 });
 
