@@ -13,5 +13,6 @@ node harness.js wp2-tests.js
 node harness.js wp3-tests.js
 node test_wp1.js
 node test_wp6.js
+node test_wp7.js
 node test_wp8.js
 echo "ALL SUITES PASSED"
