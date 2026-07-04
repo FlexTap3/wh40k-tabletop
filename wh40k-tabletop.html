@@ -455,6 +455,9 @@ function applyOp(o,mine){
     /* ==== WP1: resilience ==== full-state replace (undo / recovery); idempotent */
     case "restore": wp1ApplyRestore(o.state); break;
     /* ==== end WP1 ==== */
+    /* ==== WP6: objectives ==== update-by-id (secured flag etc.); idempotent */
+    case "obj~": {const ob=O.find(x=>x.id===o.obj.id); if(ob)Object.assign(ob,o.obj);} break;
+    /* ==== end WP6 ==== */
   }
   if(mine) send({t:"op",op:o});
   draw();
@@ -1334,6 +1337,7 @@ function draw(){
     }
     ctx.restore();
   });
+  wp6Overlay(); /* ==== WP6: objectives ==== control glow, OC tallies, battle-shock badges */
   // marquee
   if(marquee){ ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([4,3]);
     ctx.strokeRect(...px(Math.min(marquee.x0,marquee.x1),Math.min(marquee.y0,marquee.y1)),Math.abs(marquee.x1-marquee.x0)*view.s,Math.abs(marquee.y1-marquee.y0)*view.s); ctx.setLineDash([]); }
@@ -1611,6 +1615,115 @@ function wp1MaybeResume(){
   }
 }
 /* ==== end WP1 ==== */
+
+/* ==== WP6: objectives — OC auto-scoring, battle-shock, secured markers ==== */
+const WP6_P1="#d84a4a", WP6_P2="#4a8fd8";
+let wp6LastRound=null, wp6PanelSig=null;
+// Sum each side's OC within 3" (marker edge to base edge, horizontal). Battle-shocked (bs) units count 0.
+// holder: higher OC wins; on a tie (incl. 0–0) a manually-set "secured" side (o.sec) keeps it — sticky control.
+function wp6Tallies(){
+  const mR=mmIn(40)/2;
+  return state.objectives.map(o=>{
+    let oc1=0,oc2=0;
+    state.tokens.forEach(t=>{
+      if(t.bs) return;
+      if(Math.hypot(t.x-o.x,t.y-o.y)-mR-tokRadius(t)<=3.02){
+        if(t.owner===1) oc1+=(+t.OC||0); else oc2+=(+t.OC||0); /* WP0 tokens carry OC; legacy tokens count 0 */
+      }
+    });
+    const holder=oc1>oc2?1:oc2>oc1?2:((o.sec===1||o.sec===2)?o.sec:0);
+    return {o,oc1,oc2,holder};
+  });
+}
+function wp6Overlay(){ // called from draw(): glow + tallies over the board, then side-panel + round log
+  const tallies=wp6Tallies();
+  tallies.forEach(({o,oc1,oc2,holder})=>{
+    const [ox,oy]=px(o.x,o.y), r=mmIn(40)/2*view.s;
+    if(holder){
+      const col=holder===1?WP6_P1:WP6_P2;
+      ctx.beginPath(); ctx.arc(ox,oy,r+3,0,7); ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ox,oy,r+6.5,0,7); ctx.globalAlpha=.35; ctx.lineWidth=4; ctx.stroke(); ctx.globalAlpha=1;
+    }
+    if(o.sec===1||o.sec===2){ // sticky "secured" flag (manual toggle — right-click the marker)
+      ctx.font="bold "+Math.max(9,view.s*.5)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="top";
+      ctx.fillStyle=o.sec===1?WP6_P1:WP6_P2; ctx.fillText("⚑",ox,oy+r+2);
+    }
+    if(oc1||oc2||holder){ // OC tally beside the marker
+      ctx.font="bold "+Math.max(10,view.s*.55)+"px sans-serif"; ctx.textBaseline="middle";
+      const s1=String(oc1),s2=String(oc2),dash="–";
+      const w1=ctx.measureText(s1).width,wd=ctx.measureText(dash).width,w2=ctx.measureText(s2).width;
+      const total=w1+wd+w2, tx0=ox-total/2, ty=oy-r-Math.max(8,view.s*.45);
+      ctx.fillStyle="rgba(16,18,22,.8)"; ctx.fillRect(tx0-3,ty-Math.max(7,view.s*.38),total+6,Math.max(14,view.s*.76));
+      ctx.textAlign="left";
+      ctx.fillStyle=WP6_P1; ctx.fillText(s1,tx0,ty);
+      ctx.fillStyle="#9aa3ad"; ctx.fillText(dash,tx0+w1,ty);
+      ctx.fillStyle=WP6_P2; ctx.fillText(s2,tx0+w1+wd,ty);
+    }
+  });
+  // grey skull badge on battle-shocked models (drawn over tokens; screen-space, no rotation issues)
+  state.tokens.forEach(t=>{
+    if(!t.bs) return;
+    const [tx,ty]=px(t.x,t.y), rr=tokRadius(t)*view.s, br=Math.max(6,view.s*.4);
+    ctx.beginPath(); ctx.arc(tx-rr*.75,ty-rr*.75,br,0,7); ctx.fillStyle="#565d66"; ctx.fill();
+    ctx.strokeStyle="#22262d"; ctx.lineWidth=1; ctx.stroke();
+    ctx.font=(br*1.4)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("💀",tx-rr*.75,ty-rr*.75+.5);
+  });
+  wp6Panel(tallies);
+  wp6RoundLog(tallies);
+}
+function wp6Panel(tallies){ // Cards-tab list of each objective + holder; DOM touched only when something changed
+  const el=document.getElementById("wp6ObjPanel"); if(!el) return;
+  const sig=JSON.stringify([tallies.map(x=>[x.oc1,x.oc2,x.holder,x.o.sec||0]),state.names,state.trackers.round]);
+  if(sig===wp6PanelSig) return;
+  wp6PanelSig=sig;
+  if(!tallies.length){ el.innerHTML=""; return; }
+  const nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+  el.innerHTML='<div class="card" style="padding:8px;margin-top:6px"><b>Objective control</b> <span class="small">(OC within 3", battle-shocked = 0; right-click a marker to mark it Secured ⚑)</span>'+
+    tallies.map((x,i)=>{
+      const col=x.holder===1?"var(--p1)":x.holder===2?"var(--p2)":"var(--dim)";
+      const who=x.holder?nm(x.holder):(x.oc1||x.oc2?"contested":"—");
+      return `<div style="display:flex;justify-content:space-between;margin-top:3px"><span>◎ ${i+1}${(x.o.sec===1||x.o.sec===2)?' <span style="color:'+(x.o.sec===1?"var(--p1)":"var(--p2)")+'">⚑</span>':''}</span><span><b style="color:${col}">${who}</b> <span class="small">${x.oc1}–${x.oc2}</span></span></div>`;
+    }).join("")+"</div>";
+}
+function wp6RoundLog(tallies){ // end-of-turn summary when the round tracker advances (each peer logs locally)
+  const rd=(state.trackers&&state.trackers.round)||1;
+  if(wp6LastRound===null){ wp6LastRound=rd; return; }
+  if(rd===wp6LastRound) return;
+  const prev=wp6LastRound; wp6LastRound=rd;
+  if(rd<prev) return; // round corrected downwards — no summary
+  const n1=tallies.filter(x=>x.holder===1).length, n2=tallies.filter(x=>x.holder===2).length;
+  const nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+  if(tallies.length) logEntry(`⚑ End of round ${prev}: <b style="color:var(--p1)">${nm(1)}</b> holds ${n1}, <b style="color:var(--p2)">${nm(2)}</b> holds ${n2}`,"sys");
+}
+function wp6ToggleShock(){ // B: toggle battle-shock on every unit with a selected model (syncs via tok~)
+  const units=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
+  if(!units.size) return;
+  units.forEach(uk=>{
+    const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+    const now=!ms[0].bs;
+    op({k:"tok~",toks:ms.map(t=>({id:t.id,bs:now}))});
+    logShared("💀 <b>"+esc(myName)+"</b>: "+esc(ms[0].name)+(now?" is <b>battle-shocked</b> (OC 0)":" rallied — battle-shock cleared"),"sys");
+  });
+}
+window.addEventListener("keydown",e=>{ /* WP6: B = battle-shock toggle (own listener; shared handler untouched) */
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
+  if(e.key==="b"||e.key==="B") wp6ToggleShock();
+});
+cv.addEventListener("contextmenu",e=>{ /* WP6: right-click an objective cycles Secured: none → red → blue */
+  const [ix,iy]=inch(e.offsetX,e.offsetY);
+  const o=hitObjective(ix,iy); if(!o) return;
+  const next=((o.sec||0)+1)%3;
+  op({k:"obj~",obj:{id:o.id,sec:next}});
+  logShared("◎ <b>"+esc(myName)+"</b> marked an objective "+(next?("<b>Secured</b> by "+esc(state.names[next]||("Player "+next))):"no longer Secured"),"sys");
+});
+(function(){ // objective-control panel lives under the primary-mission card in the Cards tab
+  const mi=document.getElementById("missionInfo"); if(!mi) return;
+  const d=document.createElement("div"); d.id="wp6ObjPanel";
+  mi.parentNode.insertBefore(d,mi.nextSibling);
+})();
+/* ==== end WP6 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
