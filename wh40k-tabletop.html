@@ -83,6 +83,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #helpBody{max-height:60vh; overflow-y:auto; font-size:12.5px}
 #helpBody li{margin:4px 0 4px 16px}
 kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; padding:0 5px; font-size:11px}
+/* ==== WP3: inspector ==== */
+#inspector{position:absolute; right:10px; bottom:10px; width:352px; max-width:46%; max-height:60%; overflow-y:auto; background:rgba(29,32,38,.97); border:1px solid var(--edge); border-radius:10px; padding:10px; box-shadow:0 6px 20px rgba(0,0,0,.5); z-index:12; font-size:12.5px}
+#inspector .wtable td{white-space:nowrap}
+#inspector .wtable td:first-child{white-space:normal}
+#inspector .aim{padding:0 6px; font-size:12px; line-height:18px}
+/* ==== end WP3 ==== */
 </style>
 </head>
 <body>
@@ -141,6 +147,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
     </div>
 
     <div class="tabpane" id="tab-attack">
+      <!-- ==== WP3: inspector ==== staged-attack banner (filled by the unit inspector's ⚔ flow) -->
+      <div id="akStage" class="small" style="display:none;margin-bottom:6px"></div>
+      <!-- ==== end WP3 ==== -->
       <h3>Attacker</h3>
       <div class="row"><label>Attacks</label><input id="akA" type="text" value="10" style="width:56px" title="Number, or dice like D6, 2D6+3">
         <label>Hit on</label><select id="akBS"><option>2+</option><option selected>3+</option><option>4+</option><option>5+</option><option>6+</option><option value="auto">Auto (Torrent)</option></select></div>
@@ -209,6 +218,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <button id="tool-objective" title="Place objective marker — click" onclick="setTool('objective')">◎</button>
       <button title="Zoom to fit" onclick="fitView()">⤢</button>
     </div>
+    <!-- ==== WP3: inspector ==== -->
+    <div id="inspector" style="display:none"></div>
+    <!-- ==== end WP3 ==== -->
   </div>
 </div>
 
@@ -503,6 +515,7 @@ function rollAttack(){
   const rrHit=g("akRrHit").value, rrWnd=twin?"all":g("akRrWnd").value;
 
   const nA=A.total; let lines=[];
+  if(wp3Label) lines.push(wp3Label); /* ==== WP3: inspector ==== attacker → target line from the staged attack */
   lines.push(`${nA} attack${nA!==1?"s":""}${A.rolls?` (rolled ${A.rolls.join(",")})`:""} | ${auto?"Torrent":"hit "+bs+"+"} S${S} AP-${AP} D${Dspec.txt}  vs  T${T} Sv${sv>6?"–":sv+"+"}${inv?" Inv"+inv+"+":""}${fnp?" FNP"+fnp+"+":""}`);
 
   // --- hits ---
@@ -1443,6 +1456,168 @@ function wp2DrawPaths(){
 }
 /* ==== end WP2 ==== */
 
+/* ==== WP3: inspector ==== */
+// Unit inspector (single-click a token) + wired attack flow:
+// weapon ⚔ → targeting mode → click an enemy model → Attack tab pre-filled.
+const inspEl=document.getElementById("inspector");
+let wp3Ctx=null;      // {tok, card, weapons:[...]} for the open inspector
+let wp3Aiming=null;   // {wi} weapon index while picking a target
+let wp3Label="";      // "attacker → target · weapon" line added to the attack log
+
+// Find the display card for a token: own units from myArmy, the opponent's from the
+// state.cards copies synced by WP0. Tokens store the profile name, cards the unit name.
+function wp3CardFor(t){
+  const src = t.owner===mySide ? myArmy.map(migrateCard) : ((state.cards&&state.cards[t.owner])||[]);
+  const nn=norm(t.name||"");
+  return src.find(c=>(c.profiles||[]).some(p=>norm(p.n||"")===nn))
+      || src.find(c=>norm(c.name||"")===nn)
+      || src.find(c=>(c.profiles||[]).some(p=>{const q=norm(p.n||"");return q&&(q.includes(nn)||nn.includes(q));}))
+      || null;
+}
+// Parse one line of card.weapons: "Name [abilities] | R | A | Hit | S | AP | D"
+function wp3ParseWeapon(line){
+  const parts=line.split("|").map(s=>s.trim());
+  if(parts.length<7||!parts[0]) return null;
+  let n=parts[0], ab="";
+  const bm=n.match(/^(.*?)\s*\[(.*)\]\s*$/);
+  if(bm){ n=bm[1]; ab=bm[2]; }
+  const melee=/^melee$/i.test(parts[1]);
+  return {n,ab,melee,rng:melee?0:parseFloat(parts[1])||0,rngTxt:parts[1],A:parts[2],BS:parts[3],S:parts[4],AP:parts[5],D:parts[6]};
+}
+// Parse a weapon ability string ("rapid fire 2, sustained hits 1, anti-vehicle 4+, …")
+// into the flags the Attack tab understands. Unrecognised abilities land in .extra.
+function wp3ParseAbilities(ab){
+  const out={rapid:0,sus:0,susTxt:"",anti:[],torrent:false,blast:false,twin:false,lethal:false,dev:false,extra:[]};
+  String(ab||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean).forEach(a=>{
+    let m;
+    if(m=a.match(/^rapid fire (\d+)$/)) out.rapid=+m[1];
+    else if(m=a.match(/^sustained hits (\d+)$/)) out.sus=+m[1];
+    else if(m=a.match(/^sustained hits (d\d+)$/)){ out.susTxt=m[1].toUpperCase(); out.extra.push("sustained hits "+m[1]); }
+    else if(m=a.match(/^anti[- ]([a-z' ]+?)\s*(\d)\+$/)) out.anti.push({kw:m[1].trim().toUpperCase(),v:+m[2]});
+    else if(a==="torrent") out.torrent=true;
+    else if(a==="blast") out.blast=true;
+    else if(a==="twin-linked"||a==="twin linked") out.twin=true;
+    else if(a==="lethal hits") out.lethal=true;
+    else if(a==="devastating wounds") out.dev=true;
+    else out.extra.push(a);
+  });
+  return out;
+}
+// Add flat attacks to an attacks spec: "2"+2→"4", "D6"+2→"D6+2", "2D6+1"+2→"2D6+3".
+function wp3AddA(spec,add){
+  spec=String(spec).trim().toUpperCase();
+  if(!add) return spec;
+  const m=spec.match(/^(\d*D\d+)([+-]\d+)?$/);
+  if(m){ const base=+(m[2]||0)+add; return m[1]+(base>0?"+"+base:base<0?String(base):""); }
+  const v=parseInt(spec); return isNaN(v)?spec:String(v+add);
+}
+function wp3Hide(){ inspEl.style.display="none"; wp3Ctx=null; }
+function wp3CancelAim(){ if(!wp3Aiming) return; wp3Aiming=null; setTool(tool); logSys("Targeting cancelled."); }
+// Open the inspector for the first selected token (click without movement).
+function wp3Inspect(){
+  const tok=state.tokens.find(t=>sel.has(t.id)); if(!tok){ wp3Hide(); return; }
+  const card=wp3CardFor(tok);
+  const unitToks=state.tokens.filter(t=>t.unit===tok.unit);
+  const col=tok.owner===1?"var(--p1)":"var(--p2)";
+  const weapons=card?String(card.weapons||"").split("\n").map(wp3ParseWeapon).filter(Boolean):[];
+  wp3Ctx={tok,card,weapons};
+  let html=`<div class="title"><span style="color:${col}">${esc(card?card.name:tok.name)}</span>
+    <span><span class="small">×${unitToks.length}${card&&card.pts?" · "+esc(card.pts)+"pts":""}</span> <button title="Close (Esc)" onclick="wp3Hide()">✕</button></span></div>`;
+  if(card){
+    html+=(card.profiles||[]).map(p=>`<div class="statline">${(card.profiles||[]).length>1?`<b>${esc(p.n)}</b> · `:""}M <b>${esc(p.M??"?")}</b> T <b>${p.T??"?"}</b> Sv <b>${esc(p.Sv??"?")}</b> Inv <b>${esc(p.Inv??"-")}</b> W <b>${p.W??"?"}</b> Ld <b>${esc(p.Ld??"?")}</b> OC <b>${p.OC??"?"}</b></div>`).join("");
+  } else {
+    html+=`<div class="statline">M <b>${tok.Mv??"?"}"</b> T <b>${tok.T||"?"}</b> Sv <b>${esc(tok.Sv||"?")}</b> Inv <b>${esc(tok.iv||"-")}</b> OC <b>${tok.OC??"?"}</b></div>
+      <div class="small">No card synced for this unit — stats read from the token.</div>`;
+  }
+  html+=`<div class="small">Clicked model: <b>${esc(tok.name)}</b> — ${tok.wounds}/${tok.maxW} W${tok.sgt?" · leader":""}${tok.tag?" · "+esc(tok.tag):""}</div>`;
+  if(weapons.length){
+    html+=`<table class="wtable"><tr><th>Weapon</th><th>R</th><th>A</th><th>Hit</th><th>S</th><th>AP</th><th>D</th><th></th></tr>`+
+      weapons.map((w,i)=>`<tr><td>${esc(w.n)}${w.ab?` <span class="small">[${esc(w.ab)}]</span>`:""}</td><td>${esc(w.rngTxt)}</td><td>${esc(w.A)}</td><td>${esc(w.BS)}</td><td>${esc(w.S)}</td><td>${esc(w.AP)}</td><td>${esc(w.D)}</td>
+        <td><button class="aim" title="Attack with this weapon — then click an enemy model" onclick="wp3Aim(${i})">⚔</button></td></tr>`).join("")+`</table>`;
+  }
+  if(card&&card.kw&&card.kw.length) html+=`<div class="small" style="margin-top:4px">${card.kw.map(esc).join(" · ")}</div>`;
+  if(card&&card.notes) html+=`<div class="small" style="margin-top:4px">${esc(card.notes)}</div>`;
+  inspEl.innerHTML=html; inspEl.style.display="block";
+}
+function wp3Aim(wi){
+  if(!wp3Ctx||!wp3Ctx.weapons[wi]) return;
+  wp3Aiming={wi};
+  cv.style.cursor="crosshair";
+  logSys(`Targeting with ${wp3Ctx.weapons[wi].n} — click an enemy model (Esc cancels).`);
+}
+// Closest edge-to-edge distance between two sets of models (how range is measured).
+function wp3UnitDist(aToks,bToks){
+  let d=Infinity;
+  aToks.forEach(a=>bToks.forEach(b=>{ const e=edgeDist(a,b); if(e<d)d=e; }));
+  return Math.max(0,d);
+}
+function wp3PickTarget(ix,iy){
+  const aim=wp3Aiming; wp3Aiming=null; setTool(tool);
+  const tk=hitToken(ix,iy);
+  if(!tk||!wp3Ctx||tk.owner===wp3Ctx.tok.owner){ logSys("Targeting cancelled."); return; }
+  wp3Stage(wp3Ctx,aim.wi,tk);
+}
+// Pre-fill the Attack tab from a weapon + target token, then switch to it.
+function wp3Stage(ctx0,wi,tgtTok){
+  const w=ctx0.weapons[wi], ab=wp3ParseAbilities(w.ab), g=id=>document.getElementById(id);
+  const atkToks=state.tokens.filter(t=>t.unit===ctx0.tok.unit);
+  const tgtToks=state.tokens.filter(t=>t.unit===tgtTok.unit);
+  const tgtCard=wp3CardFor(tgtTok);
+  const atkName=ctx0.card?ctx0.card.name:ctx0.tok.name, tgtName=tgtCard?tgtCard.name:tgtTok.name;
+  const dist=wp3UnitDist(atkToks,tgtToks);
+  const inRange=w.melee?dist<=1.02:dist<=w.rng+0.02;
+  const notes=[];
+  // attacks: rapid fire at half range (prompted), blast +1 per 5 models in the target unit
+  let A=String(w.A).toUpperCase();
+  if(ab.rapid&&!w.melee&&dist<=w.rng/2+0.02){
+    if(confirm(`Within half range (${dist.toFixed(1)}" of ${w.rng}") — apply Rapid Fire ${ab.rapid} (+${ab.rapid} attack${ab.rapid>1?"s":""})?`)){ A=wp3AddA(A,ab.rapid); notes.push(`Rapid Fire ${ab.rapid} applied`); }
+  } else if(ab.rapid) notes.push(`Rapid Fire ${ab.rapid} only within ${w.rng/2}"`);
+  if(ab.blast){ const bonus=Math.floor(tgtToks.length/5);
+    if(bonus){ A=wp3AddA(A,bonus); notes.push(`Blast +${bonus} (${tgtToks.length} models)`); } else notes.push("Blast (no bonus under 5 models)"); }
+  g("akA").value=A;
+  const bs=String(w.BS).match(/^(\d)\+?$/);
+  g("akBS").value=(ab.torrent||!bs)?"auto":bs[1]+"+";
+  if(!bs&&!ab.torrent) notes.push("no BS on profile — set to auto-hit");
+  g("akS").value=parseInt(w.S)||0;
+  const apv=String(-Math.abs(parseInt(w.AP)||0));
+  g("akAP").value=["0","-1","-2","-3","-4","-5"].includes(apv)?apv:"-5";
+  g("akD").value=w.D;
+  // reset everything staging doesn't set, then apply parsed abilities
+  g("akHitMod").value="0"; g("akWndMod").value="0";
+  g("akRrHit").value="none"; g("akRrWnd").value="none";
+  g("akLethal").checked=ab.lethal; g("akTwin").checked=ab.twin; g("akDev").checked=ab.dev;
+  g("akSus").value=ab.sus;
+  const tKw=(tgtTok.kw&&tgtTok.kw.length?tgtTok.kw:(tgtCard&&tgtCard.kw)||[]).map(s=>String(s).toUpperCase());
+  const anti=ab.anti.find(a=>tKw.includes(a.kw));
+  g("akAnti").value=(anti&&anti.v>=2&&anti.v<=5)?String(anti.v):"0";
+  ab.anti.filter(a=>a!==anti).forEach(a=>notes.push(`anti-${a.kw.toLowerCase()} ${a.v}+ (target is not ${a.kw})`));
+  if(ab.extra.length) notes.push("apply manually: "+ab.extra.join(", "));
+  // target side from the target token's WP0 stats
+  if(tgtTok.T) g("tgT").value=tgtTok.T;
+  const sv=String(tgtTok.Sv||"").match(/^([2-6])\+?$/);
+  if(sv) g("tgSv").value=sv[1]+"+"; else if(tgtTok.Sv) g("tgSv").value="7";
+  const iv=String(tgtTok.iv||"").match(/^([3-6])\+?$/);
+  g("tgInv").value=iv?iv[1]:"0";
+  g("tgFNP").value="0"; g("tgCover").checked=false;
+  // staging banner + attack-log label
+  wp3Label=`⚔ ${atkName} → ${tgtName} · ${w.n}`;
+  const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 1\")"}`
+                     :`range ${w.rng}" — closest models ${dist.toFixed(1)}" ${inRange?"(in range)":"(OUT OF RANGE)"}`;
+  const stage=g("akStage");
+  stage.style.display="block";
+  stage.innerHTML=`<div class="card" style="padding:6px 8px;margin-bottom:0;border-left:3px solid ${inRange?"var(--good)":"var(--bad)"}">
+    <b>${esc(atkName)}</b> → <b>${esc(tgtName)}</b><br>${esc(w.n)} · <span style="color:${inRange?"var(--good)":"var(--bad)"}">${esc(rHint)}</span>
+    ${notes.length?`<br><span class="small">${esc(notes.join(" · "))}</span>`:""}</div>`;
+  showTab("attack");
+  logSys(`Attack staged: ${atkName} → ${tgtName} with ${w.n}. Check the Attack tab and roll.`);
+}
+// Manual edits to the Attack tab clear the staged attacker→target label.
+document.getElementById("tab-attack").addEventListener("change",e=>{
+  if(e.target&&e.target.id==="ldTarget") return;
+  wp3Label=""; const s=document.getElementById("akStage"); s.style.display="none";
+});
+/* ==== end WP3 ==== */
+
 /* ============ board input ============ */
 function hitToken(ix,iy){
   for(let i=state.tokens.length-1;i>=0;i--){ const t=state.tokens[i];
@@ -1469,6 +1644,9 @@ cv.addEventListener("wheel",e=>{
 cv.addEventListener("mousedown",e=>{
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   if(e.button===2||e.button===1||(e.button===0&&e.altKey)){ panning={x:e.clientX,y:e.clientY}; return; }
+  /* ==== WP3: inspector ==== */
+  if(wp3Aiming&&e.button===0){ wp3PickTarget(ix,iy); return; }
+  /* ==== end WP3 ==== */
   if(tool==="ruler"){ ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler"}; draw(); return; }
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
@@ -1488,9 +1666,9 @@ cv.addEventListener("mousedown",e=>{
   const tr=hitTerrain(ix,iy);
   if(tr){
     if(tr.locked){ logSys("That terrain is part of an official layout and is locked in place. Load another layout or Clear table to change it."); return; }
-    sel.clear(); sel.add(tr.id); drag={mode:"terrainMove",id:tr.id,lx:ix,ly:iy}; draw(); return;
+    sel.clear(); sel.add(tr.id); drag={mode:"terrainMove",id:tr.id,lx:ix,ly:iy}; wp3Hide(); /* ==== WP3: inspector ==== */ draw(); return;
   }
-  sel.clear(); marquee={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"marquee"}; draw();
+  sel.clear(); marquee={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"marquee"}; wp3Hide(); /* ==== WP3: inspector ==== */ draw();
 });
 window.addEventListener("mousemove",e=>{
   if(panning){ view.x+=e.clientX-panning.x; view.y+=e.clientY-panning.y; panning={x:e.clientX,y:e.clientY}; draw(); return; }
@@ -1533,6 +1711,9 @@ window.addEventListener("mouseup",e=>{
       wp2LogMove(); /* ==== WP2: move measure ==== */
     }
   }
+  /* ==== WP3: inspector ==== click without movement opens the unit inspector */
+  else if(drag.mode==="tokens"&&!drag.moved){ wp3Inspect(); }
+  /* ==== end WP3 ==== */
   else if(drag.mode==="terrainMove"){
     const t=state.terrain.find(x=>x.id===drag.id); if(t) op({k:"ter~",ter:{id:t.id,x:t.x,y:t.y}});
   }
@@ -1560,6 +1741,7 @@ window.addEventListener("keydown",e=>{
     state.terrain.filter(t=>sel.has(t.id)&&!t.locked).forEach(t=>op({k:"ter-",id:t.id}));
     state.objectives.filter(o=>sel.has(o.id)).forEach(o=>op({k:"obj-",id:o.id}));
     sel.clear();
+    wp3Hide(); /* ==== WP3: inspector ==== */
   }
   else if(e.key==="r"||e.key==="R"){
     state.tokens.filter(t=>sel.has(t.id)&&t.shape==="r").forEach(t=>op({k:"tok~",toks:[{id:t.id,rot:((t.rot||0)+15)%360}]}));
@@ -1575,7 +1757,7 @@ window.addEventListener("keydown",e=>{
       if(v!==null) op({k:"tok~",toks:toks.map(t=>({id:t.id,tag:v.trim().slice(0,4)}))});
     }
   }
-  else if(e.key==="Escape"){ sel.clear(); ruler=null; draw(); }
+  else if(e.key==="Escape"){ sel.clear(); ruler=null; wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ draw(); }
 });
 
 /* ============ init ============ */
