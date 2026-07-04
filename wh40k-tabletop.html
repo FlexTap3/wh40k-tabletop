@@ -105,6 +105,12 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #wp7Tray .title{font-weight:600; display:flex; justify-content:space-between; align-items:center}
 #wp7PhaseBar b{min-width:112px; text-align:center; font-weight:600}
 /* ==== end WP7 ==== */
+/* ==== WP11: allocation ==== defender casualty-allocation banner (solo mode) */
+#wp11Banner{position:absolute; left:50%; transform:translateX(-50%); top:10px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:9px 14px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:13; font-size:13px; text-align:center; line-height:1.5}
+#wp11Banner b{color:var(--accent-hi)}
+#wp11Banner .small{color:var(--dim)}
+#wp11Banner button{margin-left:10px; vertical-align:middle}
+/* ==== end WP11 ==== */
 </style>
 </head>
 <body>
@@ -230,6 +236,10 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <div class="row"><label><input type="checkbox" id="wp5Strict" checked> Enforce impassable terrain (snap illegal drops back)</label></div>
       <div class="small" style="margin-bottom:6px">Bases may not end a move overlapping a wall or container, and only INFANTRY/BEASTS/SWARM may end inside a ruin footprint.</div>
       <!-- ==== end WP5 ==== -->
+      <!-- ==== WP11: allocation ==== solo defender-allocation toggle -->
+      <div class="row"><label><input type="checkbox" id="wp11AutoCas"> Auto-apply my casualties (solo mode)</label></div>
+      <div class="small" style="margin-bottom:6px">Unticked, when the AI damages one of your units the game pauses and you allocate each damage packet by clicking your models (an already-wounded model must take them first — the real rule). <kbd>A</kbd> auto-assigns the rest. Tick this to go back to fully automatic casualties.</div>
+      <!-- ==== end WP11 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button>
@@ -256,6 +266,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
     <!-- ==== WP7: phases ==== reserves tray -->
     <div id="wp7Tray" style="display:none"></div>
     <!-- ==== end WP7 ==== -->
+    <!-- ==== WP11: allocation ==== pending-damage banner (solo: you allocate your own casualties) -->
+    <div id="wp11Banner" style="display:none"></div>
+    <!-- ==== end WP11 ==== -->
   </div>
 </div>
 
@@ -381,6 +394,10 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
 <!-- ==== WP10: ai ==== solo-mode setup dialog -->
 <dialog id="aiDlg">
   <h3 style="margin-top:0">⚔ Solo vs AI</h3>
+  <!-- ==== WP11: meta opponents ==== spar against a real GT-winning list -->
+  <div class="row"><label>Opponent</label><select id="aiMetaSel" style="min-width:220px" onchange="wp11MetaBlurb()"><option value="">Auto-build (faction + points below)</option></select></div>
+  <div class="small" id="aiMetaBlurbEl" style="max-width:360px;margin:2px 0 6px"></div>
+  <!-- ==== end WP11 ==== -->
   <div class="row"><label>AI faction</label><select id="aiFactionSel" style="min-width:220px"></select></div>
   <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option selected>1000</option><option>1500</option><option>2000</option></select></div>
   <div class="small" style="max-width:360px;margin-top:6px">The AI builds a list, deploys into the Blue (side 2) deployment zone and plays its own turns through the phase stepper. You play Red (side 1) and take the first turn. Load a terrain layout first so it has a deployment zone and objectives. See ? → Solo mode for what it does (and approximates).</div>
@@ -430,6 +447,11 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>What it plays</b>: it scores objectives each turn (same OC math as the markers), moves units to take/hold/contest them, keeps shooters in cover and out of charge range, shoots with the real Attack-tab dice sequence at targets in range and line of sight, attempts profitable charges (real 2D6), tests battle-shock for its half-strength units (real 2D6 vs Ld), and holds a unit in Strategic Reserves when it can. Every action logs a one-line WHY. It reads only what a player could see: the board and both sides' unit cards — no hidden information, no fudged dice.</li>
       <li><b>Solo auto-casualties</b>: in solo mode the AI's damage is applied automatically, and when <i>you</i> roll a staged attack (inspector ⚔ flow) you're offered the same. Allocation: already-wounded model first, then closest to the attacker, squad leaders and CHARACTERs last; excess damage from one failed save is lost, mortal wounds apply one at a time; total is capped at the rolled result after FNP.</li>
       <li><b>Documented approximations</b>: the AI fires its unit's best non-pistol/grenade weapon once per model and every other profile once (the database doesn't say who carries what); the database has no Deep Strike flag, so it uses Strategic Reserves (board-edge arrivals) instead; it spends no CP and uses no stratagems; cover and visibility use the same area-rule approximations as the 👁 tool; charges "pile in" as a straight move into contact — swing your own engaged units back manually in its Fight phase. Its 2D6/advance rolls come from a seedable RNG (<code>aiSeed(n)</code> in the console reproduces a game); attack-sequence dice are the ordinary roller's dice.</li>
+      <!-- ==== WP11: allocation + doctrine ==== -->
+      <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way.</li>
+      <li><b>Meta opponents</b>: the Solo dialog can field one of five embedded tournament archetypes (real GT-winning lists from 11th edition's opening weeks — unit names, sizes and points only). Each carries a one-line note on what it stress-tests. The AI reads the list's Force Disposition and announces its game plan at muster, plus a one-line strategic brief each round.</li>
+      <li><b>The AI's doctrine</b> (in its own words): it plays its plan — kill-focused, objective-first, or spread-and-scout — and pushes the primary hardest in rounds 1–3, easing off late when it is ahead. Quiet infantry sitting wholly in dense terrain goes Hidden after the shooting phase, and fragile shooters prefer spots that keep that option. When you hold reserves or fast melee, its cheap units picket 6–8" ahead of its valuable units and backfield objective to deny drops and charge lanes. Early on, if it is outgunned, shooters stage out of sight rather than trade in the open. It concentrates fire to remove whole units (with a modest overkill allowance) and prefers finishing hurt units that sit on objectives; it won't move a unit into the open when the expected loss beats the gain; and its slow melee refuses to chase faster shooters — it parks on objectives and makes you come.</li>
+      <!-- ==== end WP11 ==== -->
     </ul>
     <!-- ==== end WP10 ==== -->
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
@@ -762,6 +784,7 @@ function importArmyList(){
       if(bm){ const u=units[matchUnit(units,current.name)];
         if(u && (u.m||[]).some(m=>norm(bm[2]).includes(norm(m.n).replace(/s$/,""))||norm(m.n).replace(/s$/,"").includes(norm(bm[2]).replace(/s$/,""))))
           current.models+=+bm[1];
+        else if(u&&typeof wp11LooseCount!=="undefined"&&wp11LooseCount) current.models+=+bm[1]; /* ==== WP11: meta-pack lists name MODELS ("9x Assault Terminator"), not datasheet profiles — in that trusted context every Nx line is a model line ==== */
       } }
   });
   flush();
@@ -2162,6 +2185,9 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   /* ==== WP3: inspector ==== */
   if(wp3Aiming&&e.button===0){ wp3PickTarget(ix,iy); return; }
   /* ==== end WP3 ==== */
+  /* ==== WP11: allocation ==== damage packets pending: left-clicks allocate, nothing else (damage is owed) */
+  if(typeof wp11Alloc!=="undefined"&&wp11Alloc&&e.button===0){ wp11AllocClick(ix,iy); return; }
+  /* ==== end WP11 ==== */
   /* ==== WP7: phases ==== deploy-from-reserves placement mode (Shift-click overrides legality, logged) */
   if(wp7Placing&&e.button===0){ wp7PlaceClick(ix,iy,e.shiftKey); return; }
   /* ==== end WP7 ==== */
@@ -2892,6 +2918,7 @@ function wp7Overlay(){ // draw() hook: keep the phase/tray UI fresh, shade the l
 window.addEventListener("keydown",e=>{ /* WP7: A = attach/detach, Esc cancels reserve placement (own listener; shared handler untouched) */
   if(e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
+  if(typeof wp11Alloc!=="undefined"&&wp11Alloc&&(e.key==="a"||e.key==="A")) return; /* ==== WP11: A = auto-assign pending casualties, not attach ==== */
   if(e.key==="a"||e.key==="A") wp7Attach();
   else if(e.key==="Escape") wp7CancelPlace();
 });
@@ -2947,9 +2974,14 @@ function aiSoloToggle(){
   if(conn&&conn.open){ logSys("You're connected to an opponent — solo mode is only available offline."); return; }
   const sel=document.getElementById("aiFactionSel");
   sel.innerHTML=DB.factions.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join("");
+  if(typeof wp11PopulateMeta==="function") wp11PopulateMeta(); /* ==== WP11: meta-opponent picker ==== */
   document.getElementById("aiDlg").showModal();
 }
 function aiStartFromDlg(){
+  /* ==== WP11: meta opponents ==== a picked meta list musters via importArmyList instead of auto-build */
+  const metaSel=document.getElementById("aiMetaSel");
+  if(metaSel&&metaSel.value!==""&&typeof wp11StartMeta==="function"){ document.getElementById("aiDlg").close(); wp11StartMeta(parseInt(metaSel.value)); return; }
+  /* ==== end WP11 ==== */
   const fid=document.getElementById("aiFactionSel").value||((DB.factions[0]||[])[0]);
   const pts=parseInt(document.getElementById("aiPtsSel").value)||1000;
   document.getElementById("aiDlg").close();
@@ -2971,6 +3003,7 @@ function aiTakeOver(){ // resume solo against whatever side 2 already has (cards
   aiReset();
   aiUi();
   logShared("🤖 <b>Solo mode</b>: the AI takes over the side-2 army on the table. Step the phase (›) to continue.","sys");
+  if(typeof wp11SetPlan==="function") wp11SetPlan("hold","resumed game"); /* ==== WP11 ==== */
 }
 function aiStart(fid,pts){
   if(conn&&conn.open){ logSys("Disconnect first — solo mode is offline only."); return; }
@@ -2981,8 +3014,10 @@ function aiStart(fid,pts){
   aiMuster(fid,list);
   aiUi();
   logShared(`🤖 <b>Solo mode</b>: the AI musters ${list.length} unit${list.length!==1?"s":""} of ${esc(fname)} (~${list.reduce((s,u)=>s+u.pts,0)} pts) on side 2 (Blue). Play your whole turn as usual, then step the phase (›) past your End phase — the AI plays its own turn and hands back.`,"sys");
+  if(typeof wp11SetPlan==="function") wp11SetPlan("hold","auto-built list"); /* ==== WP11: auto-built lists play Take and Hold ==== */
 }
 function aiStop(){
+  if(typeof wp11AllocDiscard==="function") wp11AllocDiscard(); /* ==== WP11 ==== */
   solo=false; aiGen++; aiQueue=[]; if(aiTimer){clearTimeout(aiTimer);aiTimer=null;} aiPaused=false;
   aiUi();
   logSys("Solo mode off.");
@@ -2998,6 +3033,7 @@ function aiPauseToggle(){ aiPaused=!aiPaused; aiUi(); logSys(aiPaused?"🤖 AI p
 /* ---- pacing: a single timer + generation counter; cancel-safe by construction ---- */
 function aiEnqueue(fn){ aiQueue.push(fn); aiPump(); }
 function aiPump(){
+  if(typeof wp11Pending==="function"&&wp11Pending()) return; /* ==== WP11: hold the queue while damage packets await allocation ==== */
   if(aiTimer||aiPaused||!aiQueue.length||!solo) return;
   const gen=aiGen;
   aiTimer=setTimeout(()=>{
@@ -3016,6 +3052,7 @@ function aiFinishTurn(){ // ⏭ — run the rest of the AI's turn instantly (als
   if(!aiQueue.length&&state.phase&&state.phase.side===2&&state.phase.ph>=0){ aiPhaseKey=""; aiOnPhase(); }
   let guard=0;
   while(aiQueue.length&&gen===aiGen&&solo&&guard++<3000){
+    if(typeof wp11Pending==="function"&&wp11Pending()) break; /* ==== WP11: ⏭ also waits for the player to allocate ==== */
     if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
     const fn=aiQueue.shift();
     try{ fn(); }catch(e){ console.error(e); logSys("🤖 AI error: "+(e&&e.message)); }
@@ -3024,6 +3061,7 @@ function aiFinishTurn(){ // ⏭ — run the rest of the AI's turn instantly (als
   aiUi();
 }
 function aiInterrupt(){ // hooked in clearTable/loadGame/wp1Undo — no zombie timers, ever
+  if(typeof wp11AllocDiscard==="function") wp11AllocDiscard(); /* ==== WP11: clear/load/undo discard pending damage packets ==== */
   if(!solo&&!aiQueue.length&&!aiTimer) return;
   aiGen++; aiQueue=[]; if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
   aiPhaseKey="";
@@ -3047,10 +3085,10 @@ function aiPlanPhase(ph){
   if(!solo||!state.phase||state.phase.side!==2||state.phase.ph!==ph) return;
   const round=(state.trackers&&state.trackers.round)||1;
   switch(ph){
-    case 0: aiCommand(); break;
+    case 0: if(typeof wp11TurnStart==="function") wp11TurnStart(round); /* ==== WP11: plan weights + once-per-round brief ==== */ aiCommand(); break;
     case 1: aiMovement(round); break;
     case 2: aiShooting(); break;
-    case 3: aiCharges(); break;
+    case 3: if(typeof wp11HiddenSweep==="function") wp11HiddenSweep(); /* ==== WP11: quiet dense-terrain infantry go Hidden after shooting ==== */ aiCharges(); break;
     case 4: aiFights(); break;
     case 5: aiEndTurn(); break;
   }
@@ -3134,6 +3172,7 @@ function aiTargetScore(tgt,exp){
   const mR=mmIn(40)/2;
   if(wp6Tallies().some(x=>x.holder!==2&&tgt.toks.some(t=>Math.hypot(t.x-x.o.x,t.y-x.o.y)-mR-tokRadius(t)<=3.02)))
     s*=AI_TUNE.tgtOnObj;
+  if(typeof wp11TargetAdjust==="function") s=wp11TargetAdjust(s,tgt,exp); /* ==== WP11: focus fire, finish shocked-prone units ==== */
   return s;
 }
 
@@ -3385,6 +3424,7 @@ function aiMoveUnit(uk){
     const tx2=ter.x+ter.w/2, ty2=ter.y+ter.h/2, d=Math.hypot(tx2-cx,ty2-cy);
     if(d>0.3&&d<=M) cands.push({x:tx2,y:ty2,why:"takes cover"});
   });
+  if(typeof wp11ExtraCands==="function") wp11ExtraCands(cands,{uk,ms,cx,cy,M,ranged,melee,infantry,enemies,tal,prep}); /* ==== WP11: doctrine candidates (screens) ==== */
   cands.forEach(c=>{ c.x=Math.min(state.board.w-1,Math.max(1,c.x)); c.y=Math.min(state.board.h-1,Math.max(1,c.y)); });
   // --- score every candidate ---
   cands.forEach(c=>{
@@ -3424,6 +3464,7 @@ function aiMoveUnit(uk){
       const nd=Math.min(...enemies.map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)))));
       s+=Math.max(0,20-nd)*AI_TUNE.closeW;
     }
+    if(typeof wp11ScoreAdjust==="function") s+=wp11ScoreAdjust(c,{uk,ms,cx,cy,M,ranged,melee,infantry,enemies,tal,prep,adv,sh}); /* ==== WP11: doctrine scoring (hidden/staging/trade/no-chase) ==== */
     c.s=s; if(why2) c.why=why2;
   });
   cands.sort((a,b)=>b.s-a.s);
@@ -3677,6 +3718,7 @@ function wp10AttackDone(final,failed,mortals,dmgRolls){ // rollAttack hook (solo
   if(aiActing){ tgtUk=aiCurTgt; atkUk=aiCurAtk; auto=true; }
   else if(wp3Label&&aiStagedTgt){ tgtUk=aiStagedTgt; atkUk=aiStagedAtk; }  // player's staged attack
   if(!tgtUk||final<=0||!state.tokens.some(t=>t.unit===tgtUk)) return;
+  if(typeof wp11MaybeAlloc==="function"&&wp11MaybeAlloc(tgtUk,atkUk,final,failed,mortals,dmgRolls)) return; /* ==== WP11: the defender allocates their own casualties ==== */
   const tname=(state.tokens.find(t=>t.unit===tgtUk)||{}).name||"the target";
   if(!auto&&!confirm(`Solo mode: apply ${final} damage to ${tname} automatically?\n(Already-wounded model first, closest to the attacker next, leaders last.)`)) return;
   let packets=[];
@@ -3687,6 +3729,455 @@ function wp10AttackDone(final,failed,mortals,dmgRolls){ // rollAttack hook (solo
   aiApplyCasualties(tgtUk,packets,final,atkUk);
 }
 /* ==== end WP10 ==== */
+
+/* ==== WP11: allocation + doctrine ==== solo polish in two halves.
+   A. The DEFENDER allocates casualties (the actual 40k rule): when an AI attack damages
+      the player's unit, the AI queue pauses and the player clicks models to assign each
+      damage packet; an already-wounded model must take them first. All results go through
+      op(); the pending queue itself is module-side (transient — never synced, never saved).
+   B. Meta doctrine: five embedded GT-winning lists (unit names/sizes/points only), plan
+      profiles read from the list's Force Disposition, and doctrine behaviours layered onto
+      WP10's scoring via the wp11* hooks. Sources: ~/WH40k/Notes/"11th Edition Tournament
+      Meta - Living Notes.md" and ~/WH40k/Army Guides/"Space Marines - Iron Hands 2000pt
+      Tournament Guide.md" (cited per behaviour below, own words only). */
+
+/* ---- Part A: defender casualty allocation ---- */
+let wp11Alloc=null; // {tgtUk,atkUk,packets:[],applied,budget,label} — transient, module-side by design
+let wp11LooseCount=false; // importArmyList hook: trust every "Nx" line as a model line (meta muster only)
+function wp11Pending(){ return !!wp11Alloc; }
+function wp11AutoOn(){ const c=document.getElementById("wp11AutoCas"); return !!(c&&c.checked); }
+function wp11MaybeAlloc(tgtUk,atkUk,final,failed,mortals,dmgRolls){
+  // Called from wp10AttackDone. True = WP11 takes over (player-owned defender, toggle off).
+  if(!solo) return false;
+  const t0=state.tokens.find(t=>t.unit===tgtUk);
+  if(!t0||t0.owner!==1) return false;     // AI-owned casualties stay automatic — the AI is the defender there and allocates by the same rule
+  if(wp11AutoOn()) return false;          // Setup toggle: restore the hands-off behaviour
+  // Packets exactly as the auto path builds them: one failed save's damage each, mortals one at a time
+  let packets=[];
+  if(dmgRolls&&dmgRolls.length===failed&&failed>0) packets=dmgRolls.slice();
+  else{ const flat=Math.max(1,parseInt(String(document.getElementById("akD").value).trim())||1);
+    packets=new Array(Math.max(0,failed)).fill(flat); }
+  for(let i=0;i<mortals;i++) packets.push(1);
+  if(!packets.length) return false;
+  wp11Alloc={tgtUk,atkUk,packets,applied:0,budget:final,label:String(wp3Label||"Incoming attack").replace(/^⚔\s*/,"")};
+  wp11Banner();
+  logSys("Casualty allocation: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" pending against "+t0.name+" — click models in that unit (a wounded model must take them first), or press A to auto-assign the rest.");
+  return true;
+}
+function wp11Banner(){
+  const el=document.getElementById("wp11Banner"); if(!el) return;
+  const a=wp11Alloc;
+  if(!a){ el.style.display="none"; el.innerHTML=""; return; }
+  const left=a.packets.length, next=a.packets[0];
+  const tname=(state.tokens.find(t=>t.unit===a.tgtUk)||{}).name||"target unit";
+  const rem=Math.min(a.packets.reduce((s,p)=>s+p,0),a.budget-a.applied);
+  el.style.display="block";
+  el.innerHTML=`💥 <b>${esc(a.label)}</b> — <b>${left}</b> packet${left!==1?"s":""} (${rem} dmg) to allocate to <b>${esc(tname)}</b>`
+    +`<br><span class="small">Click your models in the unit — next packet: ${next} dmg · wounded model first (the rule) · <kbd>A</kbd> = auto-assign rest</span>`
+    +`<button onclick="wp11AllocAuto()">A · Auto-assign</button>`;
+}
+function wp11AllocClick(ix,iy){
+  const a=wp11Alloc; if(!a) return;
+  const tk=hitToken(ix,iy);
+  const tname=(state.tokens.find(t=>t.unit===a.tgtUk)||{}).name||"the target unit";
+  if(!tk||tk.unit!==a.tgtUk){ logSys("Allocate the pending damage first — click a model in "+tname+", or press A to auto-assign."); return; }
+  // Core allocation law: while a model in the unit has already lost wounds, it must take the packets
+  let tgt=tk;
+  const wounded=state.tokens.find(t=>t.unit===a.tgtUk&&(t.wounds||1)<(t.maxW||1));
+  if(wounded&&wounded.id!==tk.id){ tgt=wounded; logSys("Damage redirected to "+tgt.name+" — the unit's already-wounded model must be allocated first."); }
+  wp11ApplyPacket(tgt);
+}
+function wp11ApplyPacket(tok){
+  const a=wp11Alloc; if(!a||!a.packets.length) return;
+  const pkt=a.packets.shift();
+  const use=Math.min(pkt,tok.wounds||1,a.budget-a.applied);   // in-packet excess is lost; total capped at the rolled result
+  a.applied+=use;
+  const w=(tok.wounds||1)-use;
+  if(w<=0) op({k:"tok-",ids:[tok.id]});
+  else op({k:"tok~",toks:[{id:tok.id,wounds:w}]});
+  logShared(`💥 <b>${esc(state.names[1]||"P1")}</b> allocates ${use} dmg → <b>${esc(tok.name)}</b>${w<=0?" — <b>slain</b>":` (${w}/${tok.maxW||1} W)`}`,"sys");
+  wp11AllocDone(false);
+}
+function wp11AllocAuto(){ // A key / banner button: identical result to WP10's automatic allocation
+  const a=wp11Alloc; if(!a) return;
+  const packets=a.packets.slice(); a.packets=[];
+  if(packets.length) aiApplyCasualties(a.tgtUk,packets,a.budget-a.applied,a.atkUk); // wounded first, closest next, sgt/CHARACTER last
+  a.applied=a.budget;
+  wp11AllocDone(true);
+}
+function wp11AllocDone(auto){
+  const a=wp11Alloc; if(!a) return;
+  const alive=state.tokens.some(t=>t.unit===a.tgtUk);
+  if(a.packets.length&&a.applied<a.budget&&alive){ wp11Banner(); draw(); return; }  // still owed
+  if(!auto) logShared(`💥 Allocation complete — ${a.applied} damage applied${alive?"":" — <b>unit destroyed</b>"}`,"sys");
+  wp11Alloc=null; wp11Banner(); draw();
+  aiPump();                                                    // resume the paused AI action queue
+}
+function wp11AllocDiscard(){ // clear / load / undo / solo-off: pending damage is dropped, never half-applied
+  if(!wp11Alloc) return;
+  wp11Alloc=null; wp11Banner();
+  logSys("Pending casualty allocation discarded.");
+}
+window.addEventListener("keydown",e=>{ /* ==== WP11: A auto-assigns pending packets (own listener; shared handler untouched) ==== */
+  if(!wp11Alloc||e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
+  if(e.key==="a"||e.key==="A"){ e.preventDefault(); wp11AllocAuto(); }
+});
+
+/* ---- Part B: the AI reads the meta ---- */
+/* Five real GT-winning lists from 11th edition's first two weekends, embedded at build time
+   (game-functional data only: unit names, model counts, points, detachment/disposition names). */
+const AI_META_LISTS=[
+  {name:"Iron Hands — Hammer of Avernii (GT winner archetype)",fid:"SM",disposition:"Priority Assets",
+   blurb:"Terminator-brick attrition — punishes any plan that can't dig a durable unit off an objective.",
+   text:"Iron Wolves (2000 points)\nSpace Marines\nStrike Force (2000 points)\nHammer of Avernii and Librarius Conclave (3 Detachment Points)\nForce Dispositions: Priority Assets\n\nCaanok Var (90 points)\n• 1x Caanok Var\n\nTerminator Assault Squad (360 points)\n• 1x Assault Terminator Sergeant\n• 9x Assault Terminator\n\nLibrarian in Terminator Armour (90 points)\n• 1x Librarian in Terminator Armour\n\nTerminator Assault Squad (360 points)\n• 1x Assault Terminator Sergeant\n• 9x Assault Terminator\n\nLibrarian (80 points)\n• 1x Librarian\n\nSternguard Veteran Squad (190 points)\n• 1x Sternguard Veteran Sergeant\n• 9x Sternguard Veteran\n\nLieutenant with Combi-weapon (85 points)\n• 1x Lieutenant\n\nIntercessor Squad (80 points)\n• 1x Intercessor Sergeant\n• 4x Intercessor\n\nIncursor Squad (85 points)\n• 1x Incursor Sergeant\n• 4x Incursor\n\nInfiltrator Squad (110 points)\n• 1x Infiltrator Sergeant\n• 4x Infiltrator\n\nLand Speeder (95 points)\n• 1x Land Speeder\n\nLand Speeder (95 points)\n• 1x Land Speeder\n\nPredator Destructor (140 points)\n• 1x Predator Destructor\n\nPredator Destructor (140 points)\n• 1x Predator Destructor"},
+  {name:"T'au Mont'ka (Nicholson)",fid:"TAU",disposition:"Purge the Foe",
+   blurb:"Alpha-strike gunline — punishes overextending into its guns on turns 1–2.",
+   text:"2k Montka 1 Tide (2000 points)\nT'au Empire\nStrike Force (2000 points)\nMont'ka (3 Detachment Points)\nForce Dispositions: Purge the Foe\n\nCadre Fireblade (50 points)\n• 1x Cadre Fireblade\n\nCommander Farsight (80 points)\n• 1x Commander Farsight\n\nThe Twin Lance (205 points)\n• 1x Ri'Lantar\n• 1x Ri'Locai\n\nBreacher Team (90 points)\n• 1x Breacher Fire Warrior Shas'ui\n• 9x Breacher Fire Warrior\n\nDevilfish (85 points)\n• 1x Devilfish\n\nDevilfish (85 points)\n• 1x Devilfish\n\nBroadside Battlesuits (150 points)\n• 1x Broadside Shas'vre\n• 1x Broadside Shas'ui\n\nBroadside Battlesuits (160 points)\n• 1x Broadside Shas'vre\n• 1x Broadside Shas'ui\n\nCrisis Sunforge Battlesuits (125 points)\n• 1x Crisis Sunforge Shas'vre\n• 2x Crisis Sunforge Shas'ui\n\nGhostkeel Battlesuit (160 points)\n• 1x Ghostkeel Battlesuit\n\nPathfinder Team (95 points)\n• 1x Pathfinder Shas'ui\n• 9x Pathfinder\n\nPathfinder Team (95 points)\n• 1x Pathfinder Shas'ui\n• 9x Pathfinder\n\nPiranhas (110 points)\n• 2x Piranha\n\nRiptide Battlesuit (200 points)\n• 1x Riptide Battlesuit\n\nSky Ray Gunship (140 points)\n• 1x Sky Ray Gunship\n\nStealth Battlesuits (100 points)\n• 1x Stealth Shas'vre\n• 4x Stealth Shas'ui\n\nVespid Stingwings (70 points)\n• 1x Vespid Strain Leader\n• 4x Vespid Stingwing"},
+  {name:"Thousand Sons Sekhetar/Warpforged (Robertson)",fid:"TS",disposition:"Priority Assets",
+   blurb:"Robot and daemon-engine grind — punishes thin anti-tank and sloppy target priority.",
+   text:"Let's Get in that Robot Club (2000 points)\nThousand Sons\nStrike Force (2000 points)\nSekhetar Cohort and Warpforged Cabal (3 Detachment Points)\nForce Dispositions: Priority Assets\n\nAhriman (100 points)\n• 1x Ahriman\n\nDaemon Prince of Tzeentch with Wings (170 points)\n• 1x Daemon Prince of Tzeentch with Wings\n\nDaemon Prince of Tzeentch with Wings (180 points)\n• 1x Daemon Prince of Tzeentch with Wings\n\nTzaangor Shaman (60 points)\n• 1x Tzaangor Shaman\n\nChaos Spawn (65 points)\n• 2x Chaos Spawn\n\nChaos Spawn (65 points)\n• 2x Chaos Spawn\n\nDefiler (310 points)\n• 1x Defiler\n\nDefiler (340 points)\n• 1x Defiler\n\nForgefiend (135 points)\n• 1x Forgefiend\n\nForgefiend (135 points)\n• 1x Forgefiend\n\nMaulerfiend (120 points)\n• 1x Maulerfiend\n\nSekhetar Robots (160 points)\n• 4x Sekhetar Robot\n\nSekhetar Robots (80 points)\n• 2x Sekhetar Robot\n\nSekhetar Robots (80 points)\n• 2x Sekhetar Robot"},
+  {name:"Tyranids Synaptic Norns (Boysen)",fid:"TYR",disposition:"Take and Hold",
+   blurb:"King-of-the-hill monsters — punishes lists that can't fell big bodies parked on the centre.",
+   text:"I like big brains and I cannot lie (1995 points)\nTyranids\nStrike Force (2000 points)\nSynaptic Nexus and Talons of the Norn Queen (3 Detachment Points)\nForce Dispositions: Disruption, Take and Hold\n\nDeathleaper (80 points)\n• 1x Deathleaper\n\nHyperadapted Raveners (180 points)\n• 1x Ravener Prime\n• 4x Raveners\n\nNeurotyrant (125 points)\n• 1x Neurotyrant\n\nBiovores (60 points)\n• 1x Biovore\n\nMaleceptor (180 points)\n• 1x Maleceptor\n\nMaleceptor (180 points)\n• 1x Maleceptor\n\nNeurolictor (80 points)\n• 1x Neurolictor\n\nNeurolictor (80 points)\n• 1x Neurolictor\n\nNorn Emissary (250 points)\n• 1x Norn Emissary\n\nNorn Emissary (270 points)\n• 1x Norn Emissary\n\nScreamer-Killer (125 points)\n• 1x Screamer-Killer\n\nScreamer-Killer (125 points)\n• 1x Screamer-Killer\n\nVon Ryan's Leapers (60 points)\n• 3x Von Ryan's Leaper\n\nZoanthropes (200 points)\n• 1x Neurothrope\n• 5x Zoanthrope"},
+  {name:"Custodes Bike Spam (Zagrzebski)",fid:"AC",disposition:"Purge the Foe",
+   blurb:"Hit-and-run elite melee — punishes chasing; hold your objectives and make it come to you.",
+   text:"Auric AF 'Mon (1995 points)\nAdeptus Custodes\nStrike Force (2000 points)\nLions of the Emperor and Might of the Moritoi (3 Detachment Points)\nForce Dispositions: Purge the Foe\n\nShield-Captain in Allarus Terminator Armour (150 points)\n• 1x Shield-Captain in Allarus Terminator Armour\n\nAllarus Custodians (275 points)\n• 5x Allarus Custodian\n\nShield-Captain on Dawneagle Jetbike (155 points)\n• 1x Shield-Captain on Dawneagle Jetbike\n\nVertus Praetors (215 points)\n• 3x Vertus Praetor\n\nShield-Captain on Dawneagle Jetbike (140 points)\n• 1x Shield-Captain on Dawneagle Jetbike\n\nVertus Praetors (215 points)\n• 3x Vertus Praetor\n\nShield-Captain on Dawneagle Jetbike (140 points)\n• 1x Shield-Captain on Dawneagle Jetbike\n\nVertus Praetors (215 points)\n• 3x Vertus Praetor\n\nAllarus Custodians (165 points)\n• 3x Allarus Custodian\n\nTelemon Heavy Dreadnought (250 points)\n• 1x Telemon Heavy Dreadnought\n\nNavigator (75 points)\n• 1x Navigator"},
+];
+/* Plan profiles over the WP10 scoring weights, chosen from the Force Disposition header.
+   Meta notes: dispositions define the scoring plan — build (and play) the list FOR it. */
+let aiPlan="hold", aiPlanSrc="";
+const AI_PLANS={
+  purge:{label:"Purge the Foe",brief:"aggressive trades — hunt kills, contest the middle, make every exchange favourable",
+    tune:{shootW:2.1,tgtWound:1.6,objBase:8,objKeep:0.45,chargeGain:1.2,advancePen:3,threatW:0.75}},
+  hold:{label:"Take and Hold / Priority Assets",brief:"objective-first — park durable OC on the deciding objectives from round 2 and out-attrit",
+    tune:{objBase:13,objContest:7,objKeep:0.75,shootW:1.5,threatW:1.0,chargeGain:1.6}},
+  recon:{label:"Reconnaissance",brief:"spread wide — board presence, mobility, a toe on every quarter",
+    tune:{objApproach:1.0,objBase:11,objKeep:0.5,rangeApproach:0.45}},
+};
+Object.assign(AI_TUNE,{ // ==== WP11 doctrine knobs (every new tunable lives here) ====
+  hidW:3.5,           // fragile shooters prefer Hidden-capable (dense) destinations
+  hidExpThresh:1.0,   // expected shooting below this → stay quiet and go Hidden
+  screenW:9,          // picket candidate bonus for cheap units
+  screenCheapPts:110, // "cheap" ceiling for a screening unit
+  screenProtectPts:150,// units worth screening for
+  stageW:5,           // round 1–2 stay-out-of-LoS pressure while outgunned
+  outgunnedRatio:1.25,// enemy guns vs ours ratio that counts as "outgunned" in round 2
+  focusW:6,           // concentrate fire to REMOVE units
+  overkill:1.3,       // allow ~30% overkill, taper beyond
+  behindObjMult:1.6,  // behind on primary → objective squatters over damage-value targets
+  shockFinishW:4,     // finish below-half units sitting on objectives
+  tradeW:0.6,         // don't feed: exposure only if swing + damage beats expected loss
+  noChaseW:1.2,       // slow melee refuses to chase faster shooters
+  holdHomeW:3,        // ...and holds the objective instead
+  primaryPeak:1.15,   // objective weights peak rounds 1–3 (primary is front-loaded in 11th)
+  primaryRelax:0.7,   // relax late when ahead
+  reconSpreadW:0.35,  // recon plan: reward spreading out
+});
+const AI_TUNE_BASE=Object.assign({},AI_TUNE); // pristine copy — plans/round curves apply onto this
+function wp11PlanFromDisposition(d){
+  d=String(d||"").toLowerCase();
+  if(d.includes("take and hold")||d.includes("priority assets")) return "hold";
+  if(d.includes("purge")) return "purge";
+  if(d.includes("recon")||d.includes("disruption")) return "recon"; // Disruption = speed+pressure; the recon profile is the closest fit
+  return "hold";
+}
+function wp11SetPlan(p,src){
+  aiPlan=AI_PLANS[p]?p:"hold"; aiPlanSrc=src||""; wp11BriefRound=0;
+  Object.assign(AI_TUNE,AI_TUNE_BASE,(AI_PLANS[aiPlan].tune)||{});
+  logShared(`🤖 <b>Game plan — ${esc(AI_PLANS[aiPlan].label)}</b>: ${esc(AI_PLANS[aiPlan].brief)}${src?` <span class="small">(${esc(src)})</span>`:""}`,"sys");
+}
+/* ---- meta muster: the verified importArmyList path, run as side 2 ---- */
+function wp11ParseList(text){ // header parsing the way importArmyList does it
+  const lines=String(text).split("\n").map(l=>l.replace(/[•●▪]/g,"").trim());
+  let fid=null,disp="",total=0;
+  for(const l of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
+  for(const l of lines.slice(0,8)){ const m=l.match(/^force dispositions?:\s*(.+)$/i); if(m){ disp=m[1].trim(); break; } }
+  const m0=(lines[0]||"").match(/\((\d+)\s*points?\)/i); if(m0) total=+m0[1];
+  const units=[]; let cur=null;
+  const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
+  lines.forEach((l,li)=>{
+    if(!l) return;
+    const um=l.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
+    if(um&&!sizeRx.test(l)&&li>0){ cur={name:um[1],pts:+um[2],models:0}; units.push(cur); return; }
+    if(cur){ const bm=l.match(/^(\d+)x\s+/i); if(bm) cur.models+=+bm[1]; }
+  });
+  return {fid,disp,total,units};
+}
+function wp11PopulateMeta(){
+  const sel=document.getElementById("aiMetaSel"); if(!sel) return;
+  sel.innerHTML='<option value="">Auto-build (faction + points below)</option>'
+    +AI_META_LISTS.map((m,i)=>`<option value="${i}">${esc(m.name)}</option>`).join("");
+  wp11MetaBlurb();
+}
+function wp11MetaBlurb(){
+  const sel=document.getElementById("aiMetaSel"), el=document.getElementById("aiMetaBlurbEl");
+  if(!sel||!el) return;
+  const m=AI_META_LISTS[parseInt(sel.value)];
+  el.textContent=m?(m.blurb+" · Force Disposition: "+m.disposition):"";
+}
+function wp11StartMeta(i){
+  const m=AI_META_LISTS[i]; if(!m) return;
+  if(conn&&conn.open){ logSys("Disconnect first — solo mode is offline only."); return; }
+  if(state.tokens.some(t=>t.owner===2)){ logSys("Side 2 already has models on the table — Clear table first, then start the meta opponent."); return; }
+  if(!state.objectives.length&&!confirm("No layout loaded — the AI plays much better with objectives and deployment zones (Setup tab). Start anyway?")) return;
+  aiReset();
+  const parsed=wp11ParseList(m.text);
+  const fid=parsed.fid||m.fid;
+  const fname=(DB.factions.find(f=>f[0]===fid)||["",m.fid])[1];
+  op({k:"name",side:2,name:"AI — "+m.name});
+  const got=wp11MusterList(m,parsed,fid);
+  aiUi();
+  logShared(`🤖 <b>Solo mode</b>: the AI fields <b>${esc(m.name)}</b> — ${esc(fname)}, ${got.pts} pts, ${got.units} units. ${esc(m.blurb)}`,"sys");
+  const disp=parsed.disp||m.disposition;
+  wp11SetPlan(wp11PlanFromDisposition(disp),"Force Disposition: "+disp);
+}
+function wp11MusterList(m,parsed,fid){
+  const prevArmy=myArmy, prevSide=mySide, prevName=myName;
+  const g=id=>document.getElementById(id);
+  const prevText=g("listText").value, prevFac=g("listFaction").value, prevDep=g("listDeploy").checked;
+  mySide=2; myName=state.names[2]||"AI";
+  const before=state.tokens.length;
+  let count=0, pts=0;
+  try{
+    g("listText").value=m.text; g("listFaction").value=fid; g("listDeploy").checked=true;
+    wp11LooseCount=true;                                       // embedded lists are known-clean: every "Nx" line is a model line
+    importArmyList();                                          // the verified import path
+    // Allied units the single-faction search misses (e.g. an Agents unit in a Custodes list): search the whole DB
+    parsed.units.forEach(u=>{
+      if(myArmy.some(c=>matchUnit([{n:c.name}],u.name)===0)) return;
+      for(const [ofid] of DB.factions){
+        if(ofid===fid) continue;
+        const idx=matchUnit(DB.units[ofid]||[],u.name);
+        if(idx>=0){ const c=addFromDb(ofid,idx,u.models||undefined,true); if(c){ deployCard(c); logSys("🤖 "+u.name+" mustered as an allied unit ("+ofid+")."); } return; }
+      }
+      logSys("🤖 Couldn't find "+u.name+" in the database — skipped.");
+    });
+    // Stamp the source list's printed points onto the cards (the list is authoritative for its own totals)
+    const used=new Set();
+    parsed.units.forEach(u=>{
+      let ci=myArmy.findIndex((c,j)=>!used.has(j)&&norm(c.name)===norm(u.name));
+      if(ci<0) ci=myArmy.findIndex((c,j)=>!used.has(j)&&matchUnit([{n:c.name}],u.name)===0);
+      if(ci>=0){ used.add(ci); myArmy[ci].pts=String(u.pts); }
+    });
+    count=myArmy.length; pts=myArmy.reduce((s,c)=>s+(parseInt(c.pts)||0),0);
+    op({k:"cards",owner:2,cards:JSON.parse(JSON.stringify(myArmy.map(migrateCard)))});
+    // Same deployment pipeline as auto-build: formation-place into the side-2 DZ, attach leaders, hold a reserve
+    const byUnit={};
+    state.tokens.slice(before).forEach(t=>{ if(t.owner===2)(byUnit[t.unit]=byUnit[t.unit]||[]).push(t); });
+    const unitsToks=Object.values(byUnit);
+    aiDeployAll(unitsToks);
+    aiAttachCharacters();
+    aiHoldReserves(unitsToks);
+  } finally {
+    wp11LooseCount=false;
+    myArmy=prevArmy; mySide=prevSide; myName=prevName;
+    g("listText").value=prevText; g("listFaction").value=prevFac; g("listDeploy").checked=prevDep;
+    try{ localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); }catch(e){}
+    renderArmy();
+  }
+  return {units:count,pts};
+}
+/* ---- plan application + once-per-round strategic brief ---- */
+let wp11ShotMark=0, wp11BriefRound=0, wp11MoveCache={key:""};
+function wp11TurnStart(round){ // aiPlanPhase case 0 hook — start of every AI turn
+  wp11ShotMark=aiShotLog.length;   // marks "who has shot this turn" for the Hidden sweep
+  wp11MoveCache={key:""};
+  wp11ApplyPlanTune(round);
+  if(round!==wp11BriefRound){ wp11BriefRound=round; aiEnqueue(()=>wp11RoundBrief(round)); }
+}
+function wp11ApplyPlanTune(round){
+  Object.assign(AI_TUNE,AI_TUNE_BASE,(AI_PLANS[aiPlan]||AI_PLANS.hold).tune||{});
+  // Meta notes: "Primary scoring is front-loaded in 11th" — press objectives hard rounds 1–3, relax late when ahead
+  const tal=wp6Tallies();
+  const ahead=tal.filter(x=>x.holder===2).length>tal.filter(x=>x.holder===1).length;
+  const pw=round<=3?AI_TUNE.primaryPeak:(ahead?AI_TUNE.primaryRelax:1);
+  AI_TUNE.objBase*=pw; AI_TUNE.objContest*=pw;
+}
+function wp11RoundBrief(round){
+  if(!solo) return;
+  const plan=AI_PLANS[aiPlan]||AI_PLANS.hold;
+  const tal=wp6Tallies(), bits=[];
+  const my=state.tokens.filter(t=>t.owner===2);
+  const cx=my.length?my.reduce((s,t)=>s+t.x,0)/my.length:state.board.w/2;
+  const cy=my.length?my.reduce((s,t)=>s+t.y,0)/my.length:2;
+  const holds=tal.map((o,i)=>({i:i+1,h:o.holder})).filter(o=>o.h===2).map(o=>"Obj "+o.i);
+  if(holds.length) bits.push("parked on "+holds.join("/"));
+  const want=tal.map((o,i)=>({o:o.o,h:o.holder,i:i+1})).filter(x=>x.h!==2)
+    .sort((a,b)=>Math.hypot(a.o.x-cx,a.o.y-cy)-Math.hypot(b.o.x-cx,b.o.y-cy)).slice(0,2).map(x=>"Obj "+x.i);
+  if(want.length) bits.push((aiPlan==="purge"?"pressing":"taking")+" "+want.join("/"));
+  const th=wp11ScreenThreats();
+  if(th.res) bits.push("screening the drop zone");
+  else if(th.fast.length) bits.push("screening against "+th.fast[0].toks[0].name);
+  if(aiPlan==="purge") bits.push("hunting trades");
+  if(aiPlan==="recon") bits.push("spreading for board presence");
+  logShared(`🤖 <b>Round ${round} — ${esc(plan.label)}</b>: ${esc(bits.join(", ")||"advancing on the centre")}`,"sys");
+}
+/* ---- doctrine 1: Hidden is premium ----
+   Meta notes: "Hidden: infantry wholly in dense terrain that hasn't shot is untargetable
+   beyond 15"" — and armies with nothing that can Hide pay for every step. */
+function wp11HiddenSweep(){ // aiPlanPhase case 3 hook — runs after the AI's shooting has resolved
+  if(!solo) return;
+  aiEnqueue(()=>{
+    const shot=new Set(aiShotLog.slice(wp11ShotMark).map(s=>s.atk));
+    aiUnits(2).forEach(u=>{
+      const ms=u.toks; if(!ms.length) return;
+      const isHid=ms.every(t=>t.hid);
+      if(isHid&&(shot.has(u.uk)||!unitHiddenEligible(ms))){ // opened fire or moved out — Hidden is gone
+        op({k:"tok~",toks:ms.map(t=>({id:t.id,hid:false}))});
+        logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${shot.has(u.uk)?"opened fire":"left cover"} — no longer Hidden`,"sys");
+        return;
+      }
+      if(isHid||shot.has(u.uk)) return;
+      if(!unitHiddenEligible(ms)) return;
+      const W=aiWeapons(ms);
+      // about to charge? staying visible is fine — the hammers are coming out anyway
+      if(W.melee.length&&aiUnits(1).some(e=>e.toks.length&&wp3UnitDist(ms,e.toks)<=12.02)) return;
+      const enemies=aiUnits(1).filter(e=>e.toks.length);
+      const cx=ms.reduce((s,t)=>s+t.x,0)/ms.length, cy=ms.reduce((s,t)=>s+t.y,0)/ms.length;
+      const exp=W.ranged.length?aiBestShoot(cx,cy,ms,W.ranged,enemies,losPrep(state.terrain)):0;
+      if(exp<AI_TUNE.hidExpThresh){
+        op({k:"tok~",toks:ms.map(t=>({id:t.id,hid:true}))});
+        logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> stays quiet in dense terrain — <b>Hidden</b> (untargetable beyond 15")`,"sys");
+      }
+    });
+  });
+}
+/* ---- doctrine 2: screening ----
+   Meta notes: Deep Strike at 6–8" is brutal; IH guide: "screen 6–8" deep strike with the
+   Infiltrators — losing a Predator to a fusion drop is the main way this goes wrong". */
+function wp11ScreenThreats(){
+  const res=((state.reserves&&state.reserves[1])||[]).length>0;
+  const fast=aiUnits(1).filter(e=>{
+    if(!e.toks.length) return false;
+    const M=Math.max(...e.toks.map(t=>(typeof t.Mv==="number")?t.Mv:6));
+    return M>=8&&aiWeapons(e.toks).melee.length>0;
+  });
+  return {res,fast};
+}
+function wp11UnitValue(ms){ const c=aiCardFor(ms[0]); return (c&&parseInt(c.pts))||ms.length*15; }
+function wp11IsCheap(ms){ return wp11UnitValue(ms)<=AI_TUNE.screenCheapPts&&!ms.some(t=>tokKw(t).includes("CHARACTER")); }
+function wp11ExtraCands(cands,ctx){ // aiMoveUnit hook: extra destination candidates
+  const th=wp11ScreenThreats();
+  if(!(th.res||th.fast.length)||!wp11IsCheap(ctx.ms)) return;
+  const prot=[];
+  const others=aiUnits(2).filter(u=>u.uk!==ctx.uk&&u.toks.length&&wp11UnitValue(u.toks)>=AI_TUNE.screenProtectPts)
+    .sort((a,b)=>wp11UnitValue(b.toks)-wp11UnitValue(a.toks));
+  if(others.length){ const hv=others[0].toks;
+    prot.push([hv.reduce((s,t)=>s+t.x,0)/hv.length,hv.reduce((s,t)=>s+t.y,0)/hv.length]); }
+  const dz=(state.dz||[])[1];
+  if(dz&&dz.length>2&&state.objectives.length){ // backfield objective = the one nearest the AI DZ centroid
+    const dx=dz.reduce((s,p)=>s+p[0],0)/dz.length, dy=dz.reduce((s,p)=>s+p[1],0)/dz.length;
+    const home=state.objectives.slice().sort((a,b)=>Math.hypot(a.x-dx,a.y-dy)-Math.hypot(b.x-dx,b.y-dy))[0];
+    if(home) prot.push([home.x,home.y]);
+  }
+  let tx=state.board.w/2, ty=state.board.h/2; // reserve drops can come anywhere — face the middle
+  if(th.fast.length){ const ft=th.fast[0].toks;
+    tx=ft.reduce((s,t)=>s+t.x,0)/ft.length; ty=ft.reduce((s,t)=>s+t.y,0)/ft.length; }
+  prot.forEach(([px2,py2])=>{
+    const d=Math.hypot(tx-px2,ty-py2)||1;
+    const g=7; // middle of the 6–8" picket band: denies 9"-away deep strike and blunts charge lanes
+    cands.push({x:px2+(tx-px2)/d*g,y:py2+(ty-py2)/d*g,screen:true,why:"screens ahead of the backfield"});
+  });
+}
+/* ---- helpers for doctrines 3/5/6: enemy gun threat + own output, cached per unit-activation ---- */
+function wp11GunThreat(enemies,ms){
+  let worst=0,total=0;
+  enemies.forEach(e=>{
+    if(!e.toks.length) return;
+    const ws=aiWeapons(e.toks).ranged; if(!ws.length) return;
+    const exp=Math.max(0,...ws.map(w=>aiExpDamage(w,e.toks.length,ms,Math.max(1,w.rng/2),false)));
+    total+=exp; if(exp>worst) worst=exp;
+  });
+  return {worst,total};
+}
+function wp11MoveInfo(ctx){
+  const key=ctx.uk+"|"+aiPhaseKey;
+  if(wp11MoveCache.key===key) return wp11MoveCache;
+  const info={key,gt:wp11GunThreat(ctx.enemies,ctx.ms),own:0,kiters:new Set()};
+  if(ctx.ranged.length&&ctx.enemies.length){
+    let near=null,ndd=1e9;
+    ctx.enemies.forEach(e=>{ if(!e.toks.length)return; const dd=wp3UnitDist(ctx.ms,e.toks); if(dd<ndd){ndd=dd;near=e;} });
+    if(near) info.own=Math.max(0,...ctx.ranged.map(w=>aiExpDamage(w,ctx.ms.length,near.toks,Math.max(1,Math.min(ndd,w.rng/2)),false)));
+  }
+  if(ctx.melee.length&&!ctx.ranged.length){
+    // doctrine 6 (IH guide, Custodes matchup: "they kill-and-retreat off ruins. Don't chase —
+    // hold objectives and force them onto you"): kiter = faster than us AND has real guns
+    ctx.enemies.forEach(e=>{
+      if(!e.toks.length) return;
+      const eM=Math.max(...e.toks.map(t=>(typeof t.Mv==="number")?t.Mv:6));
+      if(eM>ctx.M&&aiWeapons(e.toks).ranged.length) info.kiters.add(e.uk);
+    });
+  }
+  wp11MoveCache=info; return info;
+}
+function wp11ScoreAdjust(c,ctx){ // aiMoveUnit hook: doctrine scoring terms, returns a delta
+  let d=0;
+  const info=wp11MoveInfo(ctx);
+  const round=(state.trackers&&state.trackers.round)||1;
+  const inDense=state.terrain.some(t2=>LOS_DENSE[t2.kind]&&geomPointInRect(c.x,c.y,t2));
+  const objC=(c.obj!==undefined)||/Obj /.test(c.why||"");
+  // 2: screening candidates carry their own weight
+  if(c.screen) d+=AI_TUNE.screenW;
+  // 1: Hidden is premium — fragile shooters prefer destinations that keep the Hidden option open
+  //    (Meta notes: "infantry wholly in dense terrain that hasn't shot is untargetable beyond 15"")
+  if(ctx.infantry&&ctx.ranged.length&&inDense&&info.gt.worst>info.own) d+=AI_TUNE.hidW;
+  // 3: stage before committing — round 1 (and 2 if outgunned) shooters prefer out-of-LoS spots
+  //    over open lanes when expected return fire exceeds their own output
+  if(ctx.ranged.length&&!ctx.adv&&info.gt.total>info.own
+     &&(round===1||(round===2&&info.gt.total>info.own*AI_TUNE.outgunnedRatio))){
+    if(ctx.sh>0&&!inDense) d-=AI_TUNE.stageW;
+    if(inDense) d+=AI_TUNE.stageW*0.6;
+  }
+  // 5: trade math — a move into the open must earn its exposure (objective swing + damage dealt
+  //    vs expected loss; don't feed). Meta notes: alpha-pressure punishes free targets.
+  if(!inDense&&info.gt.worst>0){
+    const gain=(ctx.sh||0)*AI_TUNE.shootW+(objC?AI_TUNE.objBase*0.5:0);
+    const loss=info.gt.worst*AI_TUNE.tradeW;
+    if(loss>gain) d-=(loss-gain);
+  }
+  // 6: don't chase kiters — cancel the closing reward against faster shooters, hold objectives instead
+  if(info.kiters.size&&ctx.enemies.length){
+    let near=null,nd=1e9;
+    ctx.enemies.forEach(e=>{ if(!e.toks.length)return; const dd=Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y))); if(dd<nd){nd=dd;near=e;} });
+    if(near&&info.kiters.has(near.uk)){
+      d-=Math.max(0,20-nd)*AI_TUNE.closeW;                      // undo WP10's pure-melee closing reward
+      const ndNow=Math.min(...ctx.enemies.filter(e=>e.toks.length).map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-ctx.cx,t.y-ctx.cy)))));
+      const closure=ndNow-nd;
+      if(closure>0.5) d-=closure*AI_TUNE.noChaseW;               // actively refuse the chase
+      if(objC) d+=AI_TUNE.holdHomeW;                             // ...park on the objective and make them come
+    }
+  }
+  // recon plan: reward spreading away from the rest of the army (board presence)
+  if(aiPlan==="recon"){
+    const others=state.tokens.filter(t=>t.owner===2&&t.unit!==ctx.uk);
+    if(others.length){
+      const near=Math.min(...others.map(t=>Math.hypot(t.x-c.x,t.y-c.y)));
+      d+=Math.min(12,near)*AI_TUNE.reconSpreadW;
+    }
+  }
+  return d;
+}
+/* ---- doctrines 4 + 7: focus fire / finish shocked-prone units (aiTargetScore hook) ----
+   Meta notes: battle-shock pressure is real tech in 11th; kills that REMOVE units take their
+   OC and actions off the table — spread damage does neither. */
+function wp11TargetAdjust(s,tgt,exp){
+  const totW=tgt.toks.reduce((t2,x)=>t2+(x.wounds||1),0)||1;
+  const start=Math.max(0,...tgt.toks.map(t=>+t.u0||0))||tgt.toks.length;
+  const hurt=tgt.toks.length<start||tgt.toks.some(t=>(t.wounds||1)<(t.maxW||1));
+  if(hurt){
+    const kill=Math.min(1,exp/totW);                 // how close this volley gets to REMOVING the unit
+    s*=1+(AI_TUNE.focusW/3)*kill;
+  }
+  if(exp>AI_TUNE.overkill*totW) s*=0.8;              // ~30% overkill is fine; dumping far past it is waste
+  const tal=wp6Tallies(), mR=mmIn(40)/2;
+  const onObj=tal.some(x=>tgt.toks.some(t=>Math.hypot(t.x-x.o.x,t.y-x.o.y)-mR-tokRadius(t)<=3.02));
+  if(onObj&&aiBelowHalf(tgt.toks)) s*=1+AI_TUNE.shockFinishW/4;  // 7: finish shocked-prone squatters
+  const behind=tal.filter(x=>x.holder===2).length<tal.filter(x=>x.holder===1).length;
+  if(behind&&onObj) s*=AI_TUNE.behindObjMult;        // 4b: behind on primary → objective squatters first
+  return s;
+}
+/* ==== end WP11 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();

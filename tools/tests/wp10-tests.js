@@ -10,6 +10,7 @@
   const mb=s=>{let a=s;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};};
   Math.random=mb(1337);
   aiDelay=1;
+  g("wp11AutoCas").checked=true; // WP11: keep WP10's hands-off auto-casualties for this suite
 
   // ---- solo / netplay mutual exclusion ----
   solo=true;
