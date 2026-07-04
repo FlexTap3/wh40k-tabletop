@@ -124,6 +124,9 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
     <span class="dot" id="connDot"></span><span id="connText">Offline</span>
     <button id="btnHost" onclick="hostGame()">Host</button>
     <button id="btnJoin" onclick="joinPrompt()">Join</button>
+    <button id="btnSolo" onclick="aiSoloToggle()" title="Practise offline against a local AI opponent (plays Blue / side 2)">⚔ Solo</button><!-- ==== WP10: ai ==== -->
+    <button id="btnAiPause" style="display:none" onclick="aiPauseToggle()" title="Pause / resume the AI">⏸</button><!-- ==== WP10: ai ==== -->
+    <button id="btnAiSkip" style="display:none" onclick="aiFinishTurn()" title="Finish the AI's turn instantly">⏭</button><!-- ==== WP10: ai ==== -->
     <button id="btnReconnect" style="display:none" onclick="wp1Reconnect()" title="Rejoin the last game under the same room code">⟳ Reconnect</button><!-- WP1: resilience -->
     <button onclick="document.getElementById('helpDlg').showModal()">?</button>
   </span>
@@ -375,6 +378,19 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
   </div>
 </dialog>
 
+<!-- ==== WP10: ai ==== solo-mode setup dialog -->
+<dialog id="aiDlg">
+  <h3 style="margin-top:0">⚔ Solo vs AI</h3>
+  <div class="row"><label>AI faction</label><select id="aiFactionSel" style="min-width:220px"></select></div>
+  <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option selected>1000</option><option>1500</option><option>2000</option></select></div>
+  <div class="small" style="max-width:360px;margin-top:6px">The AI builds a list, deploys into the Blue (side 2) deployment zone and plays its own turns through the phase stepper. You play Red (side 1) and take the first turn. Load a terrain layout first so it has a deployment zone and objectives. See ? → Solo mode for what it does (and approximates).</div>
+  <div class="row" style="justify-content:flex-end; margin-top:8px">
+    <button onclick="document.getElementById('aiDlg').close()">Cancel</button>
+    <button class="primary" onclick="aiStartFromDlg()">Start solo game</button>
+  </div>
+</dialog>
+<!-- ==== end WP10 ==== -->
+
 <!-- Help dialog -->
 <dialog id="helpDlg">
   <h3 style="margin-top:0">How to play online</h3>
@@ -407,6 +423,15 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Turn sequence &amp; reserves</b>: the top-bar phase stepper walks Command→Movement→Shooting→Charge→Fight→End for each player in turn. Entering a Command phase gives both players +1 CP automatically (once per turn — the manual CP buttons still work) and logs a battle-shock reminder listing your units at half strength or less. Click one of your units and use the inspector's <b>→ Reserves</b> to lift it into the Reserves tray (bottom-left); <b>Deploy</b> from the tray shades where it may arrive — from round 2, within 6" of a battlefield edge and more than 8" from enemy models, keeping out of the enemy deployment zone before round 3, or anywhere more than 8" away with the <b>DS</b> box ticked. Shift-click places anyway (logged) if you two agree. Select a CHARACTER and another of your units (shift-click) and press <kbd>A</kbd> (or the inspector's <b>Attach</b>) to attach them — they then move, check coherency and count OC as one unit; <kbd>A</kbd> again (or <b>Detach</b>) splits them back to their original units.</li>
       <!-- ==== end WP7 ==== -->
     </ul>
+    <!-- ==== WP10: ai ==== -->
+    <h3>Solo mode</h3>
+    <ul>
+      <li><b>⚔ Solo</b> (top bar, offline only) starts a practice game against a local AI that plays Blue (side 2). Pick its faction and points; it builds a list from the database (1–2 characters, battleline, a heavy or two, infantry fill — no enhancements), deploys legally in its zone, attaches its characters to squads, and plays every phase of its own turns through the normal phase stepper. You play Red, take the first turn, and play your turns exactly as usual; press <b>›</b> at your End phase to hand over. <b>⏸/▶</b> pauses the AI mid-turn, <b>⏭</b> finishes its turn instantly. Click ⚔ Solo again to exit (its models stay put). Solo and network play are mutually exclusive.</li>
+      <li><b>What it plays</b>: it scores objectives each turn (same OC math as the markers), moves units to take/hold/contest them, keeps shooters in cover and out of charge range, shoots with the real Attack-tab dice sequence at targets in range and line of sight, attempts profitable charges (real 2D6), tests battle-shock for its half-strength units (real 2D6 vs Ld), and holds a unit in Strategic Reserves when it can. Every action logs a one-line WHY. It reads only what a player could see: the board and both sides' unit cards — no hidden information, no fudged dice.</li>
+      <li><b>Solo auto-casualties</b>: in solo mode the AI's damage is applied automatically, and when <i>you</i> roll a staged attack (inspector ⚔ flow) you're offered the same. Allocation: already-wounded model first, then closest to the attacker, squad leaders and CHARACTERs last; excess damage from one failed save is lost, mortal wounds apply one at a time; total is capped at the rolled result after FNP.</li>
+      <li><b>Documented approximations</b>: the AI fires its unit's best non-pistol/grenade weapon once per model and every other profile once (the database doesn't say who carries what); the database has no Deep Strike flag, so it uses Strategic Reserves (board-edge arrivals) instead; it spends no CP and uses no stratagems; cover and visibility use the same area-rule approximations as the 👁 tool; charges "pile in" as a straight move into contact — swing your own engaged units back manually in its Fight phase. Its 2D6/advance rolls come from a seedable RNG (<code>aiSeed(n)</code> in the console reproduces a game); attack-sequence dice are the ordinary roller's dice.</li>
+    </ul>
+    <!-- ==== end WP10 ==== -->
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
   </div>
   <div class="row" style="justify-content:flex-end; margin-top:8px"><button class="primary" onclick="document.getElementById('helpDlg').close()">Close</button></div>
@@ -441,6 +466,7 @@ document.getElementById("myName").value = myName;
 let peer=null, conn=null, isHost=false;
 function setConn(on,txt){ document.getElementById("connDot").className="dot"+(on?" on":""); document.getElementById("connText").textContent=txt; }
 function hostGame(){
+  if(typeof aiSoloBlocksNet==="function"&&aiSoloBlocksNet()) return; /* ==== WP10: ai ==== solo and netplay are mutually exclusive */
   const code = wp1HostCode(); /* WP1: stable room code so a dropped game can be re-hosted */
   peer = new Peer(code);
   peer.on("open", id=>{
@@ -454,6 +480,7 @@ function hostGame(){
   peer.on("error", e=>{ setConn(false,"Error"); logSys("Connection error: "+e.type); wp1PeerError(e); /* WP1 */ });
 }
 function joinPrompt(){
+  if(typeof aiSoloBlocksNet==="function"&&aiSoloBlocksNet()) return; /* ==== WP10: ai ==== solo and netplay are mutually exclusive */
   const code = prompt("Enter room code:"); if(!code) return;
   wp1SaveRoom("wh40k-"+code.trim().toLowerCase(),false); /* WP1: remember the room for reconnect */
   peer = new Peer();
@@ -642,6 +669,7 @@ function rollAttack(){
   lines.push(`⚑ TOTAL: ${final} damage`);
   document.getElementById("akResult").textContent=lines.join("\n");
   logShared("⚔ <b>"+esc(myName)+"</b> attack:\n"+esc(lines.join("\n")),"dice");
+  if(typeof wp10AttackDone==="function") wp10AttackDone(final,failed,mortals,dmgRolls); /* ==== WP10: ai ==== solo auto-casualties */
 }
 
 /* ============ unit database ============ */
@@ -1253,9 +1281,9 @@ function refreshTrackers(){
 function setName(v){ myName=v||"Player"; localStorage.setItem("wh40k_name",myName); op({k:"name",side:mySide,name:myName}); }
 function setSide(v){ mySide=+v; op({k:"name",side:mySide,name:myName}); }
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
-function clearTable(){ op({k:"clear"}); logShared("· Table cleared","sys"); }
+function clearTable(){ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
-function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
+function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
 function showTab(name){
   document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.id==="tab-"+name));
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
@@ -2093,6 +2121,7 @@ function wp3Stage(ctx0,wi,tgtTok){
     <b>${esc(atkName)}</b> → <b>${esc(tgtName)}</b><br>${esc(w.n)} · <span style="color:${inRange?"var(--good)":"var(--bad)"}">${esc(rHint)}</span>
     ${notes.length?`<br><span class="small">${esc(notes.join(" · "))}</span>`:""}</div>`;
   showTab("attack");
+  if(typeof aiNoteStage==="function") aiNoteStage(ctx0,tgtTok); /* ==== WP10: ai ==== remember the staged pair for solo auto-casualties */
   logSys(`Attack staged: ${atkName} → ${tgtName} with ${w.n}. Check the Attack tab and roll.`);
 }
 // Manual edits to the Attack tab clear the staged attacker→target label.
@@ -2339,6 +2368,7 @@ function wp1Snapshot(){ // called by op() BEFORE the local apply; bursts in one 
   if(wp1UndoStack.length>WP1_UNDO_DEPTH) wp1UndoStack.shift();
 }
 function wp1Undo(){
+  if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== undo mid-AI-turn cancels the AI's action chain */
   if(!wp1UndoStack.length){ logSys("Nothing to undo."); return; }
   const snap=wp1UndoStack.pop();
   wp1SkipSnap=true;
@@ -2646,6 +2676,7 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
     }
   }
   refreshTrackers();
+  if(typeof aiOnPhase==="function") aiOnPhase(); /* ==== WP10: ai ==== the AI plays side 2's phases in solo mode */
 }
 function wp7BelowHalf(owner){
   // Units at ≤ half strength: multi-model → live models vs starting strength (u0 stamped at deploy;
@@ -2865,6 +2896,797 @@ window.addEventListener("keydown",e=>{ /* WP7: A = attach/detach, Esc cancels re
   else if(e.key==="Escape") wp7CancelPlace();
 });
 /* ==== end WP7 ==== */
+
+/* ==== WP10: ai ==== solo mode — a local AI opponent that plays side 2.
+   The AI is a LOCAL actor: it mutates state ONLY via op()/applyOp (send() is a no-op
+   offline), so autosave, undo, save/load and every overlay keep working. It reads only
+   what a player could see: the board and both sides' synced cards (cards are public in
+   this app). Every approximation is documented in ? → Solo mode. */
+
+/* ---- tuning: every tactical weight in one place ---- */
+const AI_TUNE={
+  objBase:10,        // taking/holding an objective
+  objContest:6,      // extra for flipping one the player holds
+  objKeep:0.55,      // fraction of objBase for staying on one we already hold
+  objApproach:0.7,   // per-inch reward for closing on an objective the AI doesn't hold
+  rangeApproach:0.3, // per-inch reward for shooters closing to weapons range when nothing is in LoS
+  shootW:1.6,        // weight of expected shooting damage from a destination
+  coverW:2.5,        // ending inside a terrain area (INFANTRY)
+  threatW:0.9,       // expected incoming melee threat at a destination
+  advancePen:4,      // advancing forfeits shooting
+  closeW:0.4,        // pure-melee units: reward per inch of closed distance (capped)
+  chargeGain:1.4,    // expected melee damage multiplier needed to attempt a charge
+  tgtWound:1.2,      // target priority: damage vs points-per-remaining-wound
+  tgtOnObj:1.5,      // target priority: unit parked on an objective the AI doesn't hold
+  minShootExp:0.25,  // don't fire below this expected damage
+  reserveMax:1,      // units held in Strategic Reserves
+};
+
+/* ---- solo flag + seedable RNG (mulberry32; aiSeed(n) reproduces a whole game) ---- */
+let solo=false;                       // module-level, NOT in state (never syncs, never saves)
+let aiGen=0, aiTimer=null, aiPaused=false, aiQueue=[], aiDelay=600;
+let aiActing=false, aiCurTgt=null, aiCurAtk=null;   // set while the AI itself is rolling an attack
+let aiStagedTgt=null, aiStagedAtk=null;             // last player-staged attacker→target (wp3Stage hook)
+let aiShotLog=[];                     // {atk,tgt,dist,rng,vis,weapon} — every AI attack (tests assert legality)
+let aiMoved={};                       // unitId -> {advanced,charged} for the current AI turn
+let aiPhaseKey="";                    // "round:side:ph" last planned — guards double-planning
+function aiMulberry(seed){ let a=seed>>>0; return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+let aiRand=aiMulberry((Date.now()&0xffffffff)>>>0);
+function aiSeed(n){ aiRand=aiMulberry(n>>>0); }
+function aiRng(){ return aiRand(); }
+const aiD6=()=>1+Math.floor(aiRng()*6);
+
+/* ---- solo / netplay mutual exclusion + entry UI ---- */
+function aiSoloBlocksNet(){ // hooked at the top of hostGame/joinPrompt
+  if(!solo) return false;
+  logSys("Solo mode is on — click ⚔ Solo to exit it before hosting or joining a network game.");
+  return true;
+}
+function aiSoloToggle(){
+  if(solo){ if(confirm("Exit solo mode? The AI stops playing; its models stay on the table.")) aiStop(); return; }
+  if(conn&&conn.open){ logSys("You're connected to an opponent — solo mode is only available offline."); return; }
+  const sel=document.getElementById("aiFactionSel");
+  sel.innerHTML=DB.factions.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join("");
+  document.getElementById("aiDlg").showModal();
+}
+function aiStartFromDlg(){
+  const fid=document.getElementById("aiFactionSel").value||((DB.factions[0]||[])[0]);
+  const pts=parseInt(document.getElementById("aiPtsSel").value)||1000;
+  document.getElementById("aiDlg").close();
+  if(state.tokens.some(t=>t.owner===2)){ // e.g. a resumed autosave of a solo game
+    if(confirm("Side 2 already has models on the table.\n\nOK — the AI takes over that army as-is (resuming a solo game).\nCancel — abort (Clear table first for a fresh solo game)."))
+      aiTakeOver();
+    return;
+  }
+  if(!state.objectives.length&&!confirm("No layout loaded — the AI plays much better with objectives and deployment zones (Setup tab). Start anyway?")) return;
+  aiStart(fid,pts);
+}
+function aiReset(){
+  solo=true; aiGen++; aiQueue=[]; if(aiTimer){clearTimeout(aiTimer);aiTimer=null;} aiPaused=false;
+  aiShotLog=[]; aiMoved={}; aiPhaseKey="";
+  if(mySide!==1){ mySide=1; const s=document.getElementById("mySide"); if(s) s.value="1"; op({k:"name",side:1,name:myName}); }
+}
+function aiTakeOver(){ // resume solo against whatever side 2 already has (cards persist in state)
+  if(conn&&conn.open){ logSys("Disconnect first — solo mode is offline only."); return; }
+  aiReset();
+  aiUi();
+  logShared("🤖 <b>Solo mode</b>: the AI takes over the side-2 army on the table. Step the phase (›) to continue.","sys");
+}
+function aiStart(fid,pts){
+  if(conn&&conn.open){ logSys("Disconnect first — solo mode is offline only."); return; }
+  aiReset();
+  const fname=(DB.factions.find(f=>f[0]===fid)||["","AI"])[1];
+  op({k:"name",side:2,name:"AI ("+fname+")"});
+  const list=aiBuildList(fid,pts);
+  aiMuster(fid,list);
+  aiUi();
+  logShared(`🤖 <b>Solo mode</b>: the AI musters ${list.length} unit${list.length!==1?"s":""} of ${esc(fname)} (~${list.reduce((s,u)=>s+u.pts,0)} pts) on side 2 (Blue). Play your whole turn as usual, then step the phase (›) past your End phase — the AI plays its own turn and hands back.`,"sys");
+}
+function aiStop(){
+  solo=false; aiGen++; aiQueue=[]; if(aiTimer){clearTimeout(aiTimer);aiTimer=null;} aiPaused=false;
+  aiUi();
+  logSys("Solo mode off.");
+}
+function aiUi(){
+  const b=document.getElementById("btnSolo");
+  if(b) b.textContent=solo?"⚔ Solo ✓":"⚔ Solo";
+  ["btnAiPause","btnAiSkip"].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=solo?"":"none"; });
+  const p=document.getElementById("btnAiPause"); if(p) p.textContent=aiPaused?"▶":"⏸";
+}
+function aiPauseToggle(){ aiPaused=!aiPaused; aiUi(); logSys(aiPaused?"🤖 AI paused — ▶ resumes, ⏭ finishes the turn.":"🤖 AI resumed."); if(!aiPaused) aiPump(); }
+
+/* ---- pacing: a single timer + generation counter; cancel-safe by construction ---- */
+function aiEnqueue(fn){ aiQueue.push(fn); aiPump(); }
+function aiPump(){
+  if(aiTimer||aiPaused||!aiQueue.length||!solo) return;
+  const gen=aiGen;
+  aiTimer=setTimeout(()=>{
+    aiTimer=null;
+    if(gen!==aiGen||!solo||aiPaused) return;
+    const fn=aiQueue.shift();
+    if(fn){ try{ fn(); }catch(e){ console.error(e); logSys("🤖 AI error: "+(e&&e.message)); } }
+    aiPump();
+  },aiDelay);
+}
+function aiFinishTurn(){ // ⏭ — run the rest of the AI's turn instantly (also the tests' sync driver)
+  if(!solo) return;
+  const gen=aiGen;
+  if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+  aiPaused=false;
+  if(!aiQueue.length&&state.phase&&state.phase.side===2&&state.phase.ph>=0){ aiPhaseKey=""; aiOnPhase(); }
+  let guard=0;
+  while(aiQueue.length&&gen===aiGen&&solo&&guard++<3000){
+    if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+    const fn=aiQueue.shift();
+    try{ fn(); }catch(e){ console.error(e); logSys("🤖 AI error: "+(e&&e.message)); }
+  }
+  if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+  aiUi();
+}
+function aiInterrupt(){ // hooked in clearTable/loadGame/wp1Undo — no zombie timers, ever
+  if(!solo&&!aiQueue.length&&!aiTimer) return;
+  aiGen++; aiQueue=[]; if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+  aiPhaseKey="";
+  if(solo&&state.phase&&state.phase.side===2&&state.phase.ph>=0)
+    logSys("🤖 AI actions cancelled — press ⏭ to let it finish its turn, or step the phase (›) yourself.");
+}
+
+/* ---- turn loop (hooked at the end of wp7ApplyPhase) ---- */
+function aiOnPhase(){
+  if(!solo) return;
+  const p=state.phase||{};
+  if(p.side!==2||typeof p.ph!=="number"||p.ph<0){ aiUi(); return; }
+  const key=(((state.trackers&&state.trackers.round)||1)+":"+p.side+":"+p.ph);
+  if(key===aiPhaseKey) return;
+  aiPhaseKey=key;
+  if(p.ph===0) aiMoved={};   // fresh AI turn
+  aiEnqueue(()=>aiPlanPhase(p.ph));
+  aiUi();
+}
+function aiPlanPhase(ph){
+  if(!solo||!state.phase||state.phase.side!==2||state.phase.ph!==ph) return;
+  const round=(state.trackers&&state.trackers.round)||1;
+  switch(ph){
+    case 0: aiCommand(); break;
+    case 1: aiMovement(round); break;
+    case 2: aiShooting(); break;
+    case 3: aiCharges(); break;
+    case 4: aiFights(); break;
+    case 5: aiEndTurn(); break;
+  }
+  aiEnqueue(()=>{ if(solo&&state.phase.side===2&&state.phase.ph===ph) wp7Step(1); });
+}
+
+/* ---- shared helpers ---- */
+function aiUnits(owner){
+  const by={};
+  state.tokens.forEach(t=>{ if(t.owner===owner)(by[t.unit]=by[t.unit]||[]).push(t); });
+  return Object.keys(by).map(uk=>({uk,toks:by[uk]}));
+}
+function aiCardFor(t){ // like wp3CardFor but side-agnostic: cards for BOTH sides live in state.cards
+  const src=(state.cards&&state.cards[t.owner])||[];
+  const nn=norm(t.name||"");
+  return src.find(c=>(c.profiles||[]).some(p=>norm(p.n||"")===nn))
+      || src.find(c=>norm(c.name||"")===nn)
+      || src.find(c=>(c.profiles||[]).some(p=>{const q=norm(p.n||"");return q&&(q.includes(nn)||nn.includes(q));}))
+      || null;
+}
+function aiWeapons(ms){ // union of the unit's (and any attached leader's) parsed weapon lines
+  const seen=new Set(), ws=[]; let card=null;
+  ms.forEach(t=>{
+    const c=aiCardFor(t); if(!c||seen.has("c:"+c.name)) return;
+    seen.add("c:"+c.name); card=card||c;
+    String(c.weapons||"").split("\n").map(wp3ParseWeapon).filter(Boolean).forEach(w=>{
+      if(!seen.has("w:"+w.n)){ seen.add("w:"+w.n); ws.push(w); }
+    });
+  });
+  return {card,ranged:ws.filter(w=>!w.melee),melee:ws.filter(w=>w.melee)};
+}
+function aiAvgDice(s){
+  s=String(s).trim().toUpperCase();
+  const m=s.match(/^(\d*)D(3|6)([+-]\d+)?$/);
+  if(m) return (+(m[1]||1))*((+m[2]+1)/2)+(+(m[3]||0));
+  return Math.max(0,parseInt(s)||0);
+}
+// Analytic expected damage of weapon w fired by `shooters` models at unit tgtMs —
+// the same ability semantics the staged Attack tab applies, in probability form.
+function aiExpDamage(w,shooters,tgtMs,dist,cover){
+  if(!tgtMs.length) return 0;
+  const ab=wp3ParseAbilities(w.ab), t0=tgtMs[0];
+  const T=+t0.T||4, W=+t0.maxW||1, kw=tokKw(t0);
+  let A=aiAvgDice(w.A);
+  if(ab.rapid&&!w.melee&&dist<=w.rng/2+0.02) A+=ab.rapid;
+  if(ab.blast) A+=Math.floor(tgtMs.length/5);
+  A*=Math.max(1,shooters|0);
+  const bsm=String(w.BS).match(/^(\d)\+?$/);
+  let pHit,pCrit=1/6;
+  if(ab.torrent||!bsm){ pHit=1; pCrit=0; }
+  else{ let need=+bsm[1]+((cover&&!w.melee)?1:0); need=Math.max(2,Math.min(6,need)); pHit=(7-need)/6; }
+  let hits=A*pHit+A*pCrit*(ab.sus||0);
+  const S=parseInt(w.S)||4;
+  const needW=S>=2*T?2:S>T?3:S===T?4:2*S<=T?6:5;
+  const anti=ab.anti.find(a=>kw.includes(a.kw));
+  const critOn=anti?Math.min(6,Math.max(2,anti.v)):6;
+  let pW=Math.max((7-needW)/6,(7-critOn)/6);
+  let pCritW=(7-critOn)/6;
+  if(ab.twin){ pW=1-(1-pW)*(1-pW); pCritW=1-(1-pCritW)*(1-pCritW); }
+  let wounds=hits*pW;
+  if(ab.lethal) wounds+=A*pCrit*(1-pW);          // crit hits that would otherwise fail now auto-wound
+  const sv=parseInt(t0.Sv)||7, inv=parseInt(t0.iv)||0;
+  const svNeed=Math.min(7,sv+Math.abs(parseInt(w.AP)||0));
+  const useSv=inv&&inv<svNeed?inv:svNeed;
+  const pFail=useSv>=7?1:(useSv-1)/6;
+  const dmgPer=Math.min(aiAvgDice(w.D),W);       // spill beyond one model is lost
+  let unsavable=0;
+  if(ab.dev&&pW>0){ const frac=Math.min(1,pCritW/pW); unsavable=wounds*frac; wounds-=unsavable; }
+  return (wounds*pFail+unsavable)*dmgPer;
+}
+function aiMeleeThreat(enemyToks,myToks){ // what that unit's melee could do to mine
+  const em=aiWeapons(enemyToks).melee;
+  if(!em.length) return enemyToks.length*0.3;
+  return Math.max(...em.map(w=>aiExpDamage(w,enemyToks.length,myToks,0,false)));
+}
+function aiTargetScore(tgt,exp){
+  const t0=tgt.toks[0], card=aiCardFor(t0);
+  const pts=(card&&parseInt(card.pts))||tgt.toks.length*10;
+  const totW=tgt.toks.reduce((s,t)=>s+(t.wounds||1),0);
+  let s=exp*(1+AI_TUNE.tgtWound*Math.min(2,pts/Math.max(1,totW*12)));
+  const mR=mmIn(40)/2;
+  if(wp6Tallies().some(x=>x.holder!==2&&tgt.toks.some(t=>Math.hypot(t.x-x.o.x,t.y-x.o.y)-mR-tokRadius(t)<=3.02)))
+    s*=AI_TUNE.tgtOnObj;
+  return s;
+}
+
+/* ---- list building (greedy, from the embedded DB; respects p size/cost lines) ---- */
+function aiPickSize(u,budget,preferBig){
+  const opts=(u.p&&u.p.length?u.p:[["1 model","0"]])
+    .map(o=>{const m=o[0].match(/(\d+)/);return {models:m?+m[1]:1,pts:+o[1]||0};})
+    .filter(o=>o.pts>0&&o.pts<=budget)
+    .sort((a,b)=>preferBig?b.pts-a.pts:a.pts-b.pts);
+  return opts[0]||null;
+}
+function aiBuildList(fid,pts){
+  const units=DB.units[fid]||[], picked=[]; let left=pts;
+  const kOf=u=>(u.k||[]).map(s=>String(s).toUpperCase());
+  const cost0=u=>(u.p&&u.p[0]&&+u.p[0][1])||0;
+  const shuffle=a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const pool=f=>units.map((u,i)=>[u,i]).filter(([u])=>f(u)&&cost0(u)>0
+    &&!kOf(u).includes("FORTIFICATION")&&!kOf(u).includes("AIRCRAFT")&&u.r!=="Fortifications").map(([,i])=>i);
+  const take=(idxs,n,preferBig)=>{ let got=0;
+    for(const i of shuffle(idxs)){
+      if(got>=n) break;
+      const u=units[i], o=aiPickSize(u,left,preferBig);
+      if(!o) continue;
+      if(picked.filter(p=>p.idx===i).length>=2) continue; // max 2 copies of anything
+      picked.push({idx:i,size:o.models,pts:o.pts,name:u.n}); left-=o.pts; got++;
+    }
+    return got; };
+  const chars=pool(u=>kOf(u).includes("CHARACTER")&&!kOf(u).includes("EPIC HERO"));
+  const battle=pool(u=>kOf(u).includes("BATTLELINE"));
+  const heavy=pool(u=>(kOf(u).includes("VEHICLE")||kOf(u).includes("MONSTER"))
+    &&!kOf(u).includes("CHARACTER")&&!kOf(u).includes("DEDICATED TRANSPORT")&&cost0(u)>=100);
+  const inf=pool(u=>kOf(u).includes("INFANTRY")&&!kOf(u).includes("CHARACTER"));
+  take(chars,pts>=1000?2:1,false);
+  take(battle,pts>=1500?3:2,pts>=1000);
+  take(heavy,pts>=1000?2:1,false);
+  let guard=0;
+  while(left>=50&&guard++<24&&take(inf.length?inf:battle,1,false)>0){}
+  return picked;
+}
+
+/* ---- muster + deployment (normal card path: addFromDb → deployCard with mySide=2) ---- */
+function aiMuster(fid,list){
+  const prevArmy=myArmy, prevSide=mySide, prevName=myName;
+  myArmy=[]; mySide=2; myName=state.names[2]||"AI";
+  const cards=[], unitsToks=[];
+  try{
+    list.forEach(it=>{
+      const before=state.tokens.length;
+      const card=addFromDb(fid,it.idx,it.size,true);
+      if(!card) return;
+      card.pts=String(it.pts);
+      deployCard(card);
+      cards.push(migrateCard(card));
+      unitsToks.push(state.tokens.slice(before));
+    });
+  } finally {
+    myArmy=prevArmy; mySide=prevSide; myName=prevName;
+    try{ localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); }catch(e){}
+    renderArmy();
+  }
+  op({k:"cards",owner:2,cards:JSON.parse(JSON.stringify(cards))}); // inspector works on AI units
+  aiDeployAll(unitsToks);
+  aiAttachCharacters();
+  aiHoldReserves(unitsToks);
+}
+function aiUnitSpots(n,cx,cy,gap){ // formation grid centred on (cx,cy)
+  const per=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/per), out=[];
+  for(let k=0;k<n;k++){ const col=k%per,row=Math.floor(k/per);
+    out.push([cx+(col-(per-1)/2)*gap, cy+(row-(rows-1)/2)*gap]); }
+  return out;
+}
+function aiSpotOk(tok,x,y,placed){
+  const c=Object.assign({},tok,{x,y}), r=tokRadius(tok)+0.2;
+  if(x<r||y<r||x>state.board.w-r||y>state.board.h-r) return false;
+  if(wp5Illegal(c)) return false;
+  for(const p of placed) if(edgeDist(c,p)<0.12) return false;
+  return true;
+}
+function aiPlaceUnit(toks,poly,placed){
+  if(!toks.length) return false;
+  const xs=poly.map(p=>p[0]), ys=poly.map(p=>p[1]);
+  const x0=Math.min.apply(null,xs), x1=Math.max.apply(null,xs), y0=Math.min.apply(null,ys), y1=Math.max.apply(null,ys);
+  const gap=Math.max(1.3,2*tokRadius(toks[0])+0.25);
+  const cands=[];
+  for(let y=y0+1;y<=y1-1;y+=1.5) for(let x=x0+1;x<=x1-1;x+=1.5) if(wp7PtInPoly(x,y,poly)) cands.push([x,y]);
+  for(let i=cands.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); const t=cands[i]; cands[i]=cands[j]; cands[j]=t; }
+  for(let pass=0;pass<2;pass++){ // pass 1 keeps clear of other units; pass 2 only avoids terrain/board edges
+    for(const [cx,cy] of cands){
+      const spots=aiUnitSpots(toks.length,cx,cy,gap);
+      if(spots.every(([x,y],i)=>wp7PtInPoly(x,y,poly)&&aiSpotOk(toks[i],x,y,pass?[]:placed))){
+        op({k:"tok~",toks:toks.map((t,i)=>({id:t.id,x:spots[i][0],y:spots[i][1]}))});
+        placed.push.apply(placed,toks);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+function aiDeployAll(unitsToks){
+  const poly=(state.dz&&state.dz[1])||null;
+  if(!poly||poly.length<3){ logSys("🤖 No side-2 deployment zone found — load a layout in Setup for legal AI deployment."); return; }
+  const placed=state.tokens.filter(t=>t.owner===1).slice();
+  unitsToks.slice().sort((a,b)=>b.length-a.length).forEach(toks=>{ // biggest units grab space first
+    if(!aiPlaceUnit(toks,poly,placed))
+      logSys("🤖 Couldn't fit "+((toks[0]&&toks[0].name)||"a unit")+" in the DZ — left where it dropped; drag it if needed.");
+  });
+}
+function aiAttachCharacters(){ // leaders join squads at deployment (as the rules have it)
+  const squads=aiUnits(2).filter(u=>u.toks.length>=3&&unitHasKw(u.toks,["INFANTRY"])
+    &&!u.toks.some(t=>tokKw(t).includes("CHARACTER")));
+  const used=new Set();
+  aiUnits(2).forEach(u=>{
+    if(!u.toks.every(t=>tokKw(t).includes("CHARACTER"))||u.toks.length>2) return;
+    if(!unitHasKw(u.toks,["INFANTRY"])) return;              // mounted/vehicle characters stay solo
+    const chr=u.toks;
+    const host=squads.filter(s=>!used.has(s.uk))
+      .sort((a,b)=>edgeDist(chr[0],a.toks[0])-edgeDist(chr[0],b.toks[0]))[0];
+    if(!host) return;
+    used.add(host.uk);
+    op({k:"tok~",toks:chr.map(t=>({id:t.id,attachedFrom:t.unit,unit:host.uk}))});
+    // snuggle the character next to the squad (nudge until legal)
+    const h0=host.toks[0], need=tokRadius(chr[0])+tokRadius(h0)+0.15;
+    const offs=[[need,0],[-need,0],[0,need],[0,-need],[need,need],[-need,need],[need,-need],[-need,-need]];
+    for(const [ox,oy] of offs){
+      if(aiSpotOk(chr[0],h0.x+ox,h0.y+oy,state.tokens.filter(t=>t.id!==chr[0].id))){
+        op({k:"tok~",toks:[{id:chr[0].id,x:h0.x+ox,y:h0.y+oy}]});
+        break;
+      }
+    }
+    logShared(`🤖 AI attaches <b>${esc(chr[0].name)}</b> to <b>${esc(h0.name)}</b>`,"sys");
+  });
+}
+function aiHoldReserves(unitsToks){ // no Deep Strike data in the DB → Strategic Reserves (see help)
+  if(AI_TUNE.reserveMax<1||unitsToks.length<4) return;
+  const cand=aiUnits(2).filter(u=>{
+    const ms=u.toks;
+    return ms.length>=3&&ms.length<=10&&ms.every(t=>tokKw(t).includes("INFANTRY"))
+      &&!ms.some(t=>tokKw(t).includes("CHARACTER")||t.attachedFrom);
+  }).sort((a,b)=>a.toks.length-b.toks.length);
+  if(!cand.length) return;
+  const toks=cand[0].toks;
+  const entry={id:cand[0].uk,owner:2,name:toks[0].name,ds:false,toks:JSON.parse(JSON.stringify(toks))};
+  op({k:"rsv+",res:entry});
+  op({k:"tok-",ids:toks.map(t=>t.id)});
+  logShared(`🤖 AI holds <b>${esc(entry.name)}</b> ×${entry.toks.length} in Strategic Reserves`,"sys");
+}
+
+/* ---- Command phase: battle-shock tests (real 2D6 vs Ld) for below-half AI units ---- */
+function aiBelowHalf(ms){
+  const start=Math.max(0,...ms.map(t=>+t.u0||0))||ms.length;
+  if(start>1) return ms.length*2<=start;
+  return (ms[0].maxW||1)>1&&(ms[0].wounds||0)*2<=ms[0].maxW;
+}
+function aiLd(ms){
+  const card=aiCardFor(ms[0]);
+  const p=(card&&(card.profiles||[]).find(x=>norm(x.n||"")===norm(ms[0].name||"")))||(card&&card.profiles&&card.profiles[0]);
+  return parseInt(p&&p.Ld)||7;
+}
+function aiCommand(){
+  aiUnits(2).forEach(u=>{
+    if(!aiBelowHalf(u.toks)){
+      if(u.toks.some(t=>t.bs)) op({k:"tok~",toks:u.toks.map(t=>({id:t.id,bs:false}))}); // rallied
+      return;
+    }
+    aiEnqueue(()=>{
+      const ms=state.tokens.filter(t=>t.unit===u.uk); if(!ms.length) return;
+      const ld=aiLd(ms), a=aiD6(), b=aiD6(), ok=a+b>=ld;
+      op({k:"tok~",toks:ms.map(t=>({id:t.id,bs:!ok}))});
+      logShared(`🎲 🤖 <b>${esc(ms[0].name)}</b> Battle-shock (Ld ${ld}+): ${a}+${b} = ${a+b} — <b>${ok?"PASSED":"FAILED — battle-shocked!"}</b>`,"dice");
+    });
+  });
+}
+
+/* ---- Movement phase: score candidate destinations, execute formation moves ---- */
+function aiBestShoot(x,y,ms,ranged,enemies,prep){ // best expected damage from a spot (sampled LoS)
+  if(!ranged.length) return 0;
+  let best=0;
+  const src={x,y,r:0,lvl:0};
+  enemies.forEach(e=>{
+    let cd=Infinity,cm=null;
+    e.toks.forEach(t=>{ const d=Math.hypot(t.x-x,t.y-y)-tokRadius(t); if(d<cd){cd=d;cm=t;} });
+    if(!cm) return;
+    ranged.forEach(w=>{
+      if(cd>w.rng+0.02) return;
+      const p=losPair(src,{x:cm.x,y:cm.y,r:tokRadius(cm),lvl:cm.lvl||0},prep,false);
+      if(!p.vis) return;
+      const exp=aiExpDamage(w,ms.length,e.toks,cd,p.part);
+      if(exp>best) best=exp;
+    });
+  });
+  return best;
+}
+function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
+  const scales=[1,0.85,0.7,0.5], offs=[[0,0],[0.8,0],[-0.8,0],[0,0.8],[0,-0.8],[1.4,1.4],[-1.4,1.4],[1.4,-1.4],[-1.4,-1.4]];
+  for(const sc of scales) for(const [ox,oy] of offs){
+    const good=ms.every(t=>{
+      const c=Object.assign({},t,{x:t.x+tx*sc+ox,y:t.y+ty*sc+oy});
+      const r=tokRadius(c)+0.1;
+      if(c.x<r||c.y<r||c.x>state.board.w-r||c.y>state.board.h-r) return false;
+      if(wp5Illegal(c)) return false;
+      for(const e of enemyToks){
+        if(!allowEngage&&edgeDist(c,e)<=1.05) return false;   // may not end within 1" unless charging
+        if(allowEngage&&edgeDist(c,e)<-0.05) return false;    // …but never overlapping bases
+      }
+      for(const o of state.tokens) if(o.owner===c.owner&&o.unit!==c.unit&&edgeDist(c,o)<0.02) return false;
+      return true;
+    });
+    if(good){ op({k:"tok~",toks:ms.map(t=>({id:t.id,x:t.x+tx*sc+ox,y:t.y+ty*sc+oy}))}); return true; }
+  }
+  return false;
+}
+function aiMoveUnit(uk){
+  const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  const M=Math.min(...ms.map(t=>(typeof t.Mv==="number"&&t.Mv>0)?t.Mv:6));
+  const cx=ms.reduce((s,t)=>s+t.x,0)/ms.length, cy=ms.reduce((s,t)=>s+t.y,0)/ms.length;
+  const W=aiWeapons(ms), ranged=W.ranged, melee=W.melee;
+  const enemies=aiUnits(1).filter(e=>e.toks.length);
+  const tal=wp6Tallies(), prep=losPrep(state.terrain);
+  const infantry=unitHasKw(ms,KW_COVER);
+  const unitOC=ms.reduce((s,t)=>s+(t.bs?0:(+t.OC||0)),0);
+  // --- candidates: hold, objective approaches (normal + advance reach), stand-off, cover ---
+  const cands=[{x:cx,y:cy,why:"holds position"}];
+  tal.forEach((o,i)=>{
+    const dx=o.o.x-cx, dy=o.o.y-cy, d=Math.hypot(dx,dy)||0.001;
+    [Math.min(Math.max(0,d-1.2),M), Math.min(Math.max(0,d-1.2),M+3.5)].forEach(step=>{
+      if(step>0.2) cands.push({x:cx+dx/d*step, y:cy+dy/d*step, obj:i, why:"→ Obj "+(i+1)});
+    });
+  });
+  if(enemies.length){ // straight at the nearest enemy (shooters close to range, melee closes to charge)
+    let near=null,nd=Infinity;
+    enemies.forEach(e=>{ const d=wp3UnitDist(ms,e.toks); if(d<nd){nd=d;near=e;} });
+    if(near&&nd>1.5){
+      const ex=near.toks.reduce((s,t)=>s+t.x,0)/near.toks.length, ey=near.toks.reduce((s,t)=>s+t.y,0)/near.toks.length;
+      const d=Math.hypot(ex-cx,ey-cy)||0.001, step=Math.min(M,Math.max(0,d-2.2));
+      if(step>0.5) cands.push({x:cx+(ex-cx)/d*step,y:cy+(ey-cy)/d*step,why:"pushes toward "+near.toks[0].name});
+    }
+  }
+  if(ranged.length&&enemies.length){ // shooters back away from the nearest melee threat
+    let near=null,nd=Infinity;
+    enemies.forEach(e=>{ const d=wp3UnitDist(ms,e.toks); if(d<nd){nd=d;near=e;} });
+    if(near&&nd<10){
+      const ex=near.toks.reduce((s,t)=>s+t.x,0)/near.toks.length, ey=near.toks.reduce((s,t)=>s+t.y,0)/near.toks.length;
+      const d=Math.hypot(cx-ex,cy-ey)||0.001, step=Math.min(M,Math.max(0,12-nd));
+      if(step>0.5) cands.push({x:cx+(cx-ex)/d*step,y:cy+(cy-ey)/d*step,why:"backs away from "+near.toks[0].name});
+    }
+  }
+  if(infantry) state.terrain.forEach(ter=>{ // cover spots within normal move
+    if(!LOS_DENSE[ter.kind]) return;
+    const tx2=ter.x+ter.w/2, ty2=ter.y+ter.h/2, d=Math.hypot(tx2-cx,ty2-cy);
+    if(d>0.3&&d<=M) cands.push({x:tx2,y:ty2,why:"takes cover"});
+  });
+  cands.forEach(c=>{ c.x=Math.min(state.board.w-1,Math.max(1,c.x)); c.y=Math.min(state.board.h-1,Math.max(1,c.y)); });
+  // --- score every candidate ---
+  cands.forEach(c=>{
+    const d=Math.hypot(c.x-cx,c.y-cy), adv=d>M+0.05;
+    let s=0, why2=null;
+    tal.forEach((o,i)=>{ // objective swing if the unit ends on the marker, gradient toward it otherwise
+      const dd=Math.hypot(o.o.x-c.x,o.o.y-c.y), wasOn=Math.hypot(o.o.x-cx,o.o.y-cy)<=2.8, onIt=dd<=2.2;
+      if(!onIt){
+        const dNow=Math.hypot(o.o.x-cx,o.o.y-cy), gain=dNow-dd;
+        if(gain>0.1) s+=gain*AI_TUNE.objApproach*(o.holder!==2?1:0.12)/Math.max(1,Math.sqrt(dNow/14));
+        return;
+      }
+      const ocWithout=o.oc2-(wasOn?unitOC:0), oc2=ocWithout+unitOC;
+      const holderAfter=o.oc1>oc2?1:oc2>o.oc1?2:(o.o.sec||0);
+      if(holderAfter===2&&o.holder!==2){ s+=AI_TUNE.objBase+(o.holder===1?AI_TUNE.objContest:0); why2=`→ Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
+      else if(holderAfter===2){
+        if(ocWithout>o.oc1){ s+=1.2; why2=`screens Obj ${i+1}`; }              // already held without this unit — don't pile on
+        else { s+=AI_TUNE.objBase*AI_TUNE.objKeep; why2=`holds Obj ${i+1}`; }
+      }
+      else { s+=AI_TUNE.objContest*0.5; why2=`contests Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
+    });
+    const sh=adv?0:aiBestShoot(c.x,c.y,ms,ranged,enemies,prep);
+    s+=sh*AI_TUNE.shootW;
+    if(!adv&&ranged.length&&enemies.length&&sh===0){ // nothing in LoS/range: close toward the fight
+      const ndTo=p2=>Math.min(...enemies.map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-p2[0],t.y-p2[1])))));
+      const gain=ndTo([cx,cy])-ndTo([c.x,c.y]);
+      if(gain>0.1) s+=gain*AI_TUNE.rangeApproach;
+    }
+    if(adv) s-=AI_TUNE.advancePen*(ranged.length?1:0.3);
+    if(infantry&&state.terrain.some(t2=>LOS_DENSE[t2.kind]&&geomPointInRect(c.x,c.y,t2))) s+=AI_TUNE.coverW;
+    enemies.forEach(e=>{ // incoming melee threat at the destination
+      const eM=Math.max(...e.toks.map(t=>(typeof t.Mv==="number")?t.Mv:6));
+      const exd=Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)));
+      if(exd<=eM+8) s-=aiMeleeThreat(e.toks,ms)*AI_TUNE.threatW*((ranged.length&&!melee.length)?1.4:0.7);
+    });
+    if(melee.length&&!ranged.length&&enemies.length){ // pure melee closes distance
+      const nd=Math.min(...enemies.map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)))));
+      s+=Math.max(0,20-nd)*AI_TUNE.closeW;
+    }
+    c.s=s; if(why2) c.why=why2;
+  });
+  cands.sort((a,b)=>b.s-a.s);
+  const enemyToks=state.tokens.filter(t=>t.owner===1);
+  for(const c of cands){
+    const dx=c.x-cx, dy=c.y-cy, dist=Math.hypot(dx,dy);
+    if(dist<0.3){ aiMoved[uk]={advanced:false}; logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}`,"sys"); return; }
+    let advanced=false, allow=M;
+    if(dist>M+0.05){ allow=M+aiD6(); advanced=true; }        // real advance roll (AI dice)
+    const f=Math.min(1,allow/dist);
+    if(aiTryTranslate(ms,dx*f,dy*f,enemyToks,false)){
+      aiMoved[uk]={advanced};
+      logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}${advanced?` — <b>advances</b> ${(dist*f).toFixed(1)}" (M ${M}"+D6, no shooting)`:` (${(dist*f).toFixed(1)}")`}`,"sys");
+      return;
+    }
+  }
+  aiMoved[uk]={advanced:false};
+}
+function aiResSpotScore(x,y,tal){
+  if(!tal.length) return 0;
+  return -Math.min(...tal.filter(o=>o.holder!==2).concat(tal).map(o=>Math.hypot(o.o.x-x,o.o.y-y)));
+}
+function aiArriveReserves(round){
+  if(round<2) return;
+  ((state.reserves&&state.reserves[2])||[]).slice().forEach(entry=>{
+    aiEnqueue(()=>{
+      const e=((state.reserves&&state.reserves[2])||[]).find(r=>r.id===entry.id); if(!e) return;
+      const toks=JSON.parse(JSON.stringify(e.toks||[])); if(!toks.length){ op({k:"rsv-",id:e.id}); return; }
+      const enemies=state.tokens.filter(t=>t.owner!==2), enemyDz=(state.dz||[])[0];
+      const tal=wp6Tallies(), spots=[];
+      for(let x=3;x<state.board.w-2;x+=3){ spots.push([x,3],[x,state.board.h-3]); }
+      for(let y=3;y<state.board.h-2;y+=3){ spots.push([3,y],[state.board.w-3,y]); }
+      spots.sort((a,b)=>aiResSpotScore(b[0],b[1],tal)-aiResSpotScore(a[0],a[1],tal));
+      const cx=toks.reduce((s,t)=>s+t.x,0)/toks.length, cy=toks.reduce((s,t)=>s+t.y,0)/toks.length;
+      for(const [sx,sy] of spots){
+        const moved=toks.map(t=>Object.assign({},t,{x:t.x+sx-cx,y:t.y+sy-cy}));
+        if(wp7ArriveIllegal(moved,!!e.ds,round,state.board,enemyDz,enemies)) continue;
+        if(!moved.every(t=>!wp5Illegal(t)&&t.x>tokRadius(t)&&t.y>tokRadius(t)
+          &&t.x<state.board.w-tokRadius(t)&&t.y<state.board.h-tokRadius(t)
+          &&state.tokens.every(o=>edgeDist(t,o)>0.02))) continue;
+        op({k:"rsv-",id:e.id});
+        op({k:"tok+",toks:moved});
+        logShared(`🤖 AI brings <b>${esc(e.name)}</b> in from Strategic Reserves`,"sys");
+        return;
+      }
+      logSys("🤖 No legal arrival spot for "+e.name+" this turn — it waits in Reserves.");
+    });
+  });
+}
+function aiMovement(round){
+  aiArriveReserves(round);
+  aiUnits(2).forEach(u=>aiEnqueue(()=>aiMoveUnit(u.uk)));
+}
+
+/* ---- Shooting phase: real Attack-tab dice, staged programmatically ---- */
+function aiMainWeapon(ranged){
+  // Approximation (see help): the unit's standard armament — the volume-of-fire profile
+  // (highest attacks, then lowest damage, i.e. the basic gun, not the one-per-squad special)
+  // fires once per model; every other profile fires once per unit.
+  const basic=ranged.filter(w=>!/pistol|grenade/i.test(w.n+" "+w.ab));
+  const pool=basic.length?basic:ranged;
+  return pool.reduce((a,b)=>{
+    const aa=aiAvgDice(a.A), bb=aiAvgDice(b.A);
+    if(bb!==aa) return bb>aa?b:a;
+    return aiAvgDice(b.D)<aiAvgDice(a.D)?b:a;
+  });
+}
+function aiMulA(spec,n){ // per-model attacks × model count: "2"×5→"10", "D6"×5→"5D6", "2D6+1"×3→"6D6+3"
+  spec=String(spec).trim().toUpperCase();
+  if(n<=1) return spec;
+  const m=spec.match(/^(\d*)D(3|6)([+-]\d+)?$/);
+  if(m){ const add=(+(m[3]||0))*n; return ((+(m[1]||1))*n)+"D"+m[2]+(add>0?"+"+add:add<0?String(add):""); }
+  const v=parseInt(spec); return isNaN(v)?spec:String(v*n);
+}
+function aiFireWeapon(atkUk,atkMs,w,shooters,tgt,los){
+  const g=id=>document.getElementById(id);
+  const vals=["akA","akBS","akS","akAP","akD","akHitMod","akWndMod","akRrHit","akRrWnd","akSus","akAnti","tgT","tgSv","tgInv","tgFNP"];
+  const chks=["akLethal","akTwin","akDev","tgCover"];
+  const saved={},savedC={},savedLabel=wp3Label;
+  vals.forEach(i=>saved[i]=g(i).value); chks.forEach(i=>savedC[i]=g(i).checked);
+  const ab=wp3ParseAbilities(w.ab), t0=tgt.toks[0];
+  let A=String(w.A).toUpperCase();
+  if(ab.rapid&&!w.melee&&los.dist<=w.rng/2+0.02) A=wp3AddA(A,ab.rapid);
+  if(ab.blast){ const b=Math.floor(tgt.toks.length/5); if(b) A=wp3AddA(A,b); }
+  A=aiMulA(A,shooters);
+  g("akA").value=A;
+  const bs=String(w.BS).match(/^(\d)\+?$/);
+  g("akBS").value=(ab.torrent||!bs)?"auto":bs[1]+"+";
+  g("akS").value=parseInt(w.S)||0;
+  const apv=String(-Math.abs(parseInt(w.AP)||0));
+  g("akAP").value=["0","-1","-2","-3","-4","-5"].includes(apv)?apv:"-5";
+  g("akD").value=w.D;
+  g("akHitMod").value="0"; g("akWndMod").value="0";
+  g("akRrHit").value="none"; g("akRrWnd").value="none";
+  g("akLethal").checked=ab.lethal; g("akTwin").checked=ab.twin; g("akDev").checked=ab.dev;
+  g("akSus").value=ab.sus;
+  const anti=ab.anti.find(a=>tokKw(t0).includes(a.kw));
+  g("akAnti").value=(anti&&anti.v>=2&&anti.v<=5)?String(anti.v):"0";
+  if(t0.T) g("tgT").value=t0.T;
+  const sv=String(t0.Sv||"").match(/^([2-6])\+?$/);
+  g("tgSv").value=sv?sv[1]+"+":"7";
+  const iv=String(t0.iv||"").match(/^([3-6])\+?$/);
+  g("tgInv").value=iv?iv[1]:"0";
+  g("tgFNP").value="0";
+  g("tgCover").checked=!!(los&&los.cover&&!w.melee);
+  const atkCard=aiCardFor(atkMs[0]), tgtCard=aiCardFor(t0);
+  const atkName=(atkCard&&atkCard.name)||atkMs[0].name, tgtName=(tgtCard&&tgtCard.name)||t0.name;
+  logShared(`🤖 AI: <b>${esc(atkName)}</b> ${w.melee?"fights":"shoots"} <b>${esc(tgtName)}</b> with ${esc(w.n)}${shooters>1?" ×"+shooters:""} (${w.melee?"engaged":los.dist.toFixed(1)+'"'}${los.cover&&!w.melee?", target in cover":""})`,"sys");
+  wp3Label=`⚔ AI: ${atkName} → ${tgtName} · ${w.n}${shooters>1?" ×"+shooters:""}`;
+  aiActing=true; aiCurTgt=tgt.uk; aiCurAtk=atkUk;
+  const prevName=myName; myName=state.names[2]||"AI";
+  try{ rollAttack(); }
+  finally{
+    myName=prevName;
+    aiActing=false; aiCurTgt=null; aiCurAtk=null;
+    wp3Label=savedLabel;                                    // no leftover staged state
+    vals.forEach(i=>g(i).value=saved[i]); chks.forEach(i=>g(i).checked=savedC[i]);
+    const st=g("akStage"); if(st) st.style.display="none";
+  }
+}
+function aiShootUnit(uk){
+  const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  if(aiMoved[uk]&&aiMoved[uk].advanced) return;              // advanced — no shooting
+  const W=aiWeapons(ms); if(!W.ranged.length) return;
+  const main=aiMainWeapon(W.ranged);
+  W.ranged.forEach(w=>{
+    aiEnqueue(()=>{
+      const ms2=state.tokens.filter(t=>t.unit===uk); if(!ms2.length) return;
+      const shooters=(w===main)?ms2.length:1;
+      let best=null;
+      aiUnits(1).forEach(e=>{
+        if(!e.toks.length) return;
+        const los=losCheckUnits(uk,e.uk);
+        if(!los||!los.vis||los.dist>w.rng+0.02) return;
+        const exp=aiExpDamage(w,shooters,e.toks,los.dist,!!los.cover);
+        if(exp<AI_TUNE.minShootExp) return;
+        const sc=aiTargetScore(e,exp);
+        if(!best||sc>best.sc) best={e,los,sc};
+      });
+      if(!best) return;
+      aiShotLog.push({atk:uk,tgt:best.e.uk,dist:best.los.dist,rng:w.rng,vis:best.los.vis,weapon:w.n});
+      aiFireWeapon(uk,ms2,w,shooters,best.e,best.los);
+    });
+  });
+}
+function aiShooting(){ aiUnits(2).forEach(u=>aiEnqueue(()=>aiShootUnit(u.uk))); }
+
+/* ---- Charge + Fight phases ---- */
+function aiClosestPair(aToks,bToks){
+  let best=[aToks[0],bToks[0]], d=Infinity;
+  aToks.forEach(a=>bToks.forEach(b=>{ const e=edgeDist(a,b); if(e<d){d=e;best=[a,b];} }));
+  return best;
+}
+function aiChargeUnit(uk){
+  const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  if(aiMoved[uk]&&aiMoved[uk].advanced) return;              // advanced units can't charge
+  if(ms.every(t=>t.bs)) return;                              // battle-shocked units play safe
+  const W=aiWeapons(ms); if(!W.melee.length) return;
+  let best=null;
+  aiUnits(1).forEach(e=>{
+    if(!e.toks.length) return;
+    const d=wp3UnitDist(ms,e.toks);
+    if(d>12.02||d<=1.02) return;
+    const los=losCheckUnits(uk,e.uk);
+    if(!los||!los.vis) return;
+    const exp=Math.max(...W.melee.map(w=>aiExpDamage(w,ms.length,e.toks,0,false)));
+    const profit=exp*AI_TUNE.chargeGain-aiMeleeThreat(e.toks,ms);
+    if(profit>0&&(!best||profit>best.profit)) best={e,d,profit};
+  });
+  if(!best) return;
+  const a=aiD6(),b=aiD6(),roll=a+b;                          // real charge roll (AI dice)
+  if(roll+1.02<best.d){
+    logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> needs ${best.d.toFixed(1)}", rolled ${a}+${b}=${roll} — <b>failed</b>`,"dice");
+    return;
+  }
+  const [am,bm]=aiClosestPair(ms,best.e.toks);
+  const need=Math.max(0,edgeDist(am,bm)-0.15), dd=Math.hypot(bm.x-am.x,bm.y-am.y)||1;
+  if(aiTryTranslate(ms,(bm.x-am.x)/dd*need,(bm.y-am.y)/dd*need,state.tokens.filter(t=>t.owner===1),true)){
+    aiMoved[uk]=Object.assign(aiMoved[uk]||{},{charged:true});
+    logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> rolled ${a}+${b}=${roll} vs ${best.d.toFixed(1)}" — <b>made it</b> (base contact approximation)`,"dice");
+  } else {
+    logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> rolled ${a}+${b}=${roll} but can't fit into contact — stays put`,"dice");
+  }
+}
+function aiCharges(){ aiUnits(2).forEach(u=>aiEnqueue(()=>aiChargeUnit(u.uk))); }
+function aiFightUnit(uk){
+  const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  const W=aiWeapons(ms); if(!W.melee.length) return;
+  let best=null;
+  aiUnits(1).forEach(e=>{
+    if(!e.toks.length||wp3UnitDist(ms,e.toks)>1.02) return;
+    const w=W.melee.reduce((a2,b2)=>aiExpDamage(b2,ms.length,e.toks,0,false)>aiExpDamage(a2,ms.length,e.toks,0,false)?b2:a2);
+    const sc=aiTargetScore(e,aiExpDamage(w,ms.length,e.toks,0,false));
+    if(!best||sc>best.sc) best={e,w,sc};
+  });
+  if(!best) return;
+  const engaged=Math.max(1,ms.filter(t=>best.e.toks.some(b2=>edgeDist(t,b2)<=2.02)).length); // within 1", or 1" of those (approx 2")
+  aiShotLog.push({atk:uk,tgt:best.e.uk,dist:0,rng:1,vis:true,weapon:best.w.n,melee:true});
+  aiFireWeapon(uk,ms,best.w,engaged,best.e,{dist:0,vis:true,cover:false});
+  logSys("Your engaged units can strike back — fights alternate; roll yours from the inspector (⚔ on a melee weapon).");
+}
+function aiFights(){ aiUnits(2).forEach(u=>aiEnqueue(()=>aiFightUnit(u.uk))); }
+function aiEndTurn(){
+  const tal=wp6Tallies();
+  const n1=tal.filter(x=>x.holder===1).length, n2=tal.filter(x=>x.holder===2).length;
+  logShared(`🤖 <b>End of AI turn</b> — objectives: <b style="color:var(--p1)">${esc(state.names[1]||"P1")}</b> ${n1}, <b style="color:var(--p2)">${esc(state.names[2]||"AI")}</b> ${n2} · score VP per your mission (buttons above)`,"sys");
+}
+
+/* ---- solo auto-casualties (both sides' attacks; hooked at the end of rollAttack) ---- */
+function aiNoteStage(ctx0,tgtTok){ // wp3Stage hook: remember the player's staged attacker→target
+  aiStagedAtk=(ctx0&&ctx0.tok&&ctx0.tok.unit)||null;
+  aiStagedTgt=(tgtTok&&tgtTok.unit)||null;
+}
+function aiApplyCasualties(tgtUk,packets,budget,atkUk){
+  // Allocation: already-wounded model first, then closest to the attacker, sgt/CHARACTER
+  // last. One packet = one failed save's damage (or one mortal wound): excess is lost.
+  const atkMs=state.tokens.filter(t=>t.unit===atkUk);
+  const ax=atkMs.length?atkMs.reduce((s,t)=>s+t.x,0)/atkMs.length:0;
+  const ay=atkMs.length?atkMs.reduce((s,t)=>s+t.y,0)/atkMs.length:0;
+  const live=state.tokens.filter(t=>t.unit===tgtUk).map(t=>({t,w:t.wounds||1}));
+  if(!live.length) return;
+  const name=live[0].t.name;
+  const cmp=(a,b)=>{
+    const la=(a.t.sgt||tokKw(a.t).includes("CHARACTER"))?1:0, lb=(b.t.sgt||tokKw(b.t).includes("CHARACTER"))?1:0;
+    if(la!==lb) return la-lb;
+    const wa=a.w<(a.t.maxW||1)?0:1, wb=b.w<(b.t.maxW||1)?0:1;
+    if(wa!==wb) return wa-wb;
+    if(!atkMs.length) return 0;
+    return Math.hypot(a.t.x-ax,a.t.y-ay)-Math.hypot(b.t.x-ax,b.t.y-ay);
+  };
+  let applied=0;
+  for(const pkt of packets){
+    if(applied>=budget) break;
+    const alive=live.filter(x=>x.w>0);
+    if(!alive.length) break;
+    alive.sort(cmp);
+    const cur=alive[0];
+    const use=Math.min(pkt,cur.w,budget-applied);            // in-packet excess is lost
+    cur.w-=use; applied+=use;
+  }
+  const updates=[],removals=[];
+  live.forEach(x=>{ if(x.w<=0) removals.push(x.t.id); else if(x.w!==(x.t.wounds||1)) updates.push({id:x.t.id,wounds:x.w}); });
+  if(updates.length) op({k:"tok~",toks:updates});
+  if(removals.length) op({k:"tok-",ids:removals});
+  const gone=!state.tokens.some(t=>t.unit===tgtUk);
+  logShared(`💥 Solo: ${applied} damage applied to <b>${esc(name)}</b>${removals.length?` — ${removals.length} model${removals.length!==1?"s":""} slain`:""}${gone?" — <b>unit destroyed</b>":""}`,"sys");
+}
+function wp10AttackDone(final,failed,mortals,dmgRolls){ // rollAttack hook (solo only)
+  if(!solo) return;
+  let tgtUk=null, atkUk=null, auto=false;
+  if(aiActing){ tgtUk=aiCurTgt; atkUk=aiCurAtk; auto=true; }
+  else if(wp3Label&&aiStagedTgt){ tgtUk=aiStagedTgt; atkUk=aiStagedAtk; }  // player's staged attack
+  if(!tgtUk||final<=0||!state.tokens.some(t=>t.unit===tgtUk)) return;
+  const tname=(state.tokens.find(t=>t.unit===tgtUk)||{}).name||"the target";
+  if(!auto&&!confirm(`Solo mode: apply ${final} damage to ${tname} automatically?\n(Already-wounded model first, closest to the attacker next, leaders last.)`)) return;
+  let packets=[];
+  if(dmgRolls&&dmgRolls.length===failed&&failed>0) packets=dmgRolls.slice(); // real per-save D rolls
+  else{ const flat=Math.max(1,parseInt(String(document.getElementById("akD").value).trim())||1);
+    packets=new Array(Math.max(0,failed)).fill(flat); }
+  for(let i=0;i<mortals;i++) packets.push(1);                // mortal wounds apply one at a time
+  aiApplyCasualties(tgtUk,packets,final,atkUk);
+}
+/* ==== end WP10 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
