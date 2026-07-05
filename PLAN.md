@@ -569,6 +569,33 @@ closest next, leaders last; log line carries the player's name via wp16LogAs).
 (B) wp16CycleSec factored from the WP6 contextmenu body; long-press an
 objective (no token hit) cycles Secured on touch. Tests: wp16-tests.js (23).
 
+### WP17–WP20 — Setup & play accelerators  [4 agents, parallel] — SHIPPED (July 2026)
+
+- **WP17 player auto-deploy**: muster (pre-battle only) places the player's army
+  legally in their DZ via aiPlaceUnit (side-parameterized wp17DeploySide);
+  ⚡ Auto-deploy button in the Army tab (round-1 gate wp17PreBattle: ph<0);
+  no-DZ fallback = deterministic edge rows. Tests: wp17-tests.js (15).
+- **WP18 wound-allocation v2**: wp18Order mirrors aiApplyCasualties' order
+  (wounded→closest→leaders-last); draw() overlay rings the suggested-next model
+  + 1/2/3 badges; banner names the suggestion; player still clicks freely.
+  P2P: attacker's button SENDS `{t:"dmg"}` (transient, ruler-precedent) to the
+  defender who allocates with the same wp11 UI; onMsg case is SEC-coerced
+  (packets ≤60 ints 1..24, ids secStr'd, wrong-side ignored). Hotseat/offline
+  keeps WP16 instant apply; solo untouched. Tests: wp18-tests.js (28).
+- **WP19 waypoint ruler**: 📏 clicks chain waypoints (ruler.pts) with cumulative
+  label; drag unchanged; x0..y1 mirror the last leg for old-peer compat;
+  Esc/dblclick/tool-switch ends; {t:"ruler",r:null} blanks the peer.
+  Tests: wp19-tests.js (31).
+- **WP20 dice stats + summary**: d6 tallies via wp20Note (this-screen only,
+  never synced); 📊 topbar popover (distribution vs n/6, hot/cold streaks,
+  reset); wp20Summary/wp20Export → battle-summary text via dl(). Buttons in
+  Setup + Cards tabs. Tests: wp20-tests.js (39).
+
+Merged suite: 625 checks, exit 0, plus a composite v3 smoke (deploy→dmg→
+suggest→ruler→stats in one run). Visual QA note: headless browser was wedged
+by a live GUI Brave session at ship time — geometry/interaction verified in
+the node harness instead; confirm on a real device in the next game.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
