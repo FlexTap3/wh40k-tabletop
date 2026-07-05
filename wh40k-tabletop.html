@@ -269,6 +269,10 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
     </div>
 
     <div class="tabpane" id="tab-attack">
+      <!-- ==== WP15 ==== weapon selector for a staged attack (two-click ⚔ tool + inspector flow) -->
+      <div class="row" id="wp15WepRow" style="display:none"><label>Weapon</label>
+        <select id="wp15Wep" style="flex:1" onchange="wp15WepChange(this.value)"></select></div>
+      <!-- ==== end WP15 ==== -->
       <!-- ==== WP3: inspector ==== staged-attack banner (filled by the unit inspector's ⚔ flow) -->
       <div id="akStage" class="small" style="display:none;margin-bottom:6px"></div>
       <!-- ==== end WP3 ==== -->
@@ -354,6 +358,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <!-- ==== WP4: visibility ==== -->
       <button id="tool-los" title="Line of sight — click one of your units to see visibility &amp; cover to every enemy unit" onclick="setTool('los')">👁</button>
       <!-- ==== end WP4 ==== -->
+      <!-- ==== WP15 ==== -->
+      <button id="tool-attack" title="Attack: click your unit, then the enemy unit" onclick="setTool('attack')">⚔</button>
+      <!-- ==== end WP15 ==== -->
       <button title="Zoom to fit" onclick="fitView()">⤢</button>
     </div>
     <!-- ==== WP3: inspector ==== -->
@@ -1465,7 +1472,7 @@ function checkCoherency(){
 }
 const unitCoherent=uk=>state.tokens.filter(t=>t.unit===uk).every(t=>!incoherent.has(t.id));
 const RING_SIZES=[6,9,12,24];
-function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; }
+function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; if(t!=="attack"&&typeof wp15Disarm==="function") wp15Disarm(); /* ==== WP15 ==== leaving the tool drops the armed attacker */ }
 function resize(){ const r=cv.parentElement.getBoundingClientRect(); cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); draw(); }
 window.addEventListener("resize",resize);
 function fitView(){
@@ -2244,6 +2251,7 @@ function wp3PickTarget(ix,iy){
   const tk=hitToken(ix,iy);
   if(!tk||!wp3Ctx||tk.owner===wp3Ctx.tok.owner){ logSys("Targeting cancelled."); return; }
   wp3Stage(wp3Ctx,aim.wi,tk);
+  wp15AfterStage(wp3Ctx,aim.wi,tk,false); /* ==== WP15 ==== weapon selector for the inspector ⚔ flow (single-weapon aim: no carrier multiply) */
 }
 // Pre-fill the Attack tab from a weapon + target token, then switch to it.
 function wp3Stage(ctx0,wi,tgtTok){
@@ -2311,7 +2319,9 @@ function wp3Stage(ctx0,wi,tgtTok){
 // Manual edits to the Attack tab clear the staged attacker→target label.
 document.getElementById("tab-attack").addEventListener("change",e=>{
   if(e.target&&e.target.id==="ldTarget") return;
+  if(e.target&&e.target.id==="wp15Wep") return; /* ==== WP15 ==== weapon switch is a restage, not a manual edit */
   wp3Label=""; const s=document.getElementById("akStage"); s.style.display="none";
+  if(typeof wp15ManualEdit==="function") wp15ManualEdit(); /* ==== WP15 ==== manual edit: hide the weapon selector, drop the restage ctx */
 });
 /* ==== end WP3 ==== */
 
@@ -2359,6 +2369,7 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
   if(tool==="los"){ losToolClick(ix,iy); return; } /* ==== WP4: 👁 tool ==== */
+  if(tool==="attack"){ wp15ToolClick(ix,iy); return; } /* ==== WP15 ==== two-click attack quick-flow */
   // select tool
   const tk=hitToken(ix,iy);
   if(tk){
@@ -2473,7 +2484,7 @@ window.addEventListener("keydown",e=>{
   }
   else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
   else if(e.key==="f"||e.key==="F"){ cycleFloor(); } /* ==== WP5: floor level ==== */
-  else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ draw(); }
+  else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
 });
 
 /* ==== WP1: resilience — autosave, resume, reconnect, undo ==== */
@@ -4538,6 +4549,7 @@ function wp13MenuRender(){
   if(wp13Sub==="role"){ h+=wp13RoleRows(t); el.innerHTML=h; return; }
   if(t.maxW>1||t.wounds<t.maxW)
     h+=`<div class="w13row"><span class="w13ic">♥</span><button onclick="wp13Wound(-1)">−</button><b style="min-width:30px;text-align:center">${t.wounds}</b><button onclick="wp13Wound(1)">+</button><span style="color:var(--dim)">wounds</span></div>`;
+  if(mine) h+=row("wp15FromMenu()","⚔","Attack with this unit"); /* ==== WP15 ==== two-click quick-flow entry */
   h+=row("wp13SubRole()","◉","Role / weapon tag…");
   h+=row("wp13Hidden()","🙈",(t.hid?"Unmark":"Mark")+" Hidden");
   h+=row("wp13Floor()","▲","Floor level: "+(t.lvl||0)+" (cycle)");
@@ -4679,6 +4691,122 @@ function wp13RoleRows(t){ // the Role submenu of the WP13 token menu
   return h;
 }
 /* ==== end WP14 ==== */
+
+/* ==== WP15: two-click attack quick-flow ==== ⚔ toolbar tool: click your unit, then
+   the enemy unit — the Attack tab pre-fills BOTH sides via the existing wp3Stage,
+   with a sensible default weapon, attacks auto-multiplied by how many models carry
+   that weapon (WP14 role pips), and a Weapon selector to switch profiles without
+   re-clicking. Pure local UI: reuses wp3Stage + wp3CardFor + aiMulA, adds no op
+   kinds and no synced state. Everything staged stays fully editable. */
+let wp15Atk=null;   // {unit,owner} armed attacker (first click of the two)
+let wp15Ctx=null;   // {ctx0,tgtTok} last staged pair, kept for weapon-switch restaging
+
+function wp15Disarm(){ wp15Atk=null; }
+function wp15Arm(tk){
+  wp15Atk={unit:tk.unit,owner:tk.owner};
+  sel.clear(); state.tokens.forEach(t=>{ if(t.unit===tk.unit) sel.add(t.id); });
+  logSys(`Attack: ${tk.name} armed — now click an enemy model (Esc cancels).`);
+  draw();
+}
+// ⚔ tool click dispatch: own model arms (or re-arms), enemy model fires, empty ground ignored.
+function wp15ToolClick(ix,iy){
+  const tk=hitToken(ix,iy);
+  if(!tk) return;
+  if(tk.owner===mySide){ wp15Arm(tk); return; }
+  if(wp15Atk) wp15Go(tk);
+  else logSys("Attack tool: click one of YOUR models first, then the enemy.");
+}
+// How many models in the unit carry this weapon. Weapon-role pips are every WP14
+// code except SGT; basic weapons (family SPC) belong to the un-pipped bodies.
+function wp15CarrierCount(atkToks,w){
+  const fam=wp14RoleFor(w.n);
+  return fam!=="SPC" ? atkToks.filter(t=>t.role===fam).length
+                     : atkToks.filter(t=>!t.role||t.role==="SGT").length;
+}
+// Deterministic default weapon: melee when engaged; otherwise the in-range gun with
+// the biggest carriers×average-attacks output (ties → first); otherwise the ranged
+// weapon with the smallest range shortfall (i.e. the longest gun).
+function wp15DefaultWi(weapons,dist,atkToks){
+  if(dist<=1.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; }
+  const ranged=weapons.map((w,i)=>({w,i})).filter(x=>!x.w.melee);
+  if(!ranged.length) return weapons.findIndex(w=>w.melee); // melee-only unit out of engagement: stage the melee anyway
+  const inR=ranged.filter(x=>dist<=x.w.rng+0.02);
+  if(inR.length){
+    let best=inR[0],bestV=-1;
+    inR.forEach(x=>{ const v=Math.max(1,wp15CarrierCount(atkToks,x.w))*aiAvgDice(x.w.A); if(v>bestV){ bestV=v; best=x; } });
+    return best.i;
+  }
+  let best=ranged[0];
+  ranged.forEach(x=>{ if(x.w.rng>best.w.rng) best=x; });
+  return best.i;
+}
+// Second click: build ctx0 from the armed unit and stage the default weapon.
+function wp15Go(tgtTok){
+  const armed=wp15Atk; wp15Disarm(); // the next two clicks are a fresh attack; tool stays active
+  if(!armed) return;
+  const atkToks=state.tokens.filter(t=>t.unit===armed.unit);
+  const tgtToks=state.tokens.filter(t=>t.unit===tgtTok.unit);
+  if(!atkToks.length||!tgtToks.length) return;
+  let atk=atkToks[0],ad=Infinity; // attacker model closest to the target: wp3Stage uses it for LoS / Plunging Fire
+  atkToks.forEach(a=>tgtToks.forEach(b=>{ const e=edgeDist(a,b); if(e<ad){ ad=e; atk=a; } }));
+  const card=wp3CardFor(atk);
+  const weapons=card?String(card.weapons||"").split("\n").map(wp3ParseWeapon).filter(Boolean):[];
+  if(!card||!weapons.length){
+    logSys(`No weapon profiles for ${atk.name} — add or import the unit card (Army tab) to quick-stage attacks.`);
+    return;
+  }
+  const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks);
+  if(wi<0) return;
+  const ctx0={tok:atk,card,weapons};
+  wp3Stage(ctx0,wi,tgtTok);
+  wp15AfterStage(ctx0,wi,tgtTok);
+}
+// After wp3Stage (both the ⚔ tool AND the inspector flow): remember the pair for
+// restaging, fill + show the Weapon selector, multiply attacks by carrier count.
+// mul=false (inspector's single-weapon ⚔ aim) keeps wp3Stage's per-model attacks.
+function wp15AfterStage(ctx0,wi,tgtTok,mul){
+  mul=mul!==false;
+  wp15Ctx={ctx0:{tok:ctx0.tok,card:ctx0.card,weapons:ctx0.weapons},tgtTok,mul};
+  const selEl=document.getElementById("wp15Wep"),row=document.getElementById("wp15WepRow");
+  selEl.innerHTML=ctx0.weapons.map((w,i)=>`<option value="${i}"${i===wi?" selected":""}>${esc(w.n)} — ${esc(w.A)}/${esc(w.BS)}/${esc(w.S)}/${esc(w.AP)}/${esc(w.D)}</option>`).join("");
+  selEl.value=String(wi);
+  row.style.display="";
+  if(mul) wp15Multiply(ctx0,wi);
+}
+// Weapon selector onchange: restage the SAME attacker→target with the new weapon.
+function wp15WepChange(v){
+  if(!wp15Ctx) return;
+  const c=wp15Ctx, wi=Math.max(0,parseInt(v)||0);
+  if(!c.ctx0.weapons[wi]) return;
+  wp3Stage(c.ctx0,wi,c.tgtTok);
+  wp15AfterStage(c.ctx0,wi,c.tgtTok,c.mul);
+}
+// Manual edit anywhere in the Attack tab: staging is the player's now — hide the selector.
+function wp15ManualEdit(){
+  wp15Ctx=null;
+  const row=document.getElementById("wp15WepRow"); if(row&&row.style) row.style.display="none";
+}
+// Prefill ×carriers AFTER wp3Stage set the per-model attacks. akA stays editable.
+function wp15Multiply(ctx0,wi){
+  const w=ctx0.weapons[wi]; if(!w) return;
+  const atkToks=state.tokens.filter(t=>t.unit===ctx0.tok.unit);
+  const n=wp15CarrierCount(atkToks,w);
+  const stage=document.getElementById("akStage");
+  if(n===0){ stage.innerHTML+=`<div class="small">1 carrier assumed — mark carriers with role pips (long-press a model) for auto-counts</div>`; return; }
+  if(n>1){
+    const a=document.getElementById("akA");
+    a.value=aiMulA(a.value,n);
+    stage.innerHTML+=`<div class="small">×${n} models carry ${esc(w.n)} — attacks multiplied (editable)</div>`;
+  }
+}
+// WP13 token-menu row: arm this unit via the ⚔ tool and go pick a target.
+function wp15FromMenu(){
+  const t=wp13Tok; if(!t) return;
+  wp13Close();
+  setTool("attack");
+  wp15Arm(t);
+}
+/* ==== end WP15 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
