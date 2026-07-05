@@ -550,6 +550,25 @@ User pain: sergeants/special weapons indistinguishable on the table.
 
 ---
 
+### WP15 — Two-click attack quick-flow  [M] — SHIPPED (July 2026)
+
+⚔ toolbar tool: click your unit, click the enemy — wp3Stage fills BOTH sides
+(weapon, A/BS/S/AP/D + abilities, target T/Sv/Inv/FNP, cover from LoS), with a
+Weapon selector at the top of the Attack tab to switch profiles without
+re-clicking (also shown by the inspector-⚔ flow). Attacks auto-multiply by
+carrier count from WP14 role pips (aiMulA; unmarked squads: basic gun = whole
+unit, special = 1 + hint); inspector-origin staging stays per-model (wp3-tests
+contract). Token-menu entry "⚔ Attack with this unit". No new ops/state.
+Tests: wp15-tests.js (50). Everything staged stays editable.
+
+### WP16 — Apply-damage + Secured touch  [S] — SHIPPED (July 2026)
+
+(A) After a staged roll in network/hotseat (solo stands down), a one-shot
+button under #akResult applies the total via aiApplyCasualties (wounded first,
+closest next, leaders last; log line carries the player's name via wp16LogAs).
+(B) wp16CycleSec factored from the WP6 contextmenu body; long-press an
+objective (no token hit) cycles Secured on touch. Tests: wp16-tests.js (23).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
