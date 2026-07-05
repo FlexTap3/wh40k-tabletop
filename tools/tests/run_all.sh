@@ -16,6 +16,8 @@ node harness.js sec-tests.js
 node harness.js wp10-tests.js
 node harness.js wp11-tests.js
 node harness.js wp12-tests.js
+node harness.js wp13-tests.js
+node harness.js wp14-tests.js
 node test_wp1.js
 node test_wp6.js
 node test_wp7.js

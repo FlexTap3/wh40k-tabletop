@@ -183,6 +183,25 @@ html.phone #bRoster{-webkit-overflow-scrolling:touch}
 html.phone dialog{width:min(94vw,520px)!important; max-width:94vw; max-height:85dvh; overflow-y:auto}
 html.phone input,html.phone select,html.phone textarea{font-size:16px}
 /* ==== end WP12 ==== */
+/* ==== WP13: nav & token action menu ==== */
+html.phone #phoneNav button{min-width:0; overflow:hidden; text-overflow:ellipsis} /* 6 buttons must never push ⚙ off a 390px screen */
+html.phone #phoneNav #wp12nav-setup{flex:0 0 44px; font-size:16px}
+#wp13Menu{display:none; position:fixed; z-index:60; min-width:190px; max-width:260px; background:rgba(24,20,25,.98); border:1px solid var(--edge2); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.7); padding:4px; font-size:13px}
+#wp13Menu.open{display:block}
+#wp13Menu .w13h{padding:6px 10px 4px; color:var(--accent); font-family:var(--serif); font-size:12px; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--edge); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#wp13Menu .w13r{display:flex; align-items:center; gap:8px; width:100%; border:none; background:transparent; color:var(--text); padding:7px 10px; border-radius:6px; text-align:left; font-size:13px; cursor:pointer}
+#wp13Menu .w13r:hover{background:var(--panel2)}
+#wp13Menu .w13r .w13ic{width:18px; text-align:center; flex:0 0 18px}
+#wp13Menu .w13row{display:flex; align-items:center; gap:6px; padding:4px 10px}
+#wp13Menu .w13row button{min-width:34px; min-height:30px; padding:2px 8px}
+#wp13Menu .w13row input{width:64px; min-height:30px}
+.w13pip{display:inline-block; width:16px; height:16px; line-height:16px; border-radius:50%; text-align:center; font-size:10px; font-weight:bold; color:#0e0c0f; flex:0 0 16px; border:1px solid rgba(0,0,0,.55)} /* also used by the help legend */
+#wp13Menu .w13del{color:var(--bad)}
+#wp13Menu .w13back{color:var(--dim)}
+html.phone #wp13Menu{max-height:60dvh; overflow-y:auto; min-width:230px}
+html.phone #wp13Menu .w13r{min-height:44px; font-size:14px}
+html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
+/* ==== end WP13 ==== */
 </style>
 </head>
 <body>
@@ -498,7 +517,10 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
     <ul>
       <li><b>Select tool</b>: drag models to move them. Drag on empty space for a box-select; drag any selected model to move the group. <kbd>Del</kbd> removes, <kbd>R</kbd> rotates vehicles/terrain.</li>
       <li>With models selected, press <kbd>1</kbd>–<kbd>4</kbd> to toggle range rings (6"/9"/12"/24"). Click a model to see its unit; use ± on the unit card to track wounds.</li>
-      <li><b>Squad leaders</b> (sergeants, nobs, superiors…) deploy with a gold ring automatically. Select any model and press <kbd>W</kbd> to give it a short weapon tag (e.g. "PK", "RL", "MLT") shown under its base — mark your special weapons so both players can see who's carrying what.</li>
+      <!-- ==== WP13/WP14: model markings + token menu ==== -->
+      <li><b>Model actions menu</b>: long-press a model (touch) or right-click it (mouse) — or tap ⋯ on the inspector — for wounds, role/weapon marking, Hidden, floor level, battle-shock, attach, rotate, reserves and delete. Everything in it also syncs to your opponent.</li>
+      <li><b>Model markings</b>: squad leaders (sergeants, nobs, superiors…) deploy with a <b>gold base rim and chevron</b> automatically. Special/heavy weapons get a colour-coded letter pip at the base's bottom edge — auto-detected from your Builder loadout notes where possible, or set via the menu (Role / weapon tag). <kbd>W</kbd> still sets a free-text tag under the base. Legend: <span id="wp14Legend"></span></li>
+      <!-- ==== end WP13/WP14 ==== -->
       <li><b>Tape measure</b>: drag to measure in inches — your opponent sees your measurement too.</li>
       <li><b>Builder</b> (full screen): build a points-legal roster — pick faction and points limit, click unit cards to add them, change sizes, watch the total. <b>Muster army</b> puts every unit on the table in one click and returns you to the game. <kbd>Esc</kbd> closes it. Export the list as text to share it.</li>
       <li><b>Army tab</b>: every faction's units are pre-loaded — pick your faction, click a unit to add its card (stats, weapons, bases, points), or <b>Import army list</b> to paste a list and get your whole army on the table in one go. Cards save in your browser.</li>
@@ -798,6 +820,7 @@ function rollAttack(){
   document.getElementById("akResult").textContent=lines.join("\n");
   logShared("⚔ <b>"+esc(myName)+"</b> attack:\n"+esc(lines.join("\n")),"dice");
   if(typeof wp10AttackDone==="function") wp10AttackDone(final,failed,mortals,dmgRolls); /* ==== WP10: ai ==== solo auto-casualties */
+  if(typeof wp13AfterRoll==="function") wp13AfterRoll(); /* ==== WP13 ==== phone: staged roll done → back to the board */
 }
 
 /* ============ unit database ============ */
@@ -1038,10 +1061,11 @@ function deployCard(raw){
         /* ==== WP0: stat-bearing tokens ==== */
         Mv:mvNum(p.M), OC:+p.OC||0, T:+p.T||0, Sv:p.Sv??"", iv:p.Inv??"-", kw:(u.kw||[]).slice(),
         u0:total /* ==== WP7: phases ==== starting strength (models at deploy) for the half-strength battle-shock reminder */};
-      if(isLeader) t.sgt=true;
+      if(isLeader){ t.sgt=true; t.role="SGT"; } /* ==== WP14 ==== leader is a role too */
       toks.push(t);
     }
   });
+  wp14AutoRoles(u,toks); /* ==== WP14 ==== best-effort weapon pips from the card's loadout text */
   op({k:"tok+",toks});
   wp5DeployWarn(toks); /* ==== WP5: deploy collision warning ==== */
   logShared("· <b>"+esc(myName)+"</b> deployed "+esc(u.name)+" ×"+total,"sys");
@@ -1210,6 +1234,7 @@ function bToGame(){
       let extra=[];
       if(it.enh) extra.push("\u2726 "+it.enh.n+" (+"+it.enh.c+"pts)");
       if(it.wg) extra.push("\u2699 "+it.wg);
+      if(it.wg) c.wg=it.wg; /* ==== WP14 ==== raw loadout text rides the card \u2192 auto role pips at deploy */
       if(extra.length) c.notes=(c.notes?c.notes+" \u2014 ":"")+extra.join(" \u00b7 ");
       deployCard(c); n++;
     }
@@ -1679,7 +1704,7 @@ function draw(){
       const r=mmIn(t.dmm)/2*view.s;
       ctx.beginPath(); ctx.arc(0,0,r,0,7);
       ctx.fillStyle=wp9RadGrad(-r*.32,-r*.36,r*.12,0,0,r,[[0,P.hi],[.55,P.mid],[1,P.lo]],P.mid); ctx.fill();
-      ctx.lineWidth=Math.max(1.5,r*.14); ctx.strokeStyle="rgba(10,8,10,.8)"; ctx.stroke();
+      ctx.lineWidth=Math.max(1.5,r*.14); ctx.strokeStyle=t.sgt?"#c9922e":"rgba(10,8,10,.8)"; ctx.stroke(); /* ==== WP14 ==== gold rim = squad leader, readable at any zoom */
       ctx.beginPath(); ctx.arc(0,0,Math.max(1,r-ctx.lineWidth*.9),0,7);
       ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(255,255,255,.28)"; ctx.stroke();
       if(r>8){
@@ -1692,18 +1717,47 @@ function draw(){
       const w=t.wIn*view.s,h=t.hIn*view.s;
       ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fillRect(-w/2,-h/2,w,h);
       ctx.strokeStyle="rgba(255,255,255,.14)"; ctx.lineWidth=1; ctx.strokeRect(-w/2+2.5,-h/2+2.5,w-5,h-5); /* hull inset */
-      ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(10,8,10,.85)"; ctx.strokeRect(-w/2,-h/2,w,h);
+      ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":(t.sgt?"#c9922e":"rgba(10,8,10,.85)"); ctx.strokeRect(-w/2,-h/2,w,h); /* ==== WP14 ==== gold border = leader */
       ctx.font="bold "+Math.max(8,h*.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(initials(t.name),0,1.2);
       ctx.fillStyle="#f4efe6"; ctx.fillText(initials(t.name),0,0);
     }
-    // sergeant / squad leader marker: inner gold ring
+    /* ==== WP14 ==== squad leader: double gold chevron at the top of the base (rim is already gold) */
     if(t.sgt){
       const rr=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
-      ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
-      ctx.beginPath(); ctx.arc(0,0,Math.max(3,rr-3.5),0,7);
-      ctx.strokeStyle="#e8b23a"; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.restore();
+      if(rr>6){
+        ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+        const cw=Math.max(3.5,view.s*.3), cy0=-rr+cw*.5;
+        ctx.beginPath();
+        ctx.moveTo(-cw,cy0+cw); ctx.lineTo(0,cy0); ctx.lineTo(cw,cy0+cw);
+        ctx.moveTo(-cw,cy0+cw*1.8); ctx.lineTo(0,cy0+cw*.8); ctx.lineTo(cw,cy0+cw*1.8);
+        ctx.strokeStyle="rgba(10,8,10,.9)"; ctx.lineWidth=Math.max(2.5,view.s*.16); ctx.stroke();
+        ctx.strokeStyle="#e8b23a"; ctx.lineWidth=Math.max(1.4,view.s*.09); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    /* ==== WP14 ==== weapon-role pip: colour + letter at the bottom of the base (3-letter chip when zoomed in) */
+    if(t.role&&t.role!=="SGT"){
+      const R=WP14_ROLES[t.role]||WP14_ROLES.SPC;
+      const rr=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+      if(rr>6){
+        ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+        const br=Math.max(5,view.s*.35);
+        if(rr>14&&br>8){ // zoomed in: rounded chip with the full code
+          ctx.font="bold "+Math.max(7,view.s*.42)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+          const tw=ctx.measureText(t.role).width;
+          ctx.fillStyle=R.c; ctx.fillRect(-tw/2-4,rr*.72-br*.8,tw+8,br*1.6);
+          ctx.strokeStyle="rgba(10,8,10,.85)"; ctx.lineWidth=1; ctx.strokeRect(-tw/2-4,rr*.72-br*.8,tw+8,br*1.6);
+          ctx.fillStyle=R.tc; ctx.fillText(t.role,0,rr*.72+.5);
+        } else { // normal zoom: round pip with the first letter
+          ctx.beginPath(); ctx.arc(0,rr*.72,br,0,7);
+          ctx.fillStyle=R.c; ctx.fill();
+          ctx.strokeStyle="rgba(10,8,10,.85)"; ctx.lineWidth=1; ctx.stroke();
+          ctx.fillStyle=R.tc; ctx.font="bold "+Math.max(7,view.s*.45)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+          ctx.fillText(t.role[0],0,rr*.72+.5);
+        }
+        ctx.restore();
+      }
     }
     // weapon/role tag chip below the base
     if(t.tag){
@@ -2155,7 +2209,7 @@ function wp3Inspect(){
   const weapons=card?String(card.weapons||"").split("\n").map(wp3ParseWeapon).filter(Boolean):[];
   wp3Ctx={tok,card,weapons};
   let html=`<div class="title"><span style="color:${col}">${esc(card?card.name:tok.name)}</span>
-    <span><span class="small">×${unitToks.length}${card&&card.pts?" · "+esc(card.pts)+"pts":""}</span> <button title="Close (Esc)" onclick="wp3Hide()">✕</button></span></div>`;
+    <span><span class="small">×${unitToks.length}${card&&card.pts?" · "+esc(card.pts)+"pts":""}</span> <button title="Model actions (wounds, role, hidden, floors…)" onclick="wp13MenuFromInspector(event)">⋯</button> <button title="Close (Esc)" onclick="wp3Hide()">✕</button></span></div>`;
   if(card){
     html+=(card.profiles||[]).map(p=>`<div class="statline">${(card.profiles||[]).length>1?`<b>${esc(p.n)}</b> · `:""}M <b>${esc(p.M??"?")}</b> T <b>${p.T??"?"}</b> Sv <b>${esc(p.Sv??"?")}</b> Inv <b>${esc(p.Inv??"-")}</b> W <b>${p.W??"?"}</b> Ld <b>${esc(p.Ld??"?")}</b> OC <b>${p.OC??"?"}</b></div>`).join("");
   } else {
@@ -2252,7 +2306,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   showTab("attack");
   if(typeof aiNoteStage==="function") aiNoteStage(ctx0,tgtTok); /* ==== WP10: ai ==== remember the staged pair for solo auto-casualties */
   logSys(`Attack staged: ${atkName} → ${tgtName} with ${w.n}. Check the Attack tab and roll.`);
-  if(typeof wp12AttackPulse==="function")wp12AttackPulse(); /* ==== WP12: phone ==== pulse the Attack nav button */
+  if(typeof wp13OnStage==="function")wp13OnStage(); else if(typeof wp12AttackPulse==="function")wp12AttackPulse(); /* ==== WP13 ==== phone: open the Attack sheet (falls back to the WP12 pulse) */
 }
 // Manual edits to the Attack tab clear the staged attacker→target label.
 document.getElementById("tab-attack").addEventListener("change",e=>{
@@ -2288,6 +2342,9 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   if(wp8PointerDown(e)) return; /* WP8: multi-touch (pinch) / gesture bookkeeping */
   wp1PreMutate(); /* WP1: capture pre-gesture state so drag moves are undoable */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
+  /* ==== WP13 ==== right-click ON a token = action menu; empty board / terrain keeps the pan */
+  if(e.button===2&&!panning){ const mtk=hitToken(ix,iy); if(mtk){ wp13MenuOpen(mtk,e.clientX,e.clientY); return; } }
+  /* ==== end WP13 ==== */
   if(e.button===2||e.button===1||(e.button===0&&e.altKey)){ panning={x:e.clientX,y:e.clientY}; return; }
   /* ==== WP3: inspector ==== */
   if(wp3Aiming&&e.button===0){ wp3PickTarget(ix,iy); return; }
@@ -2640,6 +2697,7 @@ window.addEventListener("keydown",e=>{ /* WP6: B = battle-shock toggle (own list
 });
 cv.addEventListener("contextmenu",e=>{ /* WP6: right-click an objective cycles Secured: none → red → blue */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
+  if(hitToken(ix,iy)) return; /* ==== WP13 ==== the token action menu owns right-click on models */
   const o=hitObjective(ix,iy); if(!o) return;
   const next=((o.sec||0)+1)%3;
   op({k:"obj~",obj:{id:o.id,sec:next}});
@@ -2676,9 +2734,18 @@ function wp8PointerDown(e){ // returns true when the main pointerdown handler mu
   const pid=e.pointerId;
   wp8LPTimer=setTimeout(()=>{
     const p=wp8Ptrs.get(pid);
-    if(p&&Math.hypot(p.x-p.sx,p.y-p.sy)<8&&drag&&drag.mode==="marquee"){
-      drag=null; marquee=null; panning={x:p.x,y:p.y}; draw();
+    if(!p||Math.hypot(p.x-p.sx,p.y-p.sy)>=8) return;
+    if(drag&&drag.mode==="marquee"){
+      drag=null; marquee=null; panning={x:p.x,y:p.y}; draw(); return;
     }
+    /* ==== WP13 ==== long-press ON a model = action menu (finger jitter under 8px is undone) */
+    if(drag&&drag.mode==="tokens"){
+      (drag.snap||[]).forEach(s=>{ const t=state.tokens.find(x=>x.id===s.id); if(t){ t.x=s.x; t.y=s.y; } });
+      const rect=cv.getBoundingClientRect(), [ix,iy]=inch(p.x-rect.left,p.y-rect.top);
+      const tk=hitToken(ix,iy);
+      if(tk){ if(typeof wp2DragEnd==="function") wp2DragEnd(); drag=null; wp13MenuOpen(tk,p.x,p.y); draw(); }
+    }
+    /* ==== end WP13 ==== */
   },450);
   return false;
 }
@@ -3868,6 +3935,7 @@ function wp11MaybeAlloc(tgtUk,atkUk,final,failed,mortals,dmgRolls){
   if(!packets.length) return false;
   wp11Alloc={tgtUk,atkUk,packets,applied:0,budget:final,label:String(wp3Label||"Incoming attack").replace(/^⚔\s*/,"")};
   wp11Banner();
+  if(typeof wp13BoardFocus==="function") wp13BoardFocus(); /* ==== WP13 ==== phone: board must be visible to click-allocate */
   logSys("Casualty allocation: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" pending against "+t0.name+" — click models in that unit (a wounded model must take them first), or press A to auto-assign the rest.");
   return true;
 }
@@ -4330,7 +4398,8 @@ function wp12Build(){ // injected chrome — created ONCE; visibility is pure CS
   const mk=(tag,id,txt)=>{ const e=document.createElement(tag); if(id)e.id=id; if(txt!=null)e.textContent=txt; return e; };
   const nav=mk("div","phoneNav");
   wp12Els={nav,btns:{}};
-  [["army","Army"],["cards","Cards"],["attack","Attack"],["setup","Setup"],["log","Log"],["builder","Builder"]].forEach(([k,label])=>{
+  /* ==== WP13 ==== nav order: Attack promoted (mid-game reach), Setup demoted to a trailing ⚙ icon */
+  [["army","Army"],["attack","Attack"],["cards","Cards"],["log","Log"],["builder","Builder"],["setup","⚙"]].forEach(([k,label])=>{
     const b=mk("button","wp12nav-"+k,label); b.onclick=()=>wp12Nav(k); nav.appendChild(b); wp12Els.btns[k]=b;
   });
   const peek=mk("div","wp12Peek"); peek.onclick=()=>wp12Nav("log"); wp12Els.peek=peek;
@@ -4405,6 +4474,211 @@ function wp12Init(){
   wp12Ready=true;
 }
 /* ==== end WP12 ==== */
+
+/* ==== WP13: nav & token action menu ==== one-tap context surfacing + a touch path
+   for every keyboard-only token action. Desktop changes are limited to: right-click
+   ON a token opens the menu (empty board still pans), and the inspector ⋯ button.
+   Node-harness safe: every entry point no-ops without a DOM. */
+function wp13OnStage(){ // wp3Stage hook: phone jumps straight to the Attack sheet
+  if(wp12Mode==="phone"&&typeof wp12SheetSet==="function"){
+    if(typeof showTab==="function") showTab("attack"); // wp3Stage already did this — belt & braces
+    wp12SheetSet("attack");
+  } else if(typeof wp12AttackPulse==="function") wp12AttackPulse();
+}
+function wp13AfterRoll(){ // rollAttack hook: player's staged roll → close the sheet, board shows the result
+  if(wp12Mode!=="phone") return;
+  if(!wp3Label||/^⚔ AI/.test(wp3Label)) return;     // manual dice / AI rolls leave the sheet alone
+  if(typeof wp12SheetSet==="function") wp12SheetSet(null);
+}
+function wp13BoardFocus(){ // wp11 allocation banner: make sure the board (and banner) are visible
+  if(wp12Mode==="phone"&&wp12SheetOpen&&typeof wp12SheetSet==="function") wp12SheetSet(null);
+}
+/* ---- token action menu: every keyboard-only action gets a click/touch path ----
+   Open: long-press a model (phone), right-click a model (desktop), inspector ⋯.
+   All rows route through the same functions/ops as the keyboard shortcuts.
+   wp13Tok!==null is the "open" flag (classList is display only, node-stub safe). */
+let wp13Tok=null, wp13El=null, wp13DelArm=false, wp13Sub=null;
+function wp13El_(){
+  if(wp13El) return wp13El;
+  if(typeof document==="undefined"||!document.body||!document.createElement) return null;
+  wp13El=document.createElement("div"); wp13El.id="wp13Menu";
+  document.body.appendChild(wp13El);
+  return wp13El;
+}
+function wp13MenuOpen(tok,cx,cy){
+  const el=wp13El_(); if(!el||!tok) return;
+  if(!sel.has(tok.id)){ sel.clear(); sel.add(tok.id); }
+  wp13Tok=tok; wp13DelArm=false; wp13Sub=null;
+  wp13MenuRender();
+  if(el.classList&&el.classList.add) el.classList.add("open");
+  wp13Place(cx||0,cy||0);
+  draw();
+}
+function wp13Place(cx,cy){
+  const el=wp13El; if(!el||!el.style) return;
+  el.style.left="0px"; el.style.top="0px";
+  const r=el.getBoundingClientRect?el.getBoundingClientRect():{width:220,height:260};
+  const W=(typeof window!=="undefined"&&window.innerWidth)||1000, H=(typeof window!=="undefined"&&window.innerHeight)||800;
+  el.style.left=Math.max(4,Math.min(cx,W-(r.width||220)-4))+"px";
+  el.style.top =Math.max(4,Math.min(cy,H-(r.height||260)-8))+"px";
+}
+function wp13Close(){
+  if(wp13El&&wp13El.classList&&wp13El.classList.remove) wp13El.classList.remove("open");
+  wp13Tok=null; wp13DelArm=false; wp13Sub=null;
+}
+function wp13MenuRender(){
+  const el=wp13El, t=wp13Tok; if(!el||!t) return;
+  const mine=t.owner===mySide;
+  const selToks=state.tokens.filter(x=>sel.has(x.id));
+  const selUnits=[...new Set(selToks.map(x=>x.unit))];
+  const attached=state.tokens.some(x=>x.unit===t.unit&&x.attachedFrom);
+  const anyRect=selToks.some(x=>x.shape==="r");
+  const row=(fn,ic,label,cls)=>`<button class="w13r ${cls||""}" onclick="${fn}"><span class="w13ic">${ic}</span>${label}</button>`;
+  let h=`<div class="w13h">${esc(t.name)} · ${t.wounds}/${t.maxW} W${t.sgt?" · leader":""}</div>`;
+  if(wp13Sub==="role"){ h+=wp13RoleRows(t); el.innerHTML=h; return; }
+  if(t.maxW>1||t.wounds<t.maxW)
+    h+=`<div class="w13row"><span class="w13ic">♥</span><button onclick="wp13Wound(-1)">−</button><b style="min-width:30px;text-align:center">${t.wounds}</b><button onclick="wp13Wound(1)">+</button><span style="color:var(--dim)">wounds</span></div>`;
+  h+=row("wp13SubRole()","◉","Role / weapon tag…");
+  h+=row("wp13Hidden()","🙈",(t.hid?"Unmark":"Mark")+" Hidden");
+  h+=row("wp13Floor()","▲","Floor level: "+(t.lvl||0)+" (cycle)");
+  h+=row("wp13Shock()","💀",(t.bs?"Rally":"Battle-shock")+" unit");
+  if(anyRect) h+=row("wp13Rotate()","↻","Rotate 15°");
+  if(mine&&attached) h+=row("wp13Detach()","⇤","Detach character");
+  else if(mine&&selUnits.length===2) h+=row("wp13Attach()","⇥","Attach to unit");
+  if(mine) h+=row("wp13Reserves()","🛸","Into Reserves");
+  h+=row("wp13Delete()","✖",wp13DelArm?("Really delete "+selToks.length+" model"+(selToks.length!==1?"s":"")+"?"):"Delete model(s)","w13del");
+  el.innerHTML=h;
+}
+function wp13Wound(d){
+  const t=wp13Tok; if(!t) return;
+  op({k:"tok~",toks:[{id:t.id,wounds:Math.max(0,Math.min(t.maxW,(t.wounds||0)+d))}]});
+  wp13MenuRender(); draw();
+}
+function wp13Hidden(){ if(!wp13Tok) return; toggleHidden(); wp13Close(); draw(); }
+function wp13Floor(){ if(!wp13Tok) return; cycleFloor(); wp13MenuRender(); draw(); }
+function wp13Shock(){ if(!wp13Tok) return; wp6ToggleShock(); wp13Close(); draw(); }
+function wp13Rotate(){
+  state.tokens.filter(x=>sel.has(x.id)&&x.shape==="r").forEach(x=>op({k:"tok~",toks:[{id:x.id,rot:((x.rot||0)+15)%360}]}));
+  draw();
+}
+function wp13Attach(){ if(!wp13Tok) return; wp7Attach(); wp13Close(); draw(); }
+function wp13Detach(){ const t=wp13Tok; if(!t) return; wp7Detach(t.unit); wp13Close(); draw(); }
+function wp13Reserves(){ const t=wp13Tok; if(!t) return; wp7ToReserves(t.unit); wp13Close(); draw(); }
+function wp13Delete(){
+  if(!wp13Tok) return;
+  if(!wp13DelArm){ wp13DelArm=true; wp13MenuRender(); return; }
+  const ids=[...sel].filter(id=>state.tokens.some(x=>x.id===id));
+  if(ids.length) op({k:"tok-",ids});
+  sel.clear(); wp3Hide(); wp13Close(); draw();
+}
+function wp13SubRole(){ wp13Sub="role"; wp13MenuRender(); }
+function wp13MenuFromInspector(ev){
+  if(typeof wp3Ctx!=="undefined"&&wp3Ctx&&wp3Ctx.tok) wp13MenuOpen(wp3Ctx.tok,(ev&&ev.clientX)||120,(ev&&ev.clientY)||120);
+}
+// close on any press outside the menu (capture phase → runs before board handlers), and on Esc
+if(typeof document!=="undefined"&&document.addEventListener)
+  document.addEventListener("pointerdown",e=>{ if(wp13Tok&&wp13El&&!(wp13El.contains&&wp13El.contains(e.target))) wp13Close(); },true);
+if(typeof window!=="undefined"&&window.addEventListener)
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&wp13Tok) wp13Close(); });
+/* ==== end WP13 ==== */
+
+/* ==== WP14: model roles ==== per-model role codes (t.role) → colour pips on the base.
+   SGT is stamped at deploy (existing minority-profile heuristic); weapon roles are
+   best-effort parsed from the builder's free-text loadout (card.wg) and always
+   editable in two taps via the WP13 menu. Colours are Okabe-Ito (colour-blind safe)
+   and every pip also carries the letter, so colour is never the only channel.
+   Syncs via the existing tok+/tok~ ops; absent field = nothing drawn (back-compat). */
+const WP14_ROLES={ // c = pip colour (Okabe-Ito), tc = letter colour on that pip, l = legend label
+  SGT:{c:"#e8b23a",tc:"#0e0c0f",l:"Sergeant / leader"},
+  PLA:{c:"#56b4e9",tc:"#0e0c0f",l:"Plasma"},
+  MLT:{c:"#d55e00",tc:"#ffffff",l:"Melta / fusion"},
+  FLM:{c:"#e69f00",tc:"#0e0c0f",l:"Flame / torrent"},
+  HVY:{c:"#009e73",tc:"#ffffff",l:"Heavy weapon"},
+  SNP:{c:"#cc79a7",tc:"#0e0c0f",l:"Sniper"},
+  GRN:{c:"#f0e442",tc:"#0e0c0f",l:"Grenade launcher"},
+  BAN:{c:"#0072b2",tc:"#ffffff",l:"Banner / icon"},
+  SPC:{c:"#999999",tc:"#0e0c0f",l:"Special (other)"},
+};
+function wp14RoleFor(name){
+  const n=String(name||"").toLowerCase();
+  if(/plasma/.test(n)) return "PLA";
+  if(/melta|fusion/.test(n)) return "MLT";
+  if(/flame|burna|incinerat|torrent/.test(n)) return "FLM";
+  if(/sniper|stalker/.test(n)) return "SNP";
+  if(/grenade launcher|grenade-launcher/.test(n)) return "GRN";
+  if(/banner|standard|icon of|relic icon/.test(n)) return "BAN";
+  if(/lascannon|cannon|missile|mortar|rocket|rail|lance|heavy bolter|heavy stubber|heavy .*(gun|rifle|blaster)|gatling|launcher/.test(n)) return "HVY";
+  return "SPC";
+}
+function wp14WeaponNames(card){
+  try{
+    return [...new Set(String((card&&card.weapons)||"").split("\n")
+      .map(l=>{ const w=wp3ParseWeapon(l); return w&&w.n; }).filter(Boolean))];
+  }catch(e){ return []; }
+}
+function wp14ParseLoadout(wg,names){
+  const out=[];
+  try{
+    String(wg||"").split(/[,;\n·•+]+/).forEach(part=>{
+      part=part.trim(); if(!part) return;
+      const m=part.match(/^(\d+)\s*[x×]?\s+(.+)$/)||part.match(/^(\d+)[x×]\s*(.+)$/);
+      let count=1, frag=part;
+      if(m){ count=Math.max(1,Math.min(30,+m[1]||1)); frag=m[2]; }
+      const nf=norm(frag); if(!nf) return;
+      const hit=(names||[]).find(nm=>{ const nn=norm(nm); return nn.includes(nf)||nf.includes(nn); });
+      const role=wp14RoleFor(hit||frag);
+      if(role!=="SPC"||hit) out.push({name:hit||frag,role,count});
+    });
+  }catch(e){}
+  return out;
+}
+function wp14AutoRoles(u,toks){ // mutates toks in place BEFORE the tok+ op — never throws, never blocks deploy
+  try{
+    if(!u||!u.wg) return;
+    const parsed=wp14ParseLoadout(u.wg,wp14WeaponNames(u)).filter(p=>p.role!=="SPC"); // auto-pip only the loud stuff; SPC stays manual
+    const pool=toks.filter(t=>!t.sgt&&!t.role);
+    parsed.forEach(p=>{ for(let i=0;i<p.count;i++){ const t=pool.find(x=>!x.role); if(!t) return; t.role=p.role; } });
+  }catch(e){}
+}
+function wp14SetRole(code){ // WP13 menu: apply to every selected model in one op
+  const toks=state.tokens.filter(x=>sel.has(x.id));
+  if(toks.length) op({k:"tok~",toks:toks.map(x=>({id:x.id,role:code||null}))});
+  wp13Close(); draw();
+}
+function wp13TagSet(){ // free-text ≤4-char tag chip (same field the W key writes)
+  const t=wp13Tok; if(!t) return;
+  const inEl=typeof document!=="undefined"&&document.getElementById&&document.getElementById("wp13TagIn");
+  const v=inEl?String(inEl.value||"").trim().slice(0,4):"";
+  const toks=state.tokens.filter(x=>sel.has(x.id));
+  if(toks.length) op({k:"tok~",toks:toks.map(x=>({id:x.id,tag:v}))});
+  wp13Close(); draw();
+}
+function wp14Pip(code){
+  const R=WP14_ROLES[code]||WP14_ROLES.SPC;
+  return `<span class="w13pip" style="background:${R.c};color:${R.tc}">${esc(code[0]||"?")}</span>`;
+}
+(function wp14Legend(){ // fill the help-dialog legend from the live map — no drift
+  try{
+    const el=typeof document!=="undefined"&&document.getElementById&&document.getElementById("wp14Legend");
+    if(!el) return;
+    el.innerHTML=Object.keys(WP14_ROLES).map(c=>`${wp14Pip(c)} ${esc(WP14_ROLES[c].l)}`).join(" · ");
+  }catch(e){}
+})();
+function wp13RoleRows(t){ // the Role submenu of the WP13 token menu
+  const card=typeof wp3CardFor==="function"?wp3CardFor(t):null;
+  const names=wp14WeaponNames(card);
+  let h=`<button class="w13r w13back" onclick="wp13Sub=null;wp13MenuRender()"><span class="w13ic">‹</span>Back</button>`;
+  if(names.length){
+    h+=`<div class="w13h">This unit's weapons</div>`;
+    names.slice(0,12).forEach(nm=>{ const r=wp14RoleFor(nm); h+=`<button class="w13r" onclick="wp14SetRole('${r}')">${wp14Pip(r)}${esc(nm)}</button>`; });
+  }
+  h+=`<div class="w13h">Mark as</div>`;
+  for(const c in WP14_ROLES) h+=`<button class="w13r" onclick="wp14SetRole('${c}')">${wp14Pip(c)}${esc(WP14_ROLES[c].l)}</button>`;
+  h+=`<button class="w13r" onclick="wp14SetRole('')"><span class="w13ic">∅</span>Clear role</button>`;
+  h+=`<div class="w13row">Tag <input id="wp13TagIn" maxlength="4" value="${esc(t.tag||"")}"><button onclick="wp13TagSet()">Set</button></div>`;
+  return h;
+}
+/* ==== end WP14 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();

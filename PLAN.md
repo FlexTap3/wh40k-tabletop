@@ -515,6 +515,39 @@ sheet chrome) and toggle classes, but desktop must render byte-identical.
   (`document.documentElement.scrollWidth <= innerWidth` asserted via
   injected check). Real-iPhone Safari pass remains for the human.
 
+### WP13 — Navigation & touch actions  [M] — SHIPPED (July 2026)
+
+User pain: phone tab-hunting mid-game + keyboard-only features unreachable on touch.
+- Phone nav reordered `Army·Attack·Cards·Log·Builder·⚙(Setup)` — still 6 buttons
+  (wp12-tests contract); `min-width:0` so ⚙ never leaves a narrow screen.
+- Context auto-surfacing (`wp13OnStage/AfterRoll/BoardFocus`): staging an attack
+  opens the Attack sheet on phone, a staged Roll closes it back to the board
+  (manual/AI rolls don't), the WP11 allocation banner forces board visibility.
+- Token action menu `#wp13Menu`: long-press a model (phone), right-click it
+  (desktop — empty board still pans, objectives keep their Secured cycle), or
+  inspector `⋯`. Rows: wounds ±, role/tag (WP14), Hidden, floor, battle-shock,
+  attach/detach, rotate, reserves, two-tap delete — all through the existing
+  functions/ops, keyboard shortcuts untouched. `wp13Tok!==null` is the open flag.
+- Tests: `wp13-tests.js` (harness). Verified: suite green, headless phone +
+  desktop screenshots reviewed (nav, sheet auto-open/close, menu, submenu).
+
+### WP14 — Per-model role markers  [M] — SHIPPED (July 2026)
+
+User pain: sergeants/special weapons indistinguishable on the table.
+- `t.role` (3-letter code) synced via existing tok+/tok~; absent = old look.
+- Deploy: leaders stamped `SGT`; weapon pips parsed best-effort from the
+  builder's free-text loadout (`card.wg`, carried by `bToGame`) — counted
+  fragments ("2x Meltagun") assign the first N non-leader models; SPC-family
+  gear never auto-pips (noise); imports/manual cards = menu only.
+- Draw: leader = full gold base rim + double chevron (rim visible at any zoom);
+  role = Okabe-Ito colour pip + letter at base bottom (r>6px), 3-letter chip
+  when zoomed (r>14px). `t.tag` chip unchanged and independent. `WP14_ROLES`
+  is the single tunable map (colour, letter colour, label).
+- Role editing via the WP13 menu (unit's weapon list with pip previews +
+  family entries + clear); legend auto-filled into helpDlg from the map.
+- Tests: `wp14-tests.js` (classifier table, parser incl. garbage, deploy
+  stamping, tok~ merge/clear, migrateCard `wg` pass-through, draw smoke).
+
 ---
 
 ## 5. Execution model for agents
