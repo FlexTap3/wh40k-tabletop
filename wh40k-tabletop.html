@@ -821,6 +821,7 @@ function rollAttack(){
   logShared("⚔ <b>"+esc(myName)+"</b> attack:\n"+esc(lines.join("\n")),"dice");
   if(typeof wp10AttackDone==="function") wp10AttackDone(final,failed,mortals,dmgRolls); /* ==== WP10: ai ==== solo auto-casualties */
   if(typeof wp13AfterRoll==="function") wp13AfterRoll(); /* ==== WP13 ==== phone: staged roll done → back to the board */
+  if(typeof wp16AfterRoll==="function") wp16AfterRoll(final,failed,mortals,dmgRolls); /* ==== WP16 ==== network/hotseat: offer the one-tap apply-damage button ==== end WP16 ==== */
 }
 
 /* ============ unit database ============ */
@@ -2296,6 +2297,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   if(los&&los.vis&&los.cover&&!w.melee) notes.push("Benefit of Cover applied (LoS check)");
   // staging banner + attack-log label
   wp3Label=`⚔ ${atkName} → ${tgtName} · ${w.n}`;
+  wp16Staged={tgtUk:tgtTok.unit,atkUk:ctx0.tok.unit}; /* ==== WP16 ==== remember the staged pair for the apply-damage button ==== end WP16 ==== */
   const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 1\")"}`
                      :`range ${w.rng}" — closest models ${dist.toFixed(1)}" ${inRange?"(in range)":"(OUT OF RANGE)"}`;
   const stage=g("akStage");
@@ -2312,6 +2314,7 @@ function wp3Stage(ctx0,wi,tgtTok){
 document.getElementById("tab-attack").addEventListener("change",e=>{
   if(e.target&&e.target.id==="ldTarget") return;
   wp3Label=""; const s=document.getElementById("akStage"); s.style.display="none";
+  wp16Staged=null; if(typeof wp16Hide==="function")wp16Hide(); /* ==== WP16 ==== manual edits invalidate the staged apply-damage button ==== end WP16 ==== */
 });
 /* ==== end WP3 ==== */
 
@@ -2699,9 +2702,7 @@ cv.addEventListener("contextmenu",e=>{ /* WP6: right-click an objective cycles S
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   if(hitToken(ix,iy)) return; /* ==== WP13 ==== the token action menu owns right-click on models */
   const o=hitObjective(ix,iy); if(!o) return;
-  const next=((o.sec||0)+1)%3;
-  op({k:"obj~",obj:{id:o.id,sec:next}});
-  logShared("◎ <b>"+esc(myName)+"</b> marked an objective "+(next?("<b>Secured</b> by "+esc(state.names[next]||("Player "+next))):"no longer Secured"),"sys");
+  wp16CycleSec(o); /* ==== WP16 ==== cycle body factored out so the touch long-press path shares it ==== end WP16 ==== */
 });
 (function(){ // objective-control panel lives under the primary-mission card in the Cards tab
   const mi=document.getElementById("missionInfo"); if(!mi) return;
@@ -2736,6 +2737,15 @@ function wp8PointerDown(e){ // returns true when the main pointerdown handler mu
     const p=wp8Ptrs.get(pid);
     if(!p||Math.hypot(p.x-p.sx,p.y-p.sy)>=8) return;
     if(drag&&drag.mode==="marquee"){
+      /* ==== WP16 ==== long-press on an objective (no token under the finger) cycles Secured — the touch mirror of right-click */
+      if(typeof hitObjective==="function"&&typeof wp16CycleSec==="function"){
+        const rect16=cv.getBoundingClientRect(), [ox,oy]=inch(p.x-rect16.left,p.y-rect16.top);
+        if(!hitToken(ox,oy)){
+          const o=hitObjective(ox,oy);
+          if(o){ drag=null; marquee=null; wp16CycleSec(o); draw(); return; }
+        }
+      }
+      /* ==== end WP16 ==== */
       drag=null; marquee=null; panning={x:p.x,y:p.y}; draw(); return;
     }
     /* ==== WP13 ==== long-press ON a model = action menu (finger jitter under 8px is undone) */
@@ -3884,7 +3894,10 @@ function aiApplyCasualties(tgtUk,packets,budget,atkUk){
   if(updates.length) op({k:"tok~",toks:updates});
   if(removals.length) op({k:"tok-",ids:removals});
   const gone=!state.tokens.some(t=>t.unit===tgtUk);
-  logShared(`💥 Solo: ${applied} damage applied to <b>${esc(name)}</b>${removals.length?` — ${removals.length} model${removals.length!==1?"s":""} slain`:""}${gone?" — <b>unit destroyed</b>":""}`,"sys");
+  /* ==== WP16 ==== the apply-damage button reuses this allocator outside solo; wp16LogAs labels the shared log line by player */
+  const who=(typeof wp16LogAs==="string"&&wp16LogAs)||"Solo";
+  logShared(`💥 ${who}: ${applied} damage applied to <b>${esc(name)}</b>${removals.length?` — ${removals.length} model${removals.length!==1?"s":""} slain`:""}${gone?" — <b>unit destroyed</b>":""}`,"sys");
+  /* ==== end WP16 ==== */
 }
 function wp10AttackDone(final,failed,mortals,dmgRolls){ // rollAttack hook (solo only)
   if(!solo) return;
@@ -4679,6 +4692,60 @@ function wp13RoleRows(t){ // the Role submenu of the WP13 token menu
   return h;
 }
 /* ==== end WP14 ==== */
+
+/* ==== WP16 ==== quality of life: (A) one-tap apply-damage button for network/hotseat
+   staged attacks — reuses aiApplyCasualties (wounded model first, closest to the
+   attacker next, leaders/CHARACTER last) through the existing tok~/tok- ops, and
+   (B) wp16CycleSec, the shared Secured-cycle body for right-click AND touch long-press.
+   Honor system: either client may tap Apply — the button is one-shot (wp16Pending is
+   consumed before applying), so a double-tap cannot apply twice. All state here is
+   transient module-side bookkeeping — never synced, never saved. */
+let wp16Staged=null;   // {tgtUk,atkUk} recorded by wp3Stage — which unit the staged attack targets
+let wp16Pending=null;  // {final,failed,mortals,dmgRolls,tgtUk,atkUk} — last rolled, not-yet-applied staged attack
+let wp16LogAs="";      // aiApplyCasualties log-line label while the button applies (falls back to "Solo")
+function wp16CycleSec(o){ // Secured cycle: none → P1 → P2 → none (same op + wording as the old WP6 body)
+  const next=((o.sec||0)+1)%3;
+  op({k:"obj~",obj:{id:o.id,sec:next}});
+  logShared("◎ <b>"+esc(myName)+"</b> marked an objective "+(next?("<b>Secured</b> by "+esc(state.names[next]||("Player "+next))):"no longer Secured"),"sys");
+}
+function wp16Btn(){ // create-once: a button element injected right after #akResult (akResult itself is never rebuilt)
+  let b=document.getElementById("wp16Apply");
+  if(!b){
+    b=document.createElement("button");
+    b.id="wp16Apply"; b.style.display="none"; b.style.width="100%"; b.style.marginTop="6px";
+    b.addEventListener("click",wp16ApplyClick);
+    const r=document.getElementById("akResult");
+    r.parentNode.insertBefore(b,r.nextSibling);
+  }
+  return b;
+}
+function wp16Hide(){ wp16Pending=null; const b=document.getElementById("wp16Apply"); if(b) b.style.display="none"; }
+function wp16AfterRoll(final,failed,mortals,dmgRolls){ // rollAttack hook — stands down whenever wp10AttackDone owns the roll
+  wp16Hide();                                          // any new roll replaces/hides a stale button first
+  if(typeof solo!=="undefined"&&solo) return;          // solo: wp10/wp11 consume staged rolls (same gate wp10 opens with)
+  if(!wp3Label||!wp16Staged) return;                   // manual dice — no staged target to apply to
+  if(!(final>0)||!state.tokens.some(t=>t.unit===wp16Staged.tgtUk)) return;
+  wp16Pending={final,failed,mortals,dmgRolls:(dmgRolls||[]).slice(),tgtUk:wp16Staged.tgtUk,atkUk:wp16Staged.atkUk};
+  const b=wp16Btn(), tname=(state.tokens.find(t=>t.unit===wp16Pending.tgtUk)||{}).name||"the target";
+  b.textContent=`Apply ${final} damage to ${tname} (wounded first)`;
+  b.style.display="block";
+}
+function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a second click is a no-op
+  const p=wp16Pending; if(!p) return;
+  wp16Hide(); wp16Staged=null;
+  if(!state.tokens.some(t=>t.unit===p.tgtUk)) return;
+  // damage packets exactly as wp10AttackDone builds them: one per failed save (real per-save D rolls when present), mortals as 1s
+  let packets=[];
+  if(p.dmgRolls&&p.dmgRolls.length===p.failed&&p.failed>0) packets=p.dmgRolls.slice();
+  else{ const flat=Math.max(1,parseInt(String(document.getElementById("akD").value).trim())||1);
+    packets=new Array(Math.max(0,p.failed)).fill(flat); }
+  for(let i=0;i<p.mortals;i++) packets.push(1);
+  if(!packets.length) return;
+  wp16LogAs="<b>"+esc(myName)+"</b>";
+  try{ aiApplyCasualties(p.tgtUk,packets,p.final,p.atkUk); } // logs the shared "💥 <name>: N damage applied…" line for both players
+  finally{ wp16LogAs=""; }
+}
+/* ==== end WP16 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
