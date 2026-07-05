@@ -20,6 +20,7 @@ node harness.js wp13-tests.js
 node harness.js wp14-tests.js
 node harness.js wp15-tests.js
 node harness.js wp16-tests.js
+node harness.js wp18-tests.js
 node test_wp1.js
 node test_wp6.js
 node test_wp7.js
