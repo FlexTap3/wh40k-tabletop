@@ -261,6 +261,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       </div>
       <div class="row">
         <button onclick="openListImport()">📋 Import list</button>
+        <!-- ==== WP17 ==== --><button onclick="wp17AutoDeploy()" title="Place all your units in legal spots inside your deployment zone (setup only — round 1, before the battle starts). You can still drag anything afterwards.">⚡ Auto-deploy</button><!-- ==== end WP17 ==== -->
         <button onclick="exportArmy()">Save</button>
         <button onclick="document.getElementById('armyFile').click()">Load</button>
         <input type="file" id="armyFile" accept=".json" style="display:none" onchange="importArmy(this)">
@@ -1232,6 +1233,7 @@ function bToGame(){
   if(!myList.items.length) return;
   myArmy=[]; // the Army tab mirrors the mustered list
   let n=0;
+  const wp17Before=state.tokens.length; /* ==== WP17 ==== snapshot: tokens minted below are the fresh muster ==== end WP17 ==== */
   myList.items.forEach(it=>{
     const info=bItemInfo(it); if(!info) return;
     let c;
@@ -1250,6 +1252,15 @@ function bToGame(){
   localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy(); showTab("army"); closeBuilder();
   broadcastCards(); /* WP0: card sync on muster */
   logShared(`· <b>${esc(myName)}</b> mustered their army: ${n} units, ${bTotalPts()} pts`,"sys");
+  /* ==== WP17 ==== auto-deploy the fresh muster (pre-battle only — a mid-game muster keeps the classic edge drop) */
+  if(wp17PreBattle()){
+    const wp17New=Array.from(new Set(state.tokens.slice(wp17Before).map(t=>t.unit)));
+    if(wp17New.length){
+      wp17DeploySide(mySide,wp17New);
+      logShared(`· <b>${esc(myName)}</b> auto-deployed their army — drag anything you want to adjust`,"sys");
+    }
+  }
+  /* ==== end WP17 ==== */
 }
 function bExportText(){
   const fname=(DB.factions.find(f=>f[0]===myList.faction)||["",""])[1];
@@ -4874,6 +4885,67 @@ function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a s
   finally{ wp16LogAs=""; }
 }
 /* ==== end WP16 ==== */
+
+/* ==== WP17 ==== player auto-deploy: place the player's units legally inside their own
+   deployment zone, exactly like the AI does for itself (reuses aiPlaceUnit unchanged:
+   seeded-shuffled candidate scan, two passes, aiUnitSpots/aiSpotOk legality, one tok~
+   per unit). Runs automatically after Muster (pre-battle only) and on demand from the
+   Army tab's ⚡ Auto-deploy button. No DZ loaded → deterministic tidy rows along the
+   deployer's board edge instead. No new op kinds, no new synced state — tok~ moves only. */
+
+// Pre-battle = round 1 AND the phase engine still at Deploy: state.phase.ph is -1
+// before the first "Start battle / next phase" step (wp7RenderPhase shows "Deploy"
+// exactly when ph<0 or phase is missing/malformed — same check here).
+function wp17PreBattle(){
+  if((((state.trackers&&state.trackers.round)||1))!==1) return false;
+  const p=state.phase;
+  return !p||typeof p!=="object"||typeof p.ph!=="number"||p.ph<0;
+}
+// Auto-deploy `side`'s units: scope = unit ids in unitIds if given, else every unit
+// that side owns on the table. Everything NOT being (re)placed — the opponent plus
+// own out-of-scope units — counts as an obstacle for aiPlaceUnit's first pass.
+function wp17DeploySide(side,unitIds){
+  const ids=unitIds?new Set(unitIds):null;
+  const by={};
+  state.tokens.forEach(t=>{ if(t.owner===side&&(!ids||ids.has(t.unit)))(by[t.unit]=by[t.unit]||[]).push(t); });
+  const units=Object.keys(by).map(k=>by[k]).sort((a,b)=>b.length-a.length); // biggest units grab space first (as aiDeployAll)
+  if(!units.length) return;
+  const placed=state.tokens.filter(t=>!by[t.unit]);
+  const poly=(state.dz&&state.dz[side-1])||null;
+  if(!poly||poly.length<3){ wp17EdgeRows(side,units,placed); return; }
+  units.forEach(toks=>{
+    if(!aiPlaceUnit(toks,poly,placed))
+      logSys("Couldn't fit "+((toks[0]&&toks[0].name)||"a unit")+" in the DZ — left where it dropped; drag it if needed.");
+  });
+}
+// No-DZ fallback: pack units into neat formation rows along the deployer's board edge
+// (side 1 = bottom, side 2 = top), left-to-right shelves, spacing from each unit's own
+// token diameter, ≥1" board margin, no overlap between fallback units. Deterministic —
+// no RNG — so both peers and repeated runs produce the identical formation.
+function wp17EdgeRows(side,units,placed){
+  const m=1, pad=0.5, W=state.board.w, H=state.board.h;
+  let cx0=m, off=0, shelfH=0;
+  units.forEach(toks=>{
+    const gap=Math.max(1.3,2*tokRadius(toks[0])+0.25);
+    const per=Math.ceil(Math.sqrt(toks.length)), rows=Math.ceil(toks.length/per);
+    const bw=per*gap, bh=rows*gap;
+    if(cx0+bw>W-m&&cx0>m){ off+=shelfH+pad; cx0=m; shelfH=0; } // row full → next shelf, one shelf further from the edge
+    const cx=Math.min(cx0+bw/2,W-m-bw/2);
+    const cy=side===1 ? H-m-off-bh/2 : m+off+bh/2;
+    const spots=aiUnitSpots(toks.length,cx,cy,gap);
+    op({k:"tok~",toks:toks.map((t,i)=>({id:t.id,x:spots[i][0],y:spots[i][1]}))});
+    placed.push.apply(placed,toks);
+    cx0+=bw+pad; if(bh>shelfH) shelfH=bh;
+  });
+}
+// "⚡ Auto-deploy" button (Army tab): re-run over ALL own units — setup only.
+function wp17AutoDeploy(){
+  if(!wp17PreBattle()){ logSys("Auto-deploy is for setup only — the battle is already under way. Drag units (or use Reserves) instead."); return; }
+  if(!state.tokens.some(t=>t.owner===mySide)){ logSys("No units on the table yet — Muster your army from the Builder first."); return; }
+  wp17DeploySide(mySide);
+  logShared(`· <b>${esc(myName)}</b> auto-deployed their army — drag anything you want to adjust`,"sys");
+}
+/* ==== end WP17 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
