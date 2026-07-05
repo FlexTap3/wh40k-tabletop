@@ -1473,7 +1473,7 @@ function checkCoherency(){
 }
 const unitCoherent=uk=>state.tokens.filter(t=>t.unit===uk).every(t=>!incoherent.has(t.id));
 const RING_SIZES=[6,9,12,24];
-function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; if(t!=="attack"&&typeof wp15Disarm==="function") wp15Disarm(); /* ==== WP15 ==== leaving the tool drops the armed attacker */ }
+function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; if(t!=="attack"&&typeof wp15Disarm==="function") wp15Disarm(); /* ==== WP15 ==== leaving the tool drops the armed attacker */ if(t!=="ruler"&&typeof wp19End==="function") wp19End(true); /* ==== WP19 ==== leaving the tool ends the waypoint chain */ }
 function resize(){ const r=cv.parentElement.getBoundingClientRect(); cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); draw(); }
 window.addEventListener("resize",resize);
 function fitView(){
@@ -1817,6 +1817,7 @@ function draw(){
 }
 function drawRuler(r,color){
   if(!r) return;
+  if(r.pts&&r.pts.length>=2){ wp19DrawChain(r,color); return; } /* ==== WP19 ==== waypoint chain rendering ==== end WP19 ==== */
   const [ax,ay]=px(r.x0,r.y0),[bx2,by2]=px(r.x1,r.y1);
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx2,by2); ctx.stroke();
   ctx.beginPath(); ctx.arc(ax,ay,3,0,7); ctx.arc(bx2,by2,3,0,7); ctx.fillStyle=color; ctx.fill();
@@ -2368,7 +2369,10 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   /* ==== WP7: phases ==== deploy-from-reserves placement mode (Shift-click overrides legality, logged) */
   if(wp7Placing&&e.button===0){ wp7PlaceClick(ix,iy,e.shiftKey); return; }
   /* ==== end WP7 ==== */
-  if(tool==="ruler"){ ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler"}; draw(); return; }
+  if(tool==="ruler"){ /* ==== WP19 ==== press anchors the click-vs-drag test; a live waypoint chain keeps its pts */
+    if(wp19Chain&&ruler&&ruler.pts){ wp19Cursor(ix,iy); drag={mode:"ruler",wp19x:ix,wp19y:iy}; draw(); return; }
+    ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler",wp19x:ix,wp19y:iy}; draw(); return;
+  } /* ==== end WP19 ==== */
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
   if(tool==="los"){ losToolClick(ix,iy); return; } /* ==== WP4: 👁 tool ==== */
@@ -2396,9 +2400,22 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
 window.addEventListener("pointermove",e=>{ /* WP8: was "mousemove" — handler logic unchanged */
   if(wp8PointerMove(e)) return; /* WP8: pinch-zoom in progress */
   if(panning){ view.x+=e.clientX-panning.x; view.y+=e.clientY-panning.y; panning={x:e.clientX,y:e.clientY}; draw(); return; }
+  /* ==== WP19 ==== chain live, no button held: the cursor leg follows the hover (sends throttled ≤80ms) */
+  if(!drag&&wp19Chain&&ruler&&ruler.pts){
+    const rect19=cv.getBoundingClientRect(), [hx,hy]=inch(e.clientX-rect19.left,e.clientY-rect19.top);
+    wp19Cursor(hx,hy); wp19Send(); draw(); return;
+  }
+  /* ==== end WP19 ==== */
   if(!drag) return;
   const rect=cv.getBoundingClientRect(), [ix,iy]=inch(e.clientX-rect.left,e.clientY-rect.top);
-  if(drag.mode==="ruler"){ ruler.x1=ix; ruler.y1=iy; send({t:"ruler",r:ruler}); draw(); }
+  if(drag.mode==="ruler"){
+    /* ==== WP19 ==== press while chained: <0.3" keeps tracking the cursor leg; ≥0.3" = a fresh plain drag measure (ends the chain) */
+    if(wp19Chain&&ruler&&ruler.pts){
+      if(Math.hypot(ix-drag.wp19x,iy-drag.wp19y)<0.3){ wp19Cursor(ix,iy); wp19Send(); draw(); return; }
+      wp19End(false); ruler={x0:drag.wp19x,y0:drag.wp19y,x1:ix,y1:iy};
+    }
+    /* ==== end WP19 ==== */
+    ruler.x1=ix; ruler.y1=iy; send({t:"ruler",r:ruler}); draw(); }
   else if(drag.mode==="marquee"){ marquee.x1=ix; marquee.y1=iy; draw(); }
   else if(drag.mode==="tokens"){
     const dx=ix-drag.lx, dy=iy-drag.ly; drag.lx=ix; drag.ly=iy; drag.moved=true;
@@ -2417,6 +2434,12 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
   if(wp8PointerUp(e)) return; /* WP8: pinch end / touch double-tap */
   if(panning){ panning=null; return; }
   if(!drag) return;
+  /* ==== WP19 ==== ruler: a press that moved <0.3" is a waypoint click — chain the tape and keep it live */
+  if(drag.mode==="ruler"&&ruler&&drag.wp19x!==undefined
+     &&Math.hypot(ruler.x1-drag.wp19x,ruler.y1-drag.wp19y)<0.3){
+    wp19Click(drag.wp19x,drag.wp19y); drag=null; draw(); return;
+  }
+  /* ==== end WP19 ==== */
   /* ==== WP5: terrain collision — illegal drops snap back ==== */
   if(drag.mode==="tokens"&&drag.moved&&wp5BlockDrop(drag)){ wp2DragEnd(); drag=null; draw(); return; }
   /* ==== end WP5 ==== */
@@ -2454,6 +2477,9 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
   drag=null; draw();
 });
 cv.addEventListener("dblclick",e=>{
+  /* ==== WP19 ==== ruler tool: double-click ends the waypoint chain (never a wound prompt) */
+  if(tool==="ruler"){ wp19End(true); return; }
+  /* ==== end WP19 ==== */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   const tk=hitToken(ix,iy); if(!tk) return;
   const v=prompt(`${tk.name} — wounds remaining (max ${tk.maxW}):`,tk.wounds);
@@ -2487,7 +2513,7 @@ window.addEventListener("keydown",e=>{
   }
   else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
   else if(e.key==="f"||e.key==="F"){ cycleFloor(); } /* ==== WP5: floor level ==== */
-  else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
+  else if(e.key==="Escape"){ sel.clear(); wp19End(true); /* ==== WP19 ==== end the waypoint chain + final send */ ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
 });
 
 /* ==== WP1: resilience — autosave, resume, reconnect, undo ==== */
@@ -2808,6 +2834,9 @@ function wp8PointerUp(e){ // returns true when the main pointerup handler must s
   return false;
 }
 function wp8WoundPrompt(ix,iy){ // touch mirror of the desktop dblclick handler
+  /* ==== WP19 ==== ruler tool: a double-tap ends the waypoint chain, mirroring the desktop dblclick */
+  if(tool==="ruler"){ if(typeof wp19End==="function") wp19End(true); return; }
+  /* ==== end WP19 ==== */
   const tk=hitToken(ix,iy); if(!tk) return;
   const v=prompt(`${tk.name} — wounds remaining (max ${tk.maxW}):`,tk.wounds);
   if(v===null) return;
@@ -4874,6 +4903,54 @@ function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a s
   finally{ wp16LogAs=""; }
 }
 /* ==== end WP16 ==== */
+
+/* ==== WP19 ==== waypoint ruler: single clicks with the 📏 tool chain waypoints around terrain;
+   a plain drag is still the classic straight measure. ruler.pts = [wp0,…,wpN,cursor] while a chain
+   is live; x0..y1 ALWAYS mirror the last leg so an older peer's drawRuler still shows that leg. */
+let wp19Chain=false, wp19LastSend=0;
+function wp19Click(ix,iy){ // pointerup that moved <0.3": commit a waypoint and keep the tape live
+  if(!ruler) return;
+  if(!wp19Chain){ wp19Chain=true; ruler.pts=[[ruler.x0,ruler.y0],[ix,iy]]; } // first click: anchor + cursor leg
+  else{ ruler.pts[ruler.pts.length-1]=[ix,iy]; ruler.pts.push([ix,iy]); }    // commit the cursor point, start a new leg
+  wp19Cursor(ix,iy);
+  wp19LastSend=Date.now(); send({t:"ruler",r:ruler});
+}
+function wp19Cursor(ix,iy){ // move the trailing cursor point; keep x0..y1 mirroring the LAST leg (old-peer compat)
+  const p=ruler.pts; p[p.length-1]=[ix,iy];
+  ruler.x0=p[p.length-2][0]; ruler.y0=p[p.length-2][1]; ruler.x1=ix; ruler.y1=iy;
+}
+function wp19Send(){ // live-share the chain, throttled to ≤ one message per 80ms
+  const now=Date.now(); if(now-wp19LastSend<80) return;
+  wp19LastSend=now; send({t:"ruler",r:ruler});
+}
+function wp19End(clear){ // Esc / dblclick / tool switch → clear+final send; clear===false = silent handoff to a plain drag
+  const had=wp19Chain||(ruler&&ruler.pts);
+  wp19Chain=false;
+  if(!had) return;
+  if(clear!==false){ ruler=null; send({t:"ruler",r:null}); draw(); } // final send: opponent's copy blanks/expires normally
+}
+function wp19Total(r){ // cumulative chain length in inches (all legs incl. the cursor leg)
+  let d=0; for(let i=1;i<r.pts.length;i++) d+=Math.hypot(r.pts[i][0]-r.pts[i-1][0],r.pts[i][1]-r.pts[i-1][1]);
+  return d;
+}
+function wp19DrawChain(r,color){ // polyline + waypoint dots + ONE cumulative label chip near the cursor end
+  const p=r.pts;
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+  p.forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); });
+  ctx.stroke();
+  ctx.fillStyle=color;
+  p.forEach(pt=>{ const q=px(pt[0],pt[1]); ctx.beginPath(); ctx.arc(q[0],q[1],3,0,7); ctx.fill(); });
+  const legs=[]; for(let i=1;i<p.length;i++) legs.push(Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));
+  let label=wp19Total(r).toFixed(1)+'"';
+  if(legs.length>1) label+=" ("+legs.map(d=>d.toFixed(1)).join(" + ")+")";
+  const end=px(p[p.length-1][0],p[p.length-1][1]);
+  ctx.font="bold 13px sans-serif";
+  const w=ctx.measureText(label).width;
+  ctx.fillStyle="rgba(16,18,22,.9)"; ctx.fillRect(end[0]+12,end[1]-24,w+10,18);
+  ctx.fillStyle=color; ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(label,end[0]+17,end[1]-15);
+}
+/* ==== end WP19 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
