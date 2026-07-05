@@ -202,6 +202,19 @@ html.phone #wp13Menu{max-height:60dvh; overflow-y:auto; min-width:230px}
 html.phone #wp13Menu .w13r{min-height:44px; font-size:14px}
 html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
 /* ==== end WP13 ==== */
+/* ==== WP20: dice-stats popover ==== local-only tally of every d6 rolled on this screen */
+#wp20Pop{display:none; position:fixed; top:46px; right:8px; z-index:70; width:min(300px,calc(100vw - 16px)); max-height:70dvh; overflow-y:auto; background:rgba(24,20,25,.98); border:1px solid var(--edge2); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.7); padding:8px 10px; font-size:12px}
+#wp20Pop.open{display:block}
+#wp20Pop .w20h{color:var(--accent); font-family:var(--serif); font-size:12px; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--edge); padding-bottom:4px; margin-bottom:6px}
+#wp20Pop .w20tot{color:var(--dim); margin:4px 0}
+#wp20Pop .w20row{display:flex; align-items:center; gap:6px; margin:3px 0}
+#wp20Pop .w20f{flex:0 0 12px; text-align:center; font-weight:700}
+#wp20Pop .w20bar{flex:1; position:relative; height:12px; background:var(--panel2); border-radius:3px}
+#wp20Pop .w20fill{position:absolute; left:0; top:0; bottom:0; background:var(--accent); opacity:.75; border-radius:3px}
+#wp20Pop .w20exp{position:absolute; top:-1px; bottom:-1px; width:2px; background:var(--text); opacity:.9}
+#wp20Pop .w20c{flex:0 0 28px; text-align:right}
+#wp20Pop .w20d{flex:0 0 44px; text-align:right; color:var(--dim)}
+/* ==== end WP20 ==== */
 </style>
 </head>
 <body>
@@ -216,7 +229,8 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
   <!-- ==== end WP7 ==== -->
   <span class="tracker"><span class="pname p1" id="n1">Player 1</span>&nbsp; CP <button onclick="stepTracker('cp1',-1)">−</button><b id="tCp1">0</b><button onclick="stepTracker('cp1',1)">+</button> VP <button onclick="stepTracker('vp1',-1)">−</button><b id="tVp1">0</b><button onclick="stepTracker('vp1',1)">+</button></span>
   <span class="tracker"><span class="pname p2" id="n2">Player 2</span>&nbsp; CP <button onclick="stepTracker('cp2',-1)">−</button><b id="tCp2">0</b><button onclick="stepTracker('cp2',1)">+</button> VP <button onclick="stepTracker('vp2',-1)">−</button><b id="tVp2">0</b><button onclick="stepTracker('vp2',1)">+</button></span>
-  <span class="tracker">🎲 <input id="qtyDice" type="number" value="6" min="1" max="60" style="width:44px"> <button onclick="quickRoll()">Roll D6</button></span>
+  <span class="tracker">🎲 <input id="qtyDice" type="number" value="6" min="1" max="60" style="width:44px"> <button onclick="quickRoll()">Roll D6</button> <button id="wp20Btn" onclick="wp20Toggle()" title="Dice stats — every d6 rolled on this screen">📊</button></span><!-- ==== WP20 ==== dice-stats popover toggle -->
+
   <span id="connStatus">
     <span class="dot" id="connDot"></span><span id="connText">Offline</span>
     <button id="btnHost" onclick="hostGame()">Host</button>
@@ -242,6 +256,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
     <div class="tabpane" id="tab-cards">
       <h3>Scoreboard</h3>
       <div id="scoreboard"></div>
+      <!-- ==== WP20 ==== plain-text game-summary download (local action, nothing broadcast) -->
+      <div class="row"><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button></div>
+      <!-- ==== end WP20 ==== -->
       <h3>Primary mission</h3>
       <div id="missionInfo" class="small" style="margin-bottom:8px">No layout loaded. Load one in Setup to see the primary mission and objectives.</div>
       <h3>Secondary objectives</h3>
@@ -261,6 +278,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       </div>
       <div class="row">
         <button onclick="openListImport()">📋 Import list</button>
+        <!-- ==== WP17 ==== --><button onclick="wp17AutoDeploy()" title="Place all your units in legal spots inside your deployment zone (setup only — round 1, before the battle starts). You can still drag anything afterwards.">⚡ Auto-deploy</button><!-- ==== end WP17 ==== -->
         <button onclick="exportArmy()">Save</button>
         <button onclick="document.getElementById('armyFile').click()">Load</button>
         <input type="file" id="armyFile" accept=".json" style="display:none" onchange="importArmy(this)">
@@ -342,7 +360,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <!-- ==== end WP11 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
-      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button>
+      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
       <div class="row"><button onclick="if(confirm('Clear the whole table?'))clearTable()">Clear table</button></div>
     </div>
@@ -554,7 +572,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Solo auto-casualties</b>: in solo mode the AI's damage is applied automatically, and when <i>you</i> roll a staged attack (inspector ⚔ flow) you're offered the same. Allocation: already-wounded model first, then closest to the attacker, squad leaders and CHARACTERs last; excess damage from one failed save is lost, mortal wounds apply one at a time; total is capped at the rolled result after FNP.</li>
       <li><b>Documented approximations</b>: the AI fires its unit's best non-pistol/grenade weapon once per model and every other profile once (the database doesn't say who carries what); the database has no Deep Strike flag, so it uses Strategic Reserves (board-edge arrivals) instead; it spends no CP and uses no stratagems; cover and visibility use the same area-rule approximations as the 👁 tool; charges "pile in" as a straight move into contact — swing your own engaged units back manually in its Fight phase. Its 2D6/advance rolls come from a seedable RNG (<code>aiSeed(n)</code> in the console reproduces a game); attack-sequence dice are the ordinary roller's dice.</li>
       <!-- ==== WP11: allocation + doctrine ==== -->
-      <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way.</li>
+      <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way. <!-- ==== WP18 ==== --> In a network game the attacker's button <i>sends</i> the rolled damage across and this same banner appears on the defender's screen — gold rings and numbered badges suggest the order auto-assign would use, but the defender clicks whatever legal model they want. Pending damage doesn't survive a reconnect — re-send if that happens. <!-- ==== end WP18 ==== --></li>
       <li><b>Meta opponents</b>: the Solo dialog can field one of five embedded tournament archetypes (real GT-winning lists from 11th edition's opening weeks — unit names, sizes and points only). Each carries a one-line note on what it stress-tests. The AI reads the list's Force Disposition and announces its game plan at muster, plus a one-line strategic brief each round.</li>
       <li><b>The AI's doctrine</b> (in its own words): it plays its plan — kill-focused, objective-first, or spread-and-scout — and pushes the primary hardest in rounds 1–3, easing off late when it is ahead. Quiet infantry sitting wholly in dense terrain goes Hidden after the shooting phase, and fragile shooters prefer spots that keep that option. When you hold reserves or fast melee, its cheap units picket 6–8" ahead of its valuable units and backfield objective to deny drops and charge lanes. Early on, if it is outgunned, shooters stage out of sight rather than trade in the open. It concentrates fire to remove whole units (with a modest overkill allowance) and prefers finishing hurt units that sit on objectives; it won't move a unit into the open when the expected loss beats the gain; and its slow melee refuses to chase faster shooters — it parks on objectives and makes you come.</li>
       <!-- ==== end WP11 ==== -->
@@ -641,6 +659,9 @@ function onMsg(m){
     /* ==== WP2: move measure ==== */
     case "movepath": wp2TheirPath(m.mp); break;
     /* ==== end WP2 ==== */
+    /* ==== WP18 ==== P2P defender allocation: rolled damage handed over as a transient direct message (like "ruler" — never in state, lost on reconnect) */
+    case "dmg": if(typeof wp18OnDmg==="function") wp18OnDmg(m); break; /* SEC: every field coerced/capped inside wp18OnDmg */
+    /* ==== end WP18 ==== */
   }
 }
 /* ops mutate state identically on both ends */
@@ -723,7 +744,7 @@ function logChat(name,text,mine){ logEntry("<b>"+esc(name)+":</b> "+esc(text), m
 function sendChat(){ const i=document.getElementById("chatIn"); const v=i.value.trim(); if(!v)return; i.value=""; logChat(myName,v,true); send({t:"chat",name:myName,text:v}); }
 document.getElementById("chatIn").addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const d6 = ()=>1+Math.floor(Math.random()*6);
+const d6 = ()=>{ const r=1+Math.floor(Math.random()*6); if(typeof wp20Note==="function") wp20Note(r); return r; }; /* ==== WP20 ==== every d6 rolled on this screen (mine and the AI's) feeds the dice-stats panel */
 function quickRoll(){
   const n=Math.min(60,Math.max(1,+document.getElementById("qtyDice").value||1));
   const r=Array.from({length:n},d6).sort((a,b)=>b-a);
@@ -1232,6 +1253,7 @@ function bToGame(){
   if(!myList.items.length) return;
   myArmy=[]; // the Army tab mirrors the mustered list
   let n=0;
+  const wp17Before=state.tokens.length; /* ==== WP17 ==== snapshot: tokens minted below are the fresh muster ==== end WP17 ==== */
   myList.items.forEach(it=>{
     const info=bItemInfo(it); if(!info) return;
     let c;
@@ -1250,6 +1272,15 @@ function bToGame(){
   localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy(); showTab("army"); closeBuilder();
   broadcastCards(); /* WP0: card sync on muster */
   logShared(`· <b>${esc(myName)}</b> mustered their army: ${n} units, ${bTotalPts()} pts`,"sys");
+  /* ==== WP17 ==== auto-deploy the fresh muster (pre-battle only — a mid-game muster keeps the classic edge drop) */
+  if(wp17PreBattle()){
+    const wp17New=Array.from(new Set(state.tokens.slice(wp17Before).map(t=>t.unit)));
+    if(wp17New.length){
+      wp17DeploySide(mySide,wp17New);
+      logShared(`· <b>${esc(myName)}</b> auto-deployed their army — drag anything you want to adjust`,"sys");
+    }
+  }
+  /* ==== end WP17 ==== */
 }
 function bExportText(){
   const fname=(DB.factions.find(f=>f[0]===myList.faction)||["",""])[1];
@@ -1473,7 +1504,7 @@ function checkCoherency(){
 }
 const unitCoherent=uk=>state.tokens.filter(t=>t.unit===uk).every(t=>!incoherent.has(t.id));
 const RING_SIZES=[6,9,12,24];
-function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; if(t!=="attack"&&typeof wp15Disarm==="function") wp15Disarm(); /* ==== WP15 ==== leaving the tool drops the armed attacker */ }
+function setTool(t){ tool=t; document.querySelectorAll("#toolbar button[id]").forEach(b=>b.classList.toggle("active",b.id==="tool-"+t)); cv.style.cursor = t==="select"?"default":"crosshair"; if(t!=="attack"&&typeof wp15Disarm==="function") wp15Disarm(); /* ==== WP15 ==== leaving the tool drops the armed attacker */ if(t!=="ruler"&&typeof wp19End==="function") wp19End(true); /* ==== WP19 ==== leaving the tool ends the waypoint chain */ }
 function resize(){ const r=cv.parentElement.getBoundingClientRect(); cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); draw(); }
 window.addEventListener("resize",resize);
 function fitView(){
@@ -1799,6 +1830,7 @@ function draw(){
     ctx.restore();
   });
   wp6Overlay(); /* ==== WP6: objectives ==== control glow, OC tallies, battle-shock badges */
+  if(typeof wp18Overlay==="function") wp18Overlay(); /* ==== WP18 ==== casualty-suggestion ring + numbered badges while allocation pends */
   // marquee
   if(marquee){ ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([4,3]);
     ctx.strokeRect(...px(Math.min(marquee.x0,marquee.x1),Math.min(marquee.y0,marquee.y1)),Math.abs(marquee.x1-marquee.x0)*view.s,Math.abs(marquee.y1-marquee.y0)*view.s); ctx.setLineDash([]); }
@@ -1817,6 +1849,7 @@ function draw(){
 }
 function drawRuler(r,color){
   if(!r) return;
+  if(r.pts&&r.pts.length>=2){ wp19DrawChain(r,color); return; } /* ==== WP19 ==== waypoint chain rendering ==== end WP19 ==== */
   const [ax,ay]=px(r.x0,r.y0),[bx2,by2]=px(r.x1,r.y1);
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx2,by2); ctx.stroke();
   ctx.beginPath(); ctx.arc(ax,ay,3,0,7); ctx.arc(bx2,by2,3,0,7); ctx.fillStyle=color; ctx.fill();
@@ -2368,7 +2401,10 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   /* ==== WP7: phases ==== deploy-from-reserves placement mode (Shift-click overrides legality, logged) */
   if(wp7Placing&&e.button===0){ wp7PlaceClick(ix,iy,e.shiftKey); return; }
   /* ==== end WP7 ==== */
-  if(tool==="ruler"){ ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler"}; draw(); return; }
+  if(tool==="ruler"){ /* ==== WP19 ==== press anchors the click-vs-drag test; a live waypoint chain keeps its pts */
+    if(wp19Chain&&ruler&&ruler.pts){ wp19Cursor(ix,iy); drag={mode:"ruler",wp19x:ix,wp19y:iy}; draw(); return; }
+    ruler={x0:ix,y0:iy,x1:ix,y1:iy}; drag={mode:"ruler",wp19x:ix,wp19y:iy}; draw(); return;
+  } /* ==== end WP19 ==== */
   if(tool==="terrain"){ drag={mode:"terrain",x0:ix,y0:iy,id:uid()}; return; }
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
   if(tool==="los"){ losToolClick(ix,iy); return; } /* ==== WP4: 👁 tool ==== */
@@ -2396,9 +2432,22 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
 window.addEventListener("pointermove",e=>{ /* WP8: was "mousemove" — handler logic unchanged */
   if(wp8PointerMove(e)) return; /* WP8: pinch-zoom in progress */
   if(panning){ view.x+=e.clientX-panning.x; view.y+=e.clientY-panning.y; panning={x:e.clientX,y:e.clientY}; draw(); return; }
+  /* ==== WP19 ==== chain live, no button held: the cursor leg follows the hover (sends throttled ≤80ms) */
+  if(!drag&&wp19Chain&&ruler&&ruler.pts){
+    const rect19=cv.getBoundingClientRect(), [hx,hy]=inch(e.clientX-rect19.left,e.clientY-rect19.top);
+    wp19Cursor(hx,hy); wp19Send(); draw(); return;
+  }
+  /* ==== end WP19 ==== */
   if(!drag) return;
   const rect=cv.getBoundingClientRect(), [ix,iy]=inch(e.clientX-rect.left,e.clientY-rect.top);
-  if(drag.mode==="ruler"){ ruler.x1=ix; ruler.y1=iy; send({t:"ruler",r:ruler}); draw(); }
+  if(drag.mode==="ruler"){
+    /* ==== WP19 ==== press while chained: <0.3" keeps tracking the cursor leg; ≥0.3" = a fresh plain drag measure (ends the chain) */
+    if(wp19Chain&&ruler&&ruler.pts){
+      if(Math.hypot(ix-drag.wp19x,iy-drag.wp19y)<0.3){ wp19Cursor(ix,iy); wp19Send(); draw(); return; }
+      wp19End(false); ruler={x0:drag.wp19x,y0:drag.wp19y,x1:ix,y1:iy};
+    }
+    /* ==== end WP19 ==== */
+    ruler.x1=ix; ruler.y1=iy; send({t:"ruler",r:ruler}); draw(); }
   else if(drag.mode==="marquee"){ marquee.x1=ix; marquee.y1=iy; draw(); }
   else if(drag.mode==="tokens"){
     const dx=ix-drag.lx, dy=iy-drag.ly; drag.lx=ix; drag.ly=iy; drag.moved=true;
@@ -2417,6 +2466,12 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
   if(wp8PointerUp(e)) return; /* WP8: pinch end / touch double-tap */
   if(panning){ panning=null; return; }
   if(!drag) return;
+  /* ==== WP19 ==== ruler: a press that moved <0.3" is a waypoint click — chain the tape and keep it live */
+  if(drag.mode==="ruler"&&ruler&&drag.wp19x!==undefined
+     &&Math.hypot(ruler.x1-drag.wp19x,ruler.y1-drag.wp19y)<0.3){
+    wp19Click(drag.wp19x,drag.wp19y); drag=null; draw(); return;
+  }
+  /* ==== end WP19 ==== */
   /* ==== WP5: terrain collision — illegal drops snap back ==== */
   if(drag.mode==="tokens"&&drag.moved&&wp5BlockDrop(drag)){ wp2DragEnd(); drag=null; draw(); return; }
   /* ==== end WP5 ==== */
@@ -2454,6 +2509,9 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
   drag=null; draw();
 });
 cv.addEventListener("dblclick",e=>{
+  /* ==== WP19 ==== ruler tool: double-click ends the waypoint chain (never a wound prompt) */
+  if(tool==="ruler"){ wp19End(true); return; }
+  /* ==== end WP19 ==== */
   const [ix,iy]=inch(e.offsetX,e.offsetY);
   const tk=hitToken(ix,iy); if(!tk) return;
   const v=prompt(`${tk.name} — wounds remaining (max ${tk.maxW}):`,tk.wounds);
@@ -2487,7 +2545,7 @@ window.addEventListener("keydown",e=>{
   }
   else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
   else if(e.key==="f"||e.key==="F"){ cycleFloor(); } /* ==== WP5: floor level ==== */
-  else if(e.key==="Escape"){ sel.clear(); ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
+  else if(e.key==="Escape"){ sel.clear(); wp19End(true); /* ==== WP19 ==== end the waypoint chain + final send */ ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
 });
 
 /* ==== WP1: resilience — autosave, resume, reconnect, undo ==== */
@@ -2808,6 +2866,9 @@ function wp8PointerUp(e){ // returns true when the main pointerup handler must s
   return false;
 }
 function wp8WoundPrompt(ix,iy){ // touch mirror of the desktop dblclick handler
+  /* ==== WP19 ==== ruler tool: a double-tap ends the waypoint chain, mirroring the desktop dblclick */
+  if(tool==="ruler"){ if(typeof wp19End==="function") wp19End(true); return; }
+  /* ==== end WP19 ==== */
   const tk=hitToken(ix,iy); if(!tk) return;
   const v=prompt(`${tk.name} — wounds remaining (max ${tk.maxW}):`,tk.wounds);
   if(v===null) return;
@@ -3971,8 +4032,13 @@ function wp11Banner(){
   const tname=(state.tokens.find(t=>t.unit===a.tgtUk)||{}).name||"target unit";
   const rem=Math.min(a.packets.reduce((s,p)=>s+p,0),a.budget-a.applied);
   el.style.display="block";
+  /* ==== WP18 ==== one-line suggestion (the full order is ringed/badged on the board) */
+  let sugg="";
+  if(typeof wp18SuggOrder==="function"){ const o=wp18SuggOrder(a); if(o.length) sugg=`<br><span class="small">💡 Suggested next: ${esc(o[0].name)} (wounded first / closest)</span>`; }
+  /* ==== end WP18 ==== */
   el.innerHTML=`💥 <b>${esc(a.label)}</b> — <b>${left}</b> packet${left!==1?"s":""} (${rem} dmg) to allocate to <b>${esc(tname)}</b>`
     +`<br><span class="small">Click your models in the unit — next packet: ${next} dmg · wounded model first (the rule) · <kbd>A</kbd> = auto-assign rest</span>`
+    +sugg /* ==== WP18 ==== */
     +`<button onclick="wp11AllocAuto()">A · Auto-assign</button>`;
 }
 function wp11AllocClick(ix,iy){
@@ -3994,7 +4060,7 @@ function wp11ApplyPacket(tok){
   const w=(tok.wounds||1)-use;
   if(w<=0) op({k:"tok-",ids:[tok.id]});
   else op({k:"tok~",toks:[{id:tok.id,wounds:w}]});
-  logShared(`💥 <b>${esc(state.names[1]||"P1")}</b> allocates ${use} dmg → <b>${esc(tok.name)}</b>${w<=0?" — <b>slain</b>":` (${w}/${tok.maxW||1} W)`}`,"sys");
+  logShared(`💥 <b>${esc(state.names[mySide]||("P"+mySide))}</b> allocates ${use} dmg → <b>${esc(tok.name)}</b>${w<=0?" — <b>slain</b>":` (${w}/${tok.maxW||1} W)`}`,"sys"); /* ==== WP18 ==== was names[1]: in a P2P game the defender can be side 2 (solo forces mySide=1, so solo output is unchanged) */
   wp11AllocDone(false);
 }
 function wp11AllocAuto(){ // A key / banner button: identical result to WP10's automatic allocation
@@ -4855,7 +4921,7 @@ function wp16AfterRoll(final,failed,mortals,dmgRolls){ // rollAttack hook — st
   if(!(final>0)||!state.tokens.some(t=>t.unit===wp16Staged.tgtUk)) return;
   wp16Pending={final,failed,mortals,dmgRolls:(dmgRolls||[]).slice(),tgtUk:wp16Staged.tgtUk,atkUk:wp16Staged.atkUk};
   const b=wp16Btn(), tname=(state.tokens.find(t=>t.unit===wp16Pending.tgtUk)||{}).name||"the target";
-  b.textContent=`Apply ${final} damage to ${tname} (wounded first)`;
+  b.textContent=conn?`Send ${final} damage to ${tname} — they allocate`:`Apply ${final} damage to ${tname} (wounded first)`; /* ==== WP18 ==== live network game: the defender allocates */
   b.style.display="block";
 }
 function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a second click is a no-op
@@ -4869,11 +4935,290 @@ function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a s
     packets=new Array(Math.max(0,p.failed)).fill(flat); }
   for(let i=0;i<p.mortals;i++) packets.push(1);
   if(!packets.length) return;
+  if(conn&&typeof wp18SendDmg==="function"){ wp18SendDmg(p,packets); return; } /* ==== WP18 ==== live network game: hand the packets to the DEFENDER instead of applying (offline/hotseat path below unchanged) */
   wp16LogAs="<b>"+esc(myName)+"</b>";
   try{ aiApplyCasualties(p.tgtUk,packets,p.final,p.atkUk); } // logs the shared "💥 <name>: N damage applied…" line for both players
   finally{ wp16LogAs=""; }
 }
 /* ==== end WP16 ==== */
+
+/* ==== WP17 ==== player auto-deploy: place the player's units legally inside their own
+   deployment zone, exactly like the AI does for itself (reuses aiPlaceUnit unchanged:
+   seeded-shuffled candidate scan, two passes, aiUnitSpots/aiSpotOk legality, one tok~
+   per unit). Runs automatically after Muster (pre-battle only) and on demand from the
+   Army tab's ⚡ Auto-deploy button. No DZ loaded → deterministic tidy rows along the
+   deployer's board edge instead. No new op kinds, no new synced state — tok~ moves only. */
+
+// Pre-battle = round 1 AND the phase engine still at Deploy: state.phase.ph is -1
+// before the first "Start battle / next phase" step (wp7RenderPhase shows "Deploy"
+// exactly when ph<0 or phase is missing/malformed — same check here).
+function wp17PreBattle(){
+  if((((state.trackers&&state.trackers.round)||1))!==1) return false;
+  const p=state.phase;
+  return !p||typeof p!=="object"||typeof p.ph!=="number"||p.ph<0;
+}
+// Auto-deploy `side`'s units: scope = unit ids in unitIds if given, else every unit
+// that side owns on the table. Everything NOT being (re)placed — the opponent plus
+// own out-of-scope units — counts as an obstacle for aiPlaceUnit's first pass.
+function wp17DeploySide(side,unitIds){
+  const ids=unitIds?new Set(unitIds):null;
+  const by={};
+  state.tokens.forEach(t=>{ if(t.owner===side&&(!ids||ids.has(t.unit)))(by[t.unit]=by[t.unit]||[]).push(t); });
+  const units=Object.keys(by).map(k=>by[k]).sort((a,b)=>b.length-a.length); // biggest units grab space first (as aiDeployAll)
+  if(!units.length) return;
+  const placed=state.tokens.filter(t=>!by[t.unit]);
+  const poly=(state.dz&&state.dz[side-1])||null;
+  if(!poly||poly.length<3){ wp17EdgeRows(side,units,placed); return; }
+  units.forEach(toks=>{
+    if(!aiPlaceUnit(toks,poly,placed))
+      logSys("Couldn't fit "+((toks[0]&&toks[0].name)||"a unit")+" in the DZ — left where it dropped; drag it if needed.");
+  });
+}
+// No-DZ fallback: pack units into neat formation rows along the deployer's board edge
+// (side 1 = bottom, side 2 = top), left-to-right shelves, spacing from each unit's own
+// token diameter, ≥1" board margin, no overlap between fallback units. Deterministic —
+// no RNG — so both peers and repeated runs produce the identical formation.
+function wp17EdgeRows(side,units,placed){
+  const m=1, pad=0.5, W=state.board.w, H=state.board.h;
+  let cx0=m, off=0, shelfH=0;
+  units.forEach(toks=>{
+    const gap=Math.max(1.3,2*tokRadius(toks[0])+0.25);
+    const per=Math.ceil(Math.sqrt(toks.length)), rows=Math.ceil(toks.length/per);
+    const bw=per*gap, bh=rows*gap;
+    if(cx0+bw>W-m&&cx0>m){ off+=shelfH+pad; cx0=m; shelfH=0; } // row full → next shelf, one shelf further from the edge
+    const cx=Math.min(cx0+bw/2,W-m-bw/2);
+    const cy=side===1 ? H-m-off-bh/2 : m+off+bh/2;
+    const spots=aiUnitSpots(toks.length,cx,cy,gap);
+    op({k:"tok~",toks:toks.map((t,i)=>({id:t.id,x:spots[i][0],y:spots[i][1]}))});
+    placed.push.apply(placed,toks);
+    cx0+=bw+pad; if(bh>shelfH) shelfH=bh;
+  });
+}
+// "⚡ Auto-deploy" button (Army tab): re-run over ALL own units — setup only.
+function wp17AutoDeploy(){
+  if(!wp17PreBattle()){ logSys("Auto-deploy is for setup only — the battle is already under way. Drag units (or use Reserves) instead."); return; }
+  if(!state.tokens.some(t=>t.owner===mySide)){ logSys("No units on the table yet — Muster your army from the Builder first."); return; }
+  wp17DeploySide(mySide);
+  logShared(`· <b>${esc(myName)}</b> auto-deployed their army — drag anything you want to adjust`,"sys");
+}
+/* ==== end WP17 ==== */
+
+/* ==== WP20: dice stats + game summary ==== (A) wp20Note tallies every d6() result
+   rolled ON THIS SCREEN (yours, and the AI's in solo) — pure local bookkeeping:
+   nothing synced, nothing saved, Reset just zeroes it. 📊 in the top bar toggles a
+   create-once fixed popover (same pattern as the WP13 menu; node-harness safe).
+   (B) wp20Summary() builds a plain-text game record — players, mission, trackers,
+   surviving-unit tally from state.tokens, full battle log text — downloaded via the
+   existing dl() helper. All user-generated game record: no GW rules prose. */
+let wp20Stats={n:0,counts:[0,0,0,0,0,0],hot:0,cold:0,curHot:0,curCold:0};
+let wp20El=null, wp20Open=false;
+function wp20Note(r){ // called by d6() for every die; streaks: hot = run of ≥5s, cold = run of ≤2s
+  if(!(r>=1&&r<=6)) return;
+  const s=wp20Stats;
+  s.n++; s.counts[r-1]++;
+  s.curHot = r>=5 ? s.curHot+1 : 0;
+  s.curCold= r<=2 ? s.curCold+1 : 0;
+  if(s.curHot>s.hot) s.hot=s.curHot;
+  if(s.curCold>s.cold) s.cold=s.curCold;
+  if(wp20Open) wp20Render();
+}
+function wp20Reset(){ wp20Stats={n:0,counts:[0,0,0,0,0,0],hot:0,cold:0,curHot:0,curCold:0}; if(wp20Open) wp20Render(); }
+function wp20El_(){ // create-once, injected into <body> (never into #side) — WP13 pattern
+  if(wp20El) return wp20El;
+  if(typeof document==="undefined"||!document.body||!document.createElement) return null;
+  wp20El=document.createElement("div"); wp20El.id="wp20Pop";
+  document.body.appendChild(wp20El);
+  return wp20El;
+}
+function wp20Toggle(){
+  const el=wp20El_(); if(!el) return;
+  if(wp20Open){ wp20Close(); return; }
+  wp20Open=true; wp20Render();
+  if(el.classList&&el.classList.add) el.classList.add("open");
+}
+function wp20Close(){
+  wp20Open=false;
+  if(wp20El&&wp20El.classList&&wp20El.classList.remove) wp20El.classList.remove("open");
+}
+function wp20Render(){
+  const el=wp20El||wp20El_(); if(!el) return;
+  const s=wp20Stats, n=s.n, exp=n/6, max=Math.max(1,...s.counts);
+  let h=`<div class="w20h">🎲 Dice rolled on this screen</div>`;
+  h+=`<div class="w20tot"><b>${n}</b> dice · yours + the AI's · local only (never saved or synced)</div>`;
+  for(let f=1;f<=6;f++){
+    const c=s.counts[f-1], d=n?Math.round((c-exp)/exp*100):0;
+    h+=`<div class="w20row"><span class="w20f">${f}</span><span class="w20bar"><span class="w20fill" style="width:${n?Math.round(c/max*100):0}%"></span>${n?`<span class="w20exp" style="left:${Math.round(exp/max*100)}%" title="exp ${exp.toFixed(1)}"></span>`:""}</span><span class="w20c">${c}</span><span class="w20d">${n?(d>0?"+":"")+d+"%":"–"}</span></div>`;
+  }
+  h+=`<div class="w20tot">│ = exp (n/6${n?" ≈ "+exp.toFixed(1):""} per face) · % = above/below exp</div>`;
+  h+=`<div class="w20tot">Longest streaks — hot (5–6): <b>${s.hot}</b> · cold (1–2): <b>${s.cold}</b></div>`;
+  h+=`<div class="row" style="margin-top:6px"><button onclick="wp20Reset()">Reset</button></div>`;
+  el.innerHTML=h;
+}
+// close on outside press (capture, ignoring the 📊 toggle itself) and on Esc — WP13 pattern
+if(typeof document!=="undefined"&&document.addEventListener)
+  document.addEventListener("pointerdown",e=>{ if(wp20Open&&wp20El&&!(wp20El.contains&&wp20El.contains(e.target))&&!(e.target&&e.target.id==="wp20Btn")) wp20Close(); },true);
+if(typeof window!=="undefined"&&window.addEventListener)
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&wp20Open) wp20Close(); });
+function wp20Summary(){ // plain-text game record; must never throw, even on a blank table
+  const s=state||{}, tr=s.trackers||{}, nm=s.names||{};
+  const p1=nm[1]||"Player 1", p2=nm[2]||"Player 2";
+  const L=["WH40K BATTLE SUMMARY", new Date().toLocaleString(), ""];
+  L.push("Players: "+p1+" (Red, side 1) vs "+p2+" (Blue, side 2)");
+  L.push("Mission: "+(s.mission&&s.mission.name?s.mission.name+(s.mission.m?" — "+s.mission.m:""):"(no layout loaded)"));
+  L.push("Battle round: "+(tr.round!=null?tr.round:1));
+  L.push("VP: "+p1+" "+(tr.vp1||0)+" — "+(tr.vp2||0)+" "+p2);
+  L.push("CP: "+p1+" "+(tr.cp1||0)+" — "+(tr.cp2||0)+" "+p2);
+  for(const side of [1,2]){
+    L.push(""); L.push("Surviving units — "+(side===1?p1:p2)+" (destroyed units no longer appear):");
+    const by={};
+    for(const t of (s.tokens||[])) if(t.owner===side) (by[t.unit]=by[t.unit]||[]).push(t);
+    const ks=Object.keys(by);
+    if(!ks.length) L.push("  (none on the table)");
+    for(const k of ks){
+      const ms=by[k], alive=ms.length;
+      const start=Math.max(alive,...ms.map(t=>+t.u0||0)); // u0 = starting strength stamped at deploy (WP7); legacy tokens fall back to the live count
+      L.push("  "+(ms[0].name||k)+" ×"+alive+"/"+start);
+    }
+  }
+  L.push(""); L.push("Battle log:");
+  const kids=(typeof logEl!=="undefined"&&logEl&&logEl.children)?logEl.children:[];
+  for(const c of kids){
+    let txt=(c.textContent&&String(c.textContent).trim())?c.textContent:String(c.innerHTML||"").replace(/<[^>]*>/g," "); // node-stub divs never fill textContent
+    txt=String(txt).replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/\s+/g," ").trim();
+    if(txt) L.push(txt);
+  }
+  return L.join("\n");
+}
+function wp20Export(){ dl("wh40k-battle-summary.txt", wp20Summary()); } // local action — deliberately no logShared
+/* ==== end WP20 ==== */
+
+/* ==== WP19 ==== waypoint ruler: single clicks with the 📏 tool chain waypoints around terrain;
+   a plain drag is still the classic straight measure. ruler.pts = [wp0,…,wpN,cursor] while a chain
+   is live; x0..y1 ALWAYS mirror the last leg so an older peer's drawRuler still shows that leg. */
+let wp19Chain=false, wp19LastSend=0;
+function wp19Click(ix,iy){ // pointerup that moved <0.3": commit a waypoint and keep the tape live
+  if(!ruler) return;
+  if(!wp19Chain){ wp19Chain=true; ruler.pts=[[ruler.x0,ruler.y0],[ix,iy]]; } // first click: anchor + cursor leg
+  else{ ruler.pts[ruler.pts.length-1]=[ix,iy]; ruler.pts.push([ix,iy]); }    // commit the cursor point, start a new leg
+  wp19Cursor(ix,iy);
+  wp19LastSend=Date.now(); send({t:"ruler",r:ruler});
+}
+function wp19Cursor(ix,iy){ // move the trailing cursor point; keep x0..y1 mirroring the LAST leg (old-peer compat)
+  const p=ruler.pts; p[p.length-1]=[ix,iy];
+  ruler.x0=p[p.length-2][0]; ruler.y0=p[p.length-2][1]; ruler.x1=ix; ruler.y1=iy;
+}
+function wp19Send(){ // live-share the chain, throttled to ≤ one message per 80ms
+  const now=Date.now(); if(now-wp19LastSend<80) return;
+  wp19LastSend=now; send({t:"ruler",r:ruler});
+}
+function wp19End(clear){ // Esc / dblclick / tool switch → clear+final send; clear===false = silent handoff to a plain drag
+  const had=wp19Chain||(ruler&&ruler.pts);
+  wp19Chain=false;
+  if(!had) return;
+  if(clear!==false){ ruler=null; send({t:"ruler",r:null}); draw(); } // final send: opponent's copy blanks/expires normally
+}
+function wp19Total(r){ // cumulative chain length in inches (all legs incl. the cursor leg)
+  let d=0; for(let i=1;i<r.pts.length;i++) d+=Math.hypot(r.pts[i][0]-r.pts[i-1][0],r.pts[i][1]-r.pts[i-1][1]);
+  return d;
+}
+function wp19DrawChain(r,color){ // polyline + waypoint dots + ONE cumulative label chip near the cursor end
+  const p=r.pts;
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+  p.forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); });
+  ctx.stroke();
+  ctx.fillStyle=color;
+  p.forEach(pt=>{ const q=px(pt[0],pt[1]); ctx.beginPath(); ctx.arc(q[0],q[1],3,0,7); ctx.fill(); });
+  const legs=[]; for(let i=1;i<p.length;i++) legs.push(Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));
+  let label=wp19Total(r).toFixed(1)+'"';
+  if(legs.length>1) label+=" ("+legs.map(d=>d.toFixed(1)).join(" + ")+")";
+  const end=px(p[p.length-1][0],p[p.length-1][1]);
+  ctx.font="bold 13px sans-serif";
+  const w=ctx.measureText(label).width;
+  ctx.fillStyle="rgba(16,18,22,.9)"; ctx.fillRect(end[0]+12,end[1]-24,w+10,18);
+  ctx.fillStyle=color; ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(label,end[0]+17,end[1]-15);
+}
+/* ==== end WP19 ==== */
+
+/* ==== WP18 ==== wound-allocation v2: suggestions + P2P defender allocation.
+   (A) While WP11's banner pends and the allocation is mine, the board shows the
+       order the auto-assigner (aiApplyCasualties) would consume models: a pulsing
+       gold dashed ring on the next suggestion plus numbered badges (1,2,3) on the
+       first three. Suggestions only — the player clicks whatever legal model they
+       want; wp11AllocClick's rules and the A auto-assign are untouched.
+   (B) In a live P2P game the attacker's WP16 button SENDS the rolled damage to the
+       defender as a transient {t:"dmg"} direct message (like "ruler": never in
+       state, lost on reconnect — re-send if that happens). The defender allocates
+       through the same WP11 banner/click flow and the resulting tok~/tok- ops sync
+       back to the attacker automatically. No new applyOp kinds. */
+let wp18Timer=null; // pulse redraw while the suggestion ring is on screen (self-limiting: stops when wp11Alloc clears)
+function wp18Order(tgtUk,atkUk){
+  // Faithful mirror of aiApplyCasualties' comparator (kept byte-identical there): the
+  // order it would consume models in — already-wounded first, then closest to the
+  // attacker unit's centroid, squad leaders (sgt) and CHARACTER models last.
+  const atkMs=state.tokens.filter(t=>t.unit===atkUk);
+  const ax=atkMs.length?atkMs.reduce((s,t)=>s+t.x,0)/atkMs.length:0;
+  const ay=atkMs.length?atkMs.reduce((s,t)=>s+t.y,0)/atkMs.length:0;
+  return state.tokens.filter(t=>t.unit===tgtUk).slice().sort((a,b)=>{
+    const la=(a.sgt||tokKw(a).includes("CHARACTER"))?1:0, lb=(b.sgt||tokKw(b).includes("CHARACTER"))?1:0;
+    if(la!==lb) return la-lb;
+    const wa=(a.wounds||1)<(a.maxW||1)?0:1, wb=(b.wounds||1)<(b.maxW||1)?0:1;
+    if(wa!==wb) return wa-wb;
+    if(!atkMs.length) return 0;
+    return Math.hypot(a.x-ax,a.y-ay)-Math.hypot(b.x-ax,b.y-ay);
+  });
+}
+function wp18SuggOrder(a){
+  // Click-facing order: wp18Order, but the model wp11AllocClick would REDIRECT the next
+  // click to (the unit's first already-wounded model, even a leader) is hoisted to #1.
+  const ord=wp18Order(a.tgtUk,a.atkUk);
+  const wounded=state.tokens.find(t=>t.unit===a.tgtUk&&(t.wounds||1)<(t.maxW||1));
+  if(wounded){ const i=ord.findIndex(t=>t.id===wounded.id); if(i>0){ ord.splice(i,1); ord.unshift(wounded); } }
+  return ord;
+}
+function wp18Overlay(){ // called from draw() right after wp6Overlay()
+  if(typeof wp11Alloc==="undefined"||!wp11Alloc) return;
+  const a=wp11Alloc, t0=state.tokens.find(t=>t.unit===a.tgtUk);
+  if(!t0||t0.owner!==mySide) return;               // suggestions are for the allocating defender only
+  const ord=wp18SuggOrder(a); if(!ord.length) return;
+  const phase=Math.floor(Date.now()/300)%2;        // two-radius pulse (no rAF loop elsewhere to hook into)
+  ord.slice(0,3).forEach((t,i)=>{
+    const [cx,cy]=px(t.x,t.y);
+    const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.hypot(t.wIn,t.hIn)/2)*view.s;
+    if(i===0){                                     // pulsing gold dashed ring on the next suggested model
+      ctx.beginPath(); ctx.arc(cx,cy,r+(phase?6:3),0,7);
+      ctx.strokeStyle="#e8b23a"; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const br=Math.max(7,view.s*.35);               // numbered badge: 1 = suggested next, 2/3 = then these
+    ctx.beginPath(); ctx.arc(cx-r*.75,cy-r*.75,br,0,7);
+    ctx.fillStyle=i===0?"#e8b23a":"rgba(232,178,58,.55)"; ctx.fill();
+    ctx.fillStyle="#101216"; ctx.font="bold "+Math.max(9,view.s*.45)+"px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(i+1),cx-r*.75,cy-r*.75+.5);
+  });
+  if(!wp18Timer) wp18Timer=setTimeout(()=>{ wp18Timer=null; if(typeof wp11Alloc!=="undefined"&&wp11Alloc) draw(); },300);
+}
+function wp18SendDmg(p,packets){ // attacker side (called from wp16ApplyClick when conn is live): hand the roll to the defender
+  const tname=(state.tokens.find(t=>t.unit===p.tgtUk)||{}).name||"the target";
+  const label=String(wp3Label||("Attack on "+tname)).replace(/^⚔\s*/,"");
+  send({t:"dmg",tgtUk:p.tgtUk,atkUk:p.atkUk,packets,final:p.final,label});
+  logShared(`💥 <b>${esc(myName)}</b> sent ${p.final} damage to <b>${esc(tname)}</b> — defender allocates`,"sys");
+}
+function wp18OnDmg(m){ /* SEC: hostile payloads must be a silent no-op — every field coerced/capped before use */
+  const tgtUk=secStr(m.tgtUk,40), atkUk=secStr(m.atkUk,40), label=secStr(m.label,120)||"Incoming attack";
+  const final=Math.max(0,Math.min(999,Math.floor(+m.final)||0));                 // int 0..999
+  const packets=(Array.isArray(m.packets)?m.packets:[]).slice(0,60)             // length capped at 60
+    .map(p=>Math.floor(+p)).filter(p=>p>=1&&p<=24);                              // each an int 1..24 or dropped
+  if(!tgtUk||!final||!packets.length) return;
+  const t0=state.tokens.find(t=>t.unit===tgtUk);
+  if(!t0||t0.owner!==mySide) return;             // only the owner of the target unit may be handed the allocation
+  wp11Alloc={tgtUk,atkUk,packets,applied:0,budget:final,label};                  // existing WP11 click/A flow takes over
+  wp11Banner();
+  if(typeof wp13BoardFocus==="function") wp13BoardFocus();
+  draw();
+  logSys("Incoming: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" against "+t0.name+" — click models in that unit to allocate (wounded model first), or press A to auto-assign.");
+}
+/* ==== end WP18 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
