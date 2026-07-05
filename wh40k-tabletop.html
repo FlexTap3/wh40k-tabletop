@@ -1472,7 +1472,7 @@ function refreshTrackers(){
   renderScore();
 }
 function setName(v){ myName=v||"Player"; localStorage.setItem("wh40k_name",myName); op({k:"name",side:mySide,name:myName}); }
-function setSide(v){ mySide=+v; op({k:"name",side:mySide,name:myName}); }
+function setSide(v){ wp23SetSide(v); } /* ==== WP23 ==== was: mySide=+v + name op — now the switch re-homes synced cards/tokens pre-battle in a network game and refuses mid-battle; offline keeps the legacy hot-seat flip (see wp23SetSide) ==== end WP23 ==== */
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
 function clearTable(){ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
@@ -2886,7 +2886,7 @@ function wp8SideClaim(m){ // called from onMsg "hello"
   else{
     mySide=(mySide===1?2:1);
     const s=document.getElementById("mySide"); if(s) s.value=String(mySide);
-    setTimeout(()=>op({k:"name",side:mySide,name:myName}),300); // after the host's full-state sync lands
+    setTimeout(()=>{ op({k:"name",side:mySide,name:myName}); if(myArmy.length) broadcastCards(); /* ==== WP23 ==== flipped guest re-homes its synced cards under its new side; the contested slot is the HOST's — never cleared — and every on-table token is the host's after the full-state sync, so no re-owning here ==== end WP23 ==== */ },300); // after the host's full-state sync lands
     logSys("⚠ Both players had picked the same side — you are now "+(mySide===1?"Red (P1)":"Blue (P2)")+". Change it in Setup if needed.");
   }
 }
@@ -5219,6 +5219,41 @@ function wp18OnDmg(m){ /* SEC: hostile payloads must be a silent no-op — every
   logSys("Incoming: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" against "+t0.name+" — click models in that unit to allocate (wounded model first), or press A to auto-assign.");
 }
 /* ==== end WP18 ==== */
+
+/* ==== WP23 ==== side switching after muster: setSide used to just flip `mySide` and
+   re-send the name op, so a player who mustered and THEN changed side left their
+   synced cards under state.cards[oldSide] and their tokens owned by the old side
+   until a re-muster — the opponent kept seeing the army filed under the wrong player.
+   Fix, scoped to a live NETWORK game (conn truthy — offline keeps the legacy flip
+   untouched, because hot-seat players toggle the selector to act as each side, and
+   pre-battle that flip is how a second army gets mustered from one screen):
+   - pre-battle (wp17PreBattle, the WP17 gate — synced round + phase, so both clients
+     agree): the switch re-owns my on-table tokens (one tok~), re-broadcasts my cards
+     under the new side and vacates the old slot — existing op kinds only ("tok~",
+     "cards"), no new synced state;
+   - battle under way: the switch is refused with a log line and the selector snaps
+     back (reserves trays, CP/VP, state.cards and the phase engine all key on side —
+     a live switch cannot converge).
+   wp8SideClaim's forced guest flip re-broadcasts cards too (hunk there), but never
+   clears the contested slot (the host keeps it) and never re-owns tokens (after the
+   host's full-state sync every token on the table is the host's version). */
+function wp23SetSide(v){
+  const nv=+v; if(nv!==1&&nv!==2) return;
+  if(nv===mySide){ op({k:"name",side:mySide,name:myName}); return; }          // no change — legacy name (re)send
+  if(!conn){ mySide=nv; op({k:"name",side:mySide,name:myName}); return; }     // offline / hot-seat: legacy flip, no re-homing
+  if(!wp17PreBattle()){
+    const s=document.getElementById("mySide"); if(s) s.value=String(mySide);  // snap the selector back
+    logSys("Side switching is for setup only — the battle is already under way. Finish the game (or Clear the table) first.");
+    return;
+  }
+  const old=mySide; mySide=nv;
+  op({k:"name",side:mySide,name:myName});
+  const mine=state.tokens.filter(t=>t.owner===old);
+  if(mine.length) op({k:"tok~",toks:mine.map(t=>({id:t.id,owner:nv}))});      // my models change hands with me
+  if(myArmy.length){ broadcastCards(); op({k:"cards",owner:old,cards:[]}); }  // my synced cards follow; the old slot is vacated (it held mine — I was that side)
+  logSys("You are now "+(nv===1?"Red (P1)":"Blue (P2)")+(mine.length||myArmy.length?" — your models and cards moved with you.":"."));
+}
+/* ==== end WP23 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
