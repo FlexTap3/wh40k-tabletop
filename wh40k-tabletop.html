@@ -572,7 +572,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Solo auto-casualties</b>: in solo mode the AI's damage is applied automatically, and when <i>you</i> roll a staged attack (inspector ⚔ flow) you're offered the same. Allocation: already-wounded model first, then closest to the attacker, squad leaders and CHARACTERs last; excess damage from one failed save is lost, mortal wounds apply one at a time; total is capped at the rolled result after FNP.</li>
       <li><b>Documented approximations</b>: the AI fires its unit's best non-pistol/grenade weapon once per model and every other profile once (the database doesn't say who carries what); the database has no Deep Strike flag, so it uses Strategic Reserves (board-edge arrivals) instead; it spends no CP and uses no stratagems; cover and visibility use the same area-rule approximations as the 👁 tool; charges "pile in" as a straight move into contact — swing your own engaged units back manually in its Fight phase. Its 2D6/advance rolls come from a seedable RNG (<code>aiSeed(n)</code> in the console reproduces a game); attack-sequence dice are the ordinary roller's dice.</li>
       <!-- ==== WP11: allocation + doctrine ==== -->
-      <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way.</li>
+      <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way. <!-- ==== WP18 ==== --> In a network game the attacker's button <i>sends</i> the rolled damage across and this same banner appears on the defender's screen — gold rings and numbered badges suggest the order auto-assign would use, but the defender clicks whatever legal model they want. Pending damage doesn't survive a reconnect — re-send if that happens. <!-- ==== end WP18 ==== --></li>
       <li><b>Meta opponents</b>: the Solo dialog can field one of five embedded tournament archetypes (real GT-winning lists from 11th edition's opening weeks — unit names, sizes and points only). Each carries a one-line note on what it stress-tests. The AI reads the list's Force Disposition and announces its game plan at muster, plus a one-line strategic brief each round.</li>
       <li><b>The AI's doctrine</b> (in its own words): it plays its plan — kill-focused, objective-first, or spread-and-scout — and pushes the primary hardest in rounds 1–3, easing off late when it is ahead. Quiet infantry sitting wholly in dense terrain goes Hidden after the shooting phase, and fragile shooters prefer spots that keep that option. When you hold reserves or fast melee, its cheap units picket 6–8" ahead of its valuable units and backfield objective to deny drops and charge lanes. Early on, if it is outgunned, shooters stage out of sight rather than trade in the open. It concentrates fire to remove whole units (with a modest overkill allowance) and prefers finishing hurt units that sit on objectives; it won't move a unit into the open when the expected loss beats the gain; and its slow melee refuses to chase faster shooters — it parks on objectives and makes you come.</li>
       <!-- ==== end WP11 ==== -->
@@ -659,6 +659,9 @@ function onMsg(m){
     /* ==== WP2: move measure ==== */
     case "movepath": wp2TheirPath(m.mp); break;
     /* ==== end WP2 ==== */
+    /* ==== WP18 ==== P2P defender allocation: rolled damage handed over as a transient direct message (like "ruler" — never in state, lost on reconnect) */
+    case "dmg": if(typeof wp18OnDmg==="function") wp18OnDmg(m); break; /* SEC: every field coerced/capped inside wp18OnDmg */
+    /* ==== end WP18 ==== */
   }
 }
 /* ops mutate state identically on both ends */
@@ -1827,6 +1830,7 @@ function draw(){
     ctx.restore();
   });
   wp6Overlay(); /* ==== WP6: objectives ==== control glow, OC tallies, battle-shock badges */
+  if(typeof wp18Overlay==="function") wp18Overlay(); /* ==== WP18 ==== casualty-suggestion ring + numbered badges while allocation pends */
   // marquee
   if(marquee){ ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([4,3]);
     ctx.strokeRect(...px(Math.min(marquee.x0,marquee.x1),Math.min(marquee.y0,marquee.y1)),Math.abs(marquee.x1-marquee.x0)*view.s,Math.abs(marquee.y1-marquee.y0)*view.s); ctx.setLineDash([]); }
@@ -4028,8 +4032,13 @@ function wp11Banner(){
   const tname=(state.tokens.find(t=>t.unit===a.tgtUk)||{}).name||"target unit";
   const rem=Math.min(a.packets.reduce((s,p)=>s+p,0),a.budget-a.applied);
   el.style.display="block";
+  /* ==== WP18 ==== one-line suggestion (the full order is ringed/badged on the board) */
+  let sugg="";
+  if(typeof wp18SuggOrder==="function"){ const o=wp18SuggOrder(a); if(o.length) sugg=`<br><span class="small">💡 Suggested next: ${esc(o[0].name)} (wounded first / closest)</span>`; }
+  /* ==== end WP18 ==== */
   el.innerHTML=`💥 <b>${esc(a.label)}</b> — <b>${left}</b> packet${left!==1?"s":""} (${rem} dmg) to allocate to <b>${esc(tname)}</b>`
     +`<br><span class="small">Click your models in the unit — next packet: ${next} dmg · wounded model first (the rule) · <kbd>A</kbd> = auto-assign rest</span>`
+    +sugg /* ==== WP18 ==== */
     +`<button onclick="wp11AllocAuto()">A · Auto-assign</button>`;
 }
 function wp11AllocClick(ix,iy){
@@ -4051,7 +4060,7 @@ function wp11ApplyPacket(tok){
   const w=(tok.wounds||1)-use;
   if(w<=0) op({k:"tok-",ids:[tok.id]});
   else op({k:"tok~",toks:[{id:tok.id,wounds:w}]});
-  logShared(`💥 <b>${esc(state.names[1]||"P1")}</b> allocates ${use} dmg → <b>${esc(tok.name)}</b>${w<=0?" — <b>slain</b>":` (${w}/${tok.maxW||1} W)`}`,"sys");
+  logShared(`💥 <b>${esc(state.names[mySide]||("P"+mySide))}</b> allocates ${use} dmg → <b>${esc(tok.name)}</b>${w<=0?" — <b>slain</b>":` (${w}/${tok.maxW||1} W)`}`,"sys"); /* ==== WP18 ==== was names[1]: in a P2P game the defender can be side 2 (solo forces mySide=1, so solo output is unchanged) */
   wp11AllocDone(false);
 }
 function wp11AllocAuto(){ // A key / banner button: identical result to WP10's automatic allocation
@@ -4912,7 +4921,7 @@ function wp16AfterRoll(final,failed,mortals,dmgRolls){ // rollAttack hook — st
   if(!(final>0)||!state.tokens.some(t=>t.unit===wp16Staged.tgtUk)) return;
   wp16Pending={final,failed,mortals,dmgRolls:(dmgRolls||[]).slice(),tgtUk:wp16Staged.tgtUk,atkUk:wp16Staged.atkUk};
   const b=wp16Btn(), tname=(state.tokens.find(t=>t.unit===wp16Pending.tgtUk)||{}).name||"the target";
-  b.textContent=`Apply ${final} damage to ${tname} (wounded first)`;
+  b.textContent=conn?`Send ${final} damage to ${tname} — they allocate`:`Apply ${final} damage to ${tname} (wounded first)`; /* ==== WP18 ==== live network game: the defender allocates */
   b.style.display="block";
 }
 function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a second click is a no-op
@@ -4926,6 +4935,7 @@ function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a s
     packets=new Array(Math.max(0,p.failed)).fill(flat); }
   for(let i=0;i<p.mortals;i++) packets.push(1);
   if(!packets.length) return;
+  if(conn&&typeof wp18SendDmg==="function"){ wp18SendDmg(p,packets); return; } /* ==== WP18 ==== live network game: hand the packets to the DEFENDER instead of applying (offline/hotseat path below unchanged) */
   wp16LogAs="<b>"+esc(myName)+"</b>";
   try{ aiApplyCasualties(p.tgtUk,packets,p.final,p.atkUk); } // logs the shared "💥 <name>: N damage applied…" line for both players
   finally{ wp16LogAs=""; }
@@ -5129,6 +5139,86 @@ function wp19DrawChain(r,color){ // polyline + waypoint dots + ONE cumulative la
   ctx.fillText(label,end[0]+17,end[1]-15);
 }
 /* ==== end WP19 ==== */
+
+/* ==== WP18 ==== wound-allocation v2: suggestions + P2P defender allocation.
+   (A) While WP11's banner pends and the allocation is mine, the board shows the
+       order the auto-assigner (aiApplyCasualties) would consume models: a pulsing
+       gold dashed ring on the next suggestion plus numbered badges (1,2,3) on the
+       first three. Suggestions only — the player clicks whatever legal model they
+       want; wp11AllocClick's rules and the A auto-assign are untouched.
+   (B) In a live P2P game the attacker's WP16 button SENDS the rolled damage to the
+       defender as a transient {t:"dmg"} direct message (like "ruler": never in
+       state, lost on reconnect — re-send if that happens). The defender allocates
+       through the same WP11 banner/click flow and the resulting tok~/tok- ops sync
+       back to the attacker automatically. No new applyOp kinds. */
+let wp18Timer=null; // pulse redraw while the suggestion ring is on screen (self-limiting: stops when wp11Alloc clears)
+function wp18Order(tgtUk,atkUk){
+  // Faithful mirror of aiApplyCasualties' comparator (kept byte-identical there): the
+  // order it would consume models in — already-wounded first, then closest to the
+  // attacker unit's centroid, squad leaders (sgt) and CHARACTER models last.
+  const atkMs=state.tokens.filter(t=>t.unit===atkUk);
+  const ax=atkMs.length?atkMs.reduce((s,t)=>s+t.x,0)/atkMs.length:0;
+  const ay=atkMs.length?atkMs.reduce((s,t)=>s+t.y,0)/atkMs.length:0;
+  return state.tokens.filter(t=>t.unit===tgtUk).slice().sort((a,b)=>{
+    const la=(a.sgt||tokKw(a).includes("CHARACTER"))?1:0, lb=(b.sgt||tokKw(b).includes("CHARACTER"))?1:0;
+    if(la!==lb) return la-lb;
+    const wa=(a.wounds||1)<(a.maxW||1)?0:1, wb=(b.wounds||1)<(b.maxW||1)?0:1;
+    if(wa!==wb) return wa-wb;
+    if(!atkMs.length) return 0;
+    return Math.hypot(a.x-ax,a.y-ay)-Math.hypot(b.x-ax,b.y-ay);
+  });
+}
+function wp18SuggOrder(a){
+  // Click-facing order: wp18Order, but the model wp11AllocClick would REDIRECT the next
+  // click to (the unit's first already-wounded model, even a leader) is hoisted to #1.
+  const ord=wp18Order(a.tgtUk,a.atkUk);
+  const wounded=state.tokens.find(t=>t.unit===a.tgtUk&&(t.wounds||1)<(t.maxW||1));
+  if(wounded){ const i=ord.findIndex(t=>t.id===wounded.id); if(i>0){ ord.splice(i,1); ord.unshift(wounded); } }
+  return ord;
+}
+function wp18Overlay(){ // called from draw() right after wp6Overlay()
+  if(typeof wp11Alloc==="undefined"||!wp11Alloc) return;
+  const a=wp11Alloc, t0=state.tokens.find(t=>t.unit===a.tgtUk);
+  if(!t0||t0.owner!==mySide) return;               // suggestions are for the allocating defender only
+  const ord=wp18SuggOrder(a); if(!ord.length) return;
+  const phase=Math.floor(Date.now()/300)%2;        // two-radius pulse (no rAF loop elsewhere to hook into)
+  ord.slice(0,3).forEach((t,i)=>{
+    const [cx,cy]=px(t.x,t.y);
+    const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.hypot(t.wIn,t.hIn)/2)*view.s;
+    if(i===0){                                     // pulsing gold dashed ring on the next suggested model
+      ctx.beginPath(); ctx.arc(cx,cy,r+(phase?6:3),0,7);
+      ctx.strokeStyle="#e8b23a"; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const br=Math.max(7,view.s*.35);               // numbered badge: 1 = suggested next, 2/3 = then these
+    ctx.beginPath(); ctx.arc(cx-r*.75,cy-r*.75,br,0,7);
+    ctx.fillStyle=i===0?"#e8b23a":"rgba(232,178,58,.55)"; ctx.fill();
+    ctx.fillStyle="#101216"; ctx.font="bold "+Math.max(9,view.s*.45)+"px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(i+1),cx-r*.75,cy-r*.75+.5);
+  });
+  if(!wp18Timer) wp18Timer=setTimeout(()=>{ wp18Timer=null; if(typeof wp11Alloc!=="undefined"&&wp11Alloc) draw(); },300);
+}
+function wp18SendDmg(p,packets){ // attacker side (called from wp16ApplyClick when conn is live): hand the roll to the defender
+  const tname=(state.tokens.find(t=>t.unit===p.tgtUk)||{}).name||"the target";
+  const label=String(wp3Label||("Attack on "+tname)).replace(/^⚔\s*/,"");
+  send({t:"dmg",tgtUk:p.tgtUk,atkUk:p.atkUk,packets,final:p.final,label});
+  logShared(`💥 <b>${esc(myName)}</b> sent ${p.final} damage to <b>${esc(tname)}</b> — defender allocates`,"sys");
+}
+function wp18OnDmg(m){ /* SEC: hostile payloads must be a silent no-op — every field coerced/capped before use */
+  const tgtUk=secStr(m.tgtUk,40), atkUk=secStr(m.atkUk,40), label=secStr(m.label,120)||"Incoming attack";
+  const final=Math.max(0,Math.min(999,Math.floor(+m.final)||0));                 // int 0..999
+  const packets=(Array.isArray(m.packets)?m.packets:[]).slice(0,60)             // length capped at 60
+    .map(p=>Math.floor(+p)).filter(p=>p>=1&&p<=24);                              // each an int 1..24 or dropped
+  if(!tgtUk||!final||!packets.length) return;
+  const t0=state.tokens.find(t=>t.unit===tgtUk);
+  if(!t0||t0.owner!==mySide) return;             // only the owner of the target unit may be handed the allocation
+  wp11Alloc={tgtUk,atkUk,packets,applied:0,budget:final,label};                  // existing WP11 click/A flow takes over
+  wp11Banner();
+  if(typeof wp13BoardFocus==="function") wp13BoardFocus();
+  draw();
+  logSys("Incoming: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" against "+t0.name+" — click models in that unit to allocate (wounded model first), or press A to auto-assign.");
+}
+/* ==== end WP18 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
