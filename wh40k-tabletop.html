@@ -360,7 +360,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <!-- ==== end WP11 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
-      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== -->
+      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== --><button onclick="wp21Refit()" title="Recompute every one of your models' base/hull sizes from its army card using the current rules (oval bases, vehicle hull footprints). Fixes tokens deployed or saved before this update — leaves anything already correct alone.">♻ Fix base sizes</button><!-- ==== WP21 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
       <div class="row"><button onclick="if(confirm('Clear the whole table?'))clearTable()">Clear table</button></div>
     </div>
@@ -862,13 +862,15 @@ function populateFactions(){
 }
 function baseFrom(str,W){
   if(str){ let m=String(str).match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*mm/i);
-    if(m) return {shape:"r",wIn:+m[1]/25.4,hIn:+m[2]/25.4};
+    if(m) return {shape:"r",wIn:+m[1]/25.4,hIn:+m[2]/25.4,oval:true}; /* ==== WP21 ==== "A x Bmm" GW bases are OVALS, not rects */
     m=String(str).match(/(\d+(?:\.\d+)?)\s*mm/i);
-    if(m) return {shape:"c",dmm:+m[1]};
+    if(m) return {shape:"c",dmm:+m[1]}; // "NNmm flying base" keeps the stand circle on purpose: a true-hull AIRCRAFT token would be unusable on a 2D table (WP21 hull table catches the ground-skimmers that matter)
     m=String(str).match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*in/i);
     if(m) return {shape:"r",wIn:+m[1],hIn:+m[2]};
   }
   const w=+W||1; // no base (hull/frame vehicles): size by wounds
+  if(w>=30) return {shape:"r",wIn:11,hIn:7};    /* ==== WP21 ==== titan-class tiers (Warlord, gargants) */
+  if(w>=20) return {shape:"r",wIn:9,hIn:5.5};   /* ==== WP21 ==== super-heavy tier (Baneblade class) */
   if(w>=16) return {shape:"r",wIn:7.5,hIn:4.5};
   if(w>=10) return {shape:"r",wIn:6,hIn:3.5};
   if(w>=6)  return {shape:"r",wIn:4,hIn:2.5};
@@ -1081,7 +1083,7 @@ function deployCard(raw){
   let k=0;
   const maxCount=Math.max(...u.profiles.map(p=>+p.count||0));
   u.profiles.forEach(p=>{
-    const b=baseFrom(p.base,p.W);
+    const b=wp21BaseFor(p.n||u.name,p.base,p.W); /* ==== WP21 ==== hull table by name first, then base string / wounds */
     const isLeader=u.profiles.length>1 && (+p.count||0)<maxCount;
     for(let c=0;c<(+p.count||0);c++){
       const col=k%per, row=Math.floor(k/per); k++;
@@ -1754,9 +1756,18 @@ function draw(){
     } else {
       ctx.rotate((t.rot||0)*Math.PI/180);
       const w=t.wIn*view.s,h=t.hIn*view.s;
+      if(t.oval){ /* ==== WP21 ==== oval base (Knights, bikes, monster ovals): true ellipse, no hull-inset rect */
+        const lw=Math.max(1.5,Math.min(w,h)/2*.14);
+        ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,7);
+        ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fill();
+        ctx.lineWidth=lw; ctx.strokeStyle=t.sgt?"#c9922e":"rgba(10,8,10,.8)"; ctx.stroke(); /* WP14 contract: gold rim = leader */
+        ctx.beginPath(); ctx.ellipse(0,0,Math.max(1,w/2-lw*.9),Math.max(1,h/2-lw*.9),0,0,7); /* slightly inset selection ring */
+        ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(255,255,255,.28)"; ctx.stroke();
+      } else { /* ==== end WP21 ==== */
       ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fillRect(-w/2,-h/2,w,h);
       ctx.strokeStyle="rgba(255,255,255,.14)"; ctx.lineWidth=1; ctx.strokeRect(-w/2+2.5,-h/2+2.5,w-5,h-5); /* hull inset */
       ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":(t.sgt?"#c9922e":"rgba(10,8,10,.85)"); ctx.strokeRect(-w/2,-h/2,w,h); /* ==== WP14 ==== gold border = leader */
+      }
       ctx.font="bold "+Math.max(8,h*.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(initials(t.name),0,1.2);
       ctx.fillStyle="#f4efe6"; ctx.fillText(initials(t.name),0,0);
@@ -2039,6 +2050,7 @@ function wp5Enforce(){
 function wp5BaseOverlaps(t,ter){
   // Token base (circle of tokRadius) vs the rotated terrain rect — true overlap,
   // not just centre-inside, so thin walls can't hide under a base edge.
+  // WP21: oval bases deliberately keep this bounding-circle approximation (as rects always did) — collision stays shape-agnostic.
   const cx=ter.x+ter.w/2, cy=ter.y+ter.h/2, a=-(ter.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
   const dx=t.x-cx, dy=t.y-cy, lx=dx*c-dy*s, ly=dx*s+dy*c;
   const qx=Math.max(Math.abs(lx)-ter.w/2,0), qy=Math.max(Math.abs(ly)-ter.h/2,0);
@@ -2367,7 +2379,8 @@ function hitToken(ix,iy){
     if(t.shape==="c"){ if(Math.hypot(ix-t.x,iy-t.y)<=mmIn(t.dmm)/2+.15) return t; }
     else { const a=-(t.rot||0)*Math.PI/180, dx=ix-t.x, dy=iy-t.y;
       const rx=dx*Math.cos(a)-dy*Math.sin(a), ry=dx*Math.sin(a)+dy*Math.cos(a);
-      if(Math.abs(rx)<=t.wIn/2&&Math.abs(ry)<=t.hIn/2) return t; } }
+      if(t.oval){ if((rx/(t.wIn/2+.15))**2+(ry/(t.hIn/2+.15))**2<=1) return t; } /* ==== WP21 ==== ellipse hit for oval bases (same ~.15" slack as circles) */
+      else if(Math.abs(rx)<=t.wIn/2&&Math.abs(ry)<=t.hIn/2) return t; } }
   return null;
 }
 function hitTerrain(ix,iy){
@@ -5219,6 +5232,99 @@ function wp18OnDmg(m){ /* SEC: hostile payloads must be a silent no-op — every
   logSys("Incoming: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" against "+t0.name+" — click models in that unit to allocate (wounded model first), or press A to auto-assign.");
 }
 /* ==== end WP18 ==== */
+
+/* ==== WP21 ==== base-size & shape correctness.
+   Three fixes: (1) "A x Bmm" GW bases render as OVALS (flag added in baseFrom, drawn
+   in draw(), hit-tested in hitToken); (2) "Use model" hull vehicles get real footprints
+   from the curated WP21_HULLS table below instead of a crude wounds guess; (3) "NNmm
+   flying base" strings keep their stand circle ON PURPOSE — a true-scale AIRCRAFT hull
+   (a 9" Vampire Hunter…) would be unusable on a 2D table. Ground-skimmer transports/
+   gunships that DO want hull footprints (Hammerhead, Raider, Wave Serpent…) are simply
+   listed in the hull table, which takes priority over the base string.
+   Geometry elsewhere (wp5 collision, coherency, edgeDist/tokRadius) is untouched:
+   ovals inherit the same circle/rect approximations rects always used. */
+// APPROXIMATE physical kit footprints in INCHES (measured hulls, not GW rules data).
+// Ordered — matched against norm(unit/profile name), FIRST hit wins, so specific
+// entries (triarch stalker) sit above generic ones (^stalker$). Tunable.
+const WP21_HULLS=[
+  [/triarch stalker/,             {wIn:4.0,hIn:3.0}],
+  [/rhino|razorback|immolator|repressor/, {wIn:4.6,hIn:3.0}],
+  // ^hunter$/^stalker$ anchored: "Warp Hunter"/"Crimson Hunter"/"Vampire Hunter"/
+  // "War Dog Stalker"/"Canoptek Tomb Stalker" etc. must NOT be dragged onto this chassis.
+  [/predator|vindicator|whirlwind|castigator|exorcist|^hunter$|^stalker$/, {wIn:4.6,hIn:3.4}],
+  [/land raider/,                 {wIn:6.0,hIn:4.4}],
+  [/leman russ/,                  {wIn:5.7,hIn:4.0}],
+  [/rogal dorn/,                  {wIn:6.5,hIn:4.3}],
+  [/taurox/,                      {wIn:4.6,hIn:3.3}],
+  // (?! platform): Manticore/Hydra PLATFORMS are static emplacements — they fall
+  // through to the wounds tiers, only the tanks take the chimera chassis.
+  [/\bchimera\b|hellhound|basilisk|\bmanticore\b(?! platform)|\bhydra\b(?! platform)|wyvern|colossus|griffon|salamander|trojan|atlas recovery|centaur/, {wIn:5.3,hIn:3.7}],
+  [/baneblade|banehammer|banesword|doomhammer|hellhammer|shadowsword|stormblade|stormlord|stormsword|fellblade|falchion|stormhammer/, {wIn:9.3,hIn:5.5}],
+  [/macharius/,                   {wIn:7.5,hIn:4.8}],
+  [/malcador|valdor|minotaur/,    {wIn:7.0,hIn:4.6}],
+  [/sicaran/,                     {wIn:5.5,hIn:3.6}],
+  [/kratos/,                      {wIn:6.5,hIn:4.3}],
+  // \bpraetor\b: whole word only — "Vertus Praetors" (jetbikes) and "Triarch
+  // Praetorians" (infantry) must not become super-heavy hulls.
+  [/cerberus|typhon|spartan|\bpraetor\b/, {wIn:7.0,hIn:4.6}],
+  [/crassus|gorgon heavy/,        {wIn:7.5,hIn:5.0}],
+  [/\btrukk\b/,                   {wIn:5.5,hIn:3.2}],
+  [/battlewagon|kannonwagon|deff rolla/, {wIn:7.0,hIn:4.7}],
+  [/big trakk/,                   {wIn:6.0,hIn:3.6}],
+  [/goliath (rockgrinder|truck)/, {wIn:5.5,hIn:3.5}],
+  [/drop pod/,                    {dmm:140}],
+  [/attack bike|\bbike\b|outrider/, {wIn:3.55,hIn:2.05,oval:true}], // 90×52mm oval
+  [/devilfish|hammerhead/,        {wIn:7.0,hIn:4.5}],
+  [/wave serpent|\bfalcon\b|fire prism|night spinner|warp hunter|firestorm(?! redoubt)/, {wIn:6.3,hIn:4.0}],
+  [/^raider$|tantalus/,           {wIn:7.3,hIn:3.2}],
+  [/^venom$|starweaver|voidweaver/, {wIn:4.7,hIn:2.4}],
+  [/ghost ark|doomsday ark/,      {wIn:6.7,hIn:3.5}],
+  [/annihilation barge|command barge/, {wIn:5.3,hIn:3.2}],
+  [/skorpius/,                    {wIn:5.5,hIn:3.3}],
+  [/hekaton land fortress/,       {wIn:7.0,hIn:4.6}],
+  [/sagitaur/,                    {wIn:4.7,hIn:3.0}],
+];
+// The single base-dims oracle for token minting: curated hull table by NAME first
+// (it beats even a parseable base string — that's how flying-stand skimmers get
+// hulls), then baseFrom(base string, wounds) exactly as before.
+function wp21BaseFor(name,baseStr,W){
+  const n=norm(name||"");
+  if(n) for(const [re,d] of WP21_HULLS)
+    if(re.test(n)) return d.dmm?{shape:"c",dmm:d.dmm}:(d.oval?{shape:"r",wIn:d.wIn,hIn:d.hIn,oval:true}:{shape:"r",wIn:d.wIn,hIn:d.hIn});
+  return baseFrom(baseStr,W);
+}
+// "♻ Fix base sizes" (Setup tab): recompute every OWN token's dims from its army
+// card via wp21BaseFor and sync the ones that changed. Old saves stay untouched
+// until the user clicks this.
+function wp21Refit(){
+  const ups=[];
+  state.tokens.forEach(t=>{
+    if(t.owner!==mySide) return;
+    const card=wp3CardFor(t); if(!card||!(card.profiles||[]).length) return;
+    // Same name-matching the deploy path uses to label tokens (token.name = p.n || card.name)
+    const nn=norm(t.name||"");
+    const p=card.profiles.find(q=>norm(q.n||card.name||"")===nn)
+         || card.profiles.find(q=>{const m=norm(q.n||"");return m&&(m.includes(nn)||nn.includes(m));})
+         || (card.profiles.length===1?card.profiles[0]:null);
+    if(!p) return;
+    const b=wp21BaseFor(p.n||card.name,p.base,p.W);
+    const same = t.shape===b.shape && (b.shape==="c"
+      ? +t.dmm===+b.dmm
+      : Math.abs((+t.wIn||0)-b.wIn)<.01 && Math.abs((+t.hIn||0)-b.hIn)<.01 && !!t.oval===!!b.oval);
+    if(same) return;
+    // tok~ is Object.assign: explicitly null the fields the new shape doesn't use,
+    // and give c→r converts a rotation so the rect renderer never sees undefined.
+    ups.push({id:t.id, shape:b.shape,
+      dmm:b.shape==="c"?b.dmm:null,
+      wIn:b.shape==="r"?b.wIn:null, hIn:b.shape==="r"?b.hIn:null,
+      oval:(b.shape==="r"&&b.oval)?true:null,
+      rot:b.shape==="r"?(t.rot||0):0});
+  });
+  if(!ups.length){ logSys("♻ Base sizes already correct — nothing to fix."); return; }
+  op({k:"tok~",toks:ups});
+  logShared("· <b>"+esc(myName)+"</b> ♻ fixed "+ups.length+" model bases","sys");
+}
+/* ==== end WP21 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
