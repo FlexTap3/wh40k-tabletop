@@ -596,6 +596,30 @@ suggest→ruler→stats in one run). Visual QA note: headless browser was wedged
 by a live GUI Brave session at ship time — geometry/interaction verified in
 the node harness instead; confirm on a real device in the next game.
 
+### WP21–WP23 — Base & measurement correctness  [3 agents, parallel] — SHIPPED (July 2026)
+
+- **WP21 base sizes**: "A x Bmm" bases now carry oval:true and render/hit-test as
+  ellipses (Knights, Carnifexes…); WP21_HULLS curated kit-footprint table (one
+  tunable const; name-collision-safe regexes) covers "Use model" tanks and
+  flying-base skimmers (Rhino 4.6×3.0, Leman Russ 5.7×4.0, Land Raider 6.0×4.4,
+  Baneblade family 9.3×5.5, Hammerhead 7.0×4.5…); aircraft deliberately keep
+  their stand circle; W-fallback gains ≥30→11×7 and ≥20→9×5.5 tiers; ♻ Fix base
+  sizes (Setup) refits saved armies via one batched tok~. Tests: wp21 (42).
+- **WP22 exact distances**: edgeDist is now exact circle/rect/rect-rect with
+  rotation (old code used min-half-dim — up to ~1.2" error on a Knight's long
+  axis; it OVERstated distances, so long vehicles were wrongly incoherent/out
+  of range). Ovals use their rect footprint (documented). Bonus fix: the
+  wp8Coherency memo hash ignored rot. Tests: wp22 (33, hand-computed).
+- **WP23 auto-deploy vs humans**: all five network-guest concerns verified
+  already-correct with tests (dz[side-1], top-edge fallback, op sync, synced
+  gate, guest ⚡). Side-switch fix: pre-battle network switch re-homes cards +
+  tokens (existing cards/tok~ ops), mid-battle network switch refused, offline
+  hot-seat flip untouched (it's how the second army musters). Tests: wp23 (42).
+
+Merged suite: 742 checks, exit 0, + composite v4 smoke (knight oval → rhino
+hull → exact long-axis distance → refit → side-2 deploy). NOTE: saved games
+keep their old token dims until the user hits ♻ Fix base sizes.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
