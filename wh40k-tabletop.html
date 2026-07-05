@@ -202,6 +202,19 @@ html.phone #wp13Menu{max-height:60dvh; overflow-y:auto; min-width:230px}
 html.phone #wp13Menu .w13r{min-height:44px; font-size:14px}
 html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
 /* ==== end WP13 ==== */
+/* ==== WP20: dice-stats popover ==== local-only tally of every d6 rolled on this screen */
+#wp20Pop{display:none; position:fixed; top:46px; right:8px; z-index:70; width:min(300px,calc(100vw - 16px)); max-height:70dvh; overflow-y:auto; background:rgba(24,20,25,.98); border:1px solid var(--edge2); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.7); padding:8px 10px; font-size:12px}
+#wp20Pop.open{display:block}
+#wp20Pop .w20h{color:var(--accent); font-family:var(--serif); font-size:12px; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--edge); padding-bottom:4px; margin-bottom:6px}
+#wp20Pop .w20tot{color:var(--dim); margin:4px 0}
+#wp20Pop .w20row{display:flex; align-items:center; gap:6px; margin:3px 0}
+#wp20Pop .w20f{flex:0 0 12px; text-align:center; font-weight:700}
+#wp20Pop .w20bar{flex:1; position:relative; height:12px; background:var(--panel2); border-radius:3px}
+#wp20Pop .w20fill{position:absolute; left:0; top:0; bottom:0; background:var(--accent); opacity:.75; border-radius:3px}
+#wp20Pop .w20exp{position:absolute; top:-1px; bottom:-1px; width:2px; background:var(--text); opacity:.9}
+#wp20Pop .w20c{flex:0 0 28px; text-align:right}
+#wp20Pop .w20d{flex:0 0 44px; text-align:right; color:var(--dim)}
+/* ==== end WP20 ==== */
 </style>
 </head>
 <body>
@@ -216,7 +229,8 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
   <!-- ==== end WP7 ==== -->
   <span class="tracker"><span class="pname p1" id="n1">Player 1</span>&nbsp; CP <button onclick="stepTracker('cp1',-1)">−</button><b id="tCp1">0</b><button onclick="stepTracker('cp1',1)">+</button> VP <button onclick="stepTracker('vp1',-1)">−</button><b id="tVp1">0</b><button onclick="stepTracker('vp1',1)">+</button></span>
   <span class="tracker"><span class="pname p2" id="n2">Player 2</span>&nbsp; CP <button onclick="stepTracker('cp2',-1)">−</button><b id="tCp2">0</b><button onclick="stepTracker('cp2',1)">+</button> VP <button onclick="stepTracker('vp2',-1)">−</button><b id="tVp2">0</b><button onclick="stepTracker('vp2',1)">+</button></span>
-  <span class="tracker">🎲 <input id="qtyDice" type="number" value="6" min="1" max="60" style="width:44px"> <button onclick="quickRoll()">Roll D6</button></span>
+  <span class="tracker">🎲 <input id="qtyDice" type="number" value="6" min="1" max="60" style="width:44px"> <button onclick="quickRoll()">Roll D6</button> <button id="wp20Btn" onclick="wp20Toggle()" title="Dice stats — every d6 rolled on this screen">📊</button></span><!-- ==== WP20 ==== dice-stats popover toggle -->
+
   <span id="connStatus">
     <span class="dot" id="connDot"></span><span id="connText">Offline</span>
     <button id="btnHost" onclick="hostGame()">Host</button>
@@ -242,6 +256,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
     <div class="tabpane" id="tab-cards">
       <h3>Scoreboard</h3>
       <div id="scoreboard"></div>
+      <!-- ==== WP20 ==== plain-text game-summary download (local action, nothing broadcast) -->
+      <div class="row"><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button></div>
+      <!-- ==== end WP20 ==== -->
       <h3>Primary mission</h3>
       <div id="missionInfo" class="small" style="margin-bottom:8px">No layout loaded. Load one in Setup to see the primary mission and objectives.</div>
       <h3>Secondary objectives</h3>
@@ -342,7 +359,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <!-- ==== end WP11 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
-      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button>
+      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
       <div class="row"><button onclick="if(confirm('Clear the whole table?'))clearTable()">Clear table</button></div>
     </div>
@@ -723,7 +740,7 @@ function logChat(name,text,mine){ logEntry("<b>"+esc(name)+":</b> "+esc(text), m
 function sendChat(){ const i=document.getElementById("chatIn"); const v=i.value.trim(); if(!v)return; i.value=""; logChat(myName,v,true); send({t:"chat",name:myName,text:v}); }
 document.getElementById("chatIn").addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const d6 = ()=>1+Math.floor(Math.random()*6);
+const d6 = ()=>{ const r=1+Math.floor(Math.random()*6); if(typeof wp20Note==="function") wp20Note(r); return r; }; /* ==== WP20 ==== every d6 rolled on this screen (mine and the AI's) feeds the dice-stats panel */
 function quickRoll(){
   const n=Math.min(60,Math.max(1,+document.getElementById("qtyDice").value||1));
   const r=Array.from({length:n},d6).sort((a,b)=>b-a);
@@ -4874,6 +4891,95 @@ function wp16ApplyClick(){ // one-shot: wp16Pending is consumed up front, so a s
   finally{ wp16LogAs=""; }
 }
 /* ==== end WP16 ==== */
+
+/* ==== WP20: dice stats + game summary ==== (A) wp20Note tallies every d6() result
+   rolled ON THIS SCREEN (yours, and the AI's in solo) — pure local bookkeeping:
+   nothing synced, nothing saved, Reset just zeroes it. 📊 in the top bar toggles a
+   create-once fixed popover (same pattern as the WP13 menu; node-harness safe).
+   (B) wp20Summary() builds a plain-text game record — players, mission, trackers,
+   surviving-unit tally from state.tokens, full battle log text — downloaded via the
+   existing dl() helper. All user-generated game record: no GW rules prose. */
+let wp20Stats={n:0,counts:[0,0,0,0,0,0],hot:0,cold:0,curHot:0,curCold:0};
+let wp20El=null, wp20Open=false;
+function wp20Note(r){ // called by d6() for every die; streaks: hot = run of ≥5s, cold = run of ≤2s
+  if(!(r>=1&&r<=6)) return;
+  const s=wp20Stats;
+  s.n++; s.counts[r-1]++;
+  s.curHot = r>=5 ? s.curHot+1 : 0;
+  s.curCold= r<=2 ? s.curCold+1 : 0;
+  if(s.curHot>s.hot) s.hot=s.curHot;
+  if(s.curCold>s.cold) s.cold=s.curCold;
+  if(wp20Open) wp20Render();
+}
+function wp20Reset(){ wp20Stats={n:0,counts:[0,0,0,0,0,0],hot:0,cold:0,curHot:0,curCold:0}; if(wp20Open) wp20Render(); }
+function wp20El_(){ // create-once, injected into <body> (never into #side) — WP13 pattern
+  if(wp20El) return wp20El;
+  if(typeof document==="undefined"||!document.body||!document.createElement) return null;
+  wp20El=document.createElement("div"); wp20El.id="wp20Pop";
+  document.body.appendChild(wp20El);
+  return wp20El;
+}
+function wp20Toggle(){
+  const el=wp20El_(); if(!el) return;
+  if(wp20Open){ wp20Close(); return; }
+  wp20Open=true; wp20Render();
+  if(el.classList&&el.classList.add) el.classList.add("open");
+}
+function wp20Close(){
+  wp20Open=false;
+  if(wp20El&&wp20El.classList&&wp20El.classList.remove) wp20El.classList.remove("open");
+}
+function wp20Render(){
+  const el=wp20El||wp20El_(); if(!el) return;
+  const s=wp20Stats, n=s.n, exp=n/6, max=Math.max(1,...s.counts);
+  let h=`<div class="w20h">🎲 Dice rolled on this screen</div>`;
+  h+=`<div class="w20tot"><b>${n}</b> dice · yours + the AI's · local only (never saved or synced)</div>`;
+  for(let f=1;f<=6;f++){
+    const c=s.counts[f-1], d=n?Math.round((c-exp)/exp*100):0;
+    h+=`<div class="w20row"><span class="w20f">${f}</span><span class="w20bar"><span class="w20fill" style="width:${n?Math.round(c/max*100):0}%"></span>${n?`<span class="w20exp" style="left:${Math.round(exp/max*100)}%" title="exp ${exp.toFixed(1)}"></span>`:""}</span><span class="w20c">${c}</span><span class="w20d">${n?(d>0?"+":"")+d+"%":"–"}</span></div>`;
+  }
+  h+=`<div class="w20tot">│ = exp (n/6${n?" ≈ "+exp.toFixed(1):""} per face) · % = above/below exp</div>`;
+  h+=`<div class="w20tot">Longest streaks — hot (5–6): <b>${s.hot}</b> · cold (1–2): <b>${s.cold}</b></div>`;
+  h+=`<div class="row" style="margin-top:6px"><button onclick="wp20Reset()">Reset</button></div>`;
+  el.innerHTML=h;
+}
+// close on outside press (capture, ignoring the 📊 toggle itself) and on Esc — WP13 pattern
+if(typeof document!=="undefined"&&document.addEventListener)
+  document.addEventListener("pointerdown",e=>{ if(wp20Open&&wp20El&&!(wp20El.contains&&wp20El.contains(e.target))&&!(e.target&&e.target.id==="wp20Btn")) wp20Close(); },true);
+if(typeof window!=="undefined"&&window.addEventListener)
+  window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&wp20Open) wp20Close(); });
+function wp20Summary(){ // plain-text game record; must never throw, even on a blank table
+  const s=state||{}, tr=s.trackers||{}, nm=s.names||{};
+  const p1=nm[1]||"Player 1", p2=nm[2]||"Player 2";
+  const L=["WH40K BATTLE SUMMARY", new Date().toLocaleString(), ""];
+  L.push("Players: "+p1+" (Red, side 1) vs "+p2+" (Blue, side 2)");
+  L.push("Mission: "+(s.mission&&s.mission.name?s.mission.name+(s.mission.m?" — "+s.mission.m:""):"(no layout loaded)"));
+  L.push("Battle round: "+(tr.round!=null?tr.round:1));
+  L.push("VP: "+p1+" "+(tr.vp1||0)+" — "+(tr.vp2||0)+" "+p2);
+  L.push("CP: "+p1+" "+(tr.cp1||0)+" — "+(tr.cp2||0)+" "+p2);
+  for(const side of [1,2]){
+    L.push(""); L.push("Surviving units — "+(side===1?p1:p2)+" (destroyed units no longer appear):");
+    const by={};
+    for(const t of (s.tokens||[])) if(t.owner===side) (by[t.unit]=by[t.unit]||[]).push(t);
+    const ks=Object.keys(by);
+    if(!ks.length) L.push("  (none on the table)");
+    for(const k of ks){
+      const ms=by[k], alive=ms.length;
+      const start=Math.max(alive,...ms.map(t=>+t.u0||0)); // u0 = starting strength stamped at deploy (WP7); legacy tokens fall back to the live count
+      L.push("  "+(ms[0].name||k)+" ×"+alive+"/"+start);
+    }
+  }
+  L.push(""); L.push("Battle log:");
+  const kids=(typeof logEl!=="undefined"&&logEl&&logEl.children)?logEl.children:[];
+  for(const c of kids){
+    let txt=(c.textContent&&String(c.textContent).trim())?c.textContent:String(c.innerHTML||"").replace(/<[^>]*>/g," "); // node-stub divs never fill textContent
+    txt=String(txt).replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/\s+/g," ").trim();
+    if(txt) L.push(txt);
+  }
+  return L.join("\n");
+}
+function wp20Export(){ dl("wh40k-battle-summary.txt", wp20Summary()); } // local action — deliberately no logShared
+/* ==== end WP20 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
