@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WH40k Tabletop</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
@@ -111,6 +111,78 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #wp11Banner .small{color:var(--dim)}
 #wp11Banner button{margin-left:10px; vertical-align:middle}
 /* ==== end WP11 ==== */
+/* ==== WP12: phone ==== board-first command deck. Every rule is gated on html.phone
+   (set by wp12Apply) — with the class absent, none of this applies and desktop renders
+   untouched. Injected elements (#phoneNav, #wp12Peek, #wp12SheetHead, #wp12RosterBtn)
+   are display:none unless html.phone. */
+#phoneNav,#wp12Peek,#wp12SheetHead,#wp12RosterBtn{display:none}
+html.phone{--wp12nav:calc(54px + env(safe-area-inset-bottom)); --wp12peek:24px; --wp12sheet:78dvh; -webkit-tap-highlight-color:transparent}
+/* top strip: one row, scrollable, brand dropped, trackers compacted (CSS only) */
+html.phone #topbar{flex-wrap:nowrap; overflow-x:auto; gap:6px; padding:4px 8px; padding-top:calc(4px + env(safe-area-inset-top)); scrollbar-width:none}
+html.phone #topbar::-webkit-scrollbar{display:none}
+html.phone #topbar .brand{display:none}
+html.phone #connText{display:none}
+html.phone .tracker{flex:0 0 auto; padding:1px 4px; gap:2px; font-size:11px; white-space:nowrap}
+html.phone .tracker b{min-width:14px}
+html.phone .tracker button{padding:2px 6px; min-height:30px}
+html.phone .pname{display:inline-block; max-width:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom}
+html.phone #connStatus{flex:0 0 auto; margin-left:auto; gap:4px}
+html.phone #connStatus button{min-height:30px}
+/* toolbar: horizontal strip under the top bar, 44px targets */
+html.phone #toolbar{flex-direction:row; top:6px; left:6px; right:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none}
+html.phone #toolbar::-webkit-scrollbar{display:none}
+html.phone #toolbar button{min-width:44px; width:auto; height:44px; flex:0 0 auto}
+/* board fills everything between the top strip and the peek ticker / nav bar */
+html.phone #main{padding-bottom:calc(var(--wp12nav) + var(--wp12peek))}
+/* sidebar becomes a bottom sheet (closed by default; #phoneNav opens it) */
+html.phone #side{position:fixed; left:0; right:0; top:auto; bottom:var(--wp12nav); width:auto; height:var(--wp12sheet); max-height:85dvh; z-index:46; border-right:none; border-radius:14px 14px 0 0; background:rgba(24,20,25,.97); box-shadow:0 -10px 34px rgba(0,0,0,.65); transform:translateY(130%); transition:transform .28s cubic-bezier(.2,.8,.2,1); padding-top:34px}
+html.phone.wp12-open-side #side{transform:translateY(0)}
+html.phone #tabs{display:none}
+html.phone .tabpane{-webkit-overflow-scrolling:touch}
+/* log + chat: same sheet treatment via the Log nav button */
+html.phone #bottombar{position:fixed; left:0; right:0; bottom:var(--wp12nav); height:var(--wp12sheet); max-height:85dvh; z-index:46; border-radius:14px 14px 0 0; background:rgba(24,20,25,.97); box-shadow:0 -10px 34px rgba(0,0,0,.65); transform:translateY(130%); transition:transform .28s cubic-bezier(.2,.8,.2,1); padding-top:34px; border-top:none}
+html.phone.wp12-open-log #bottombar{transform:translateY(0)}
+html.phone #log{-webkit-overflow-scrolling:touch}
+html.phone #chatrow{padding-bottom:10px}
+/* shared sheet chrome: grab handle + title + close (injected, sits on the open sheet's top edge) */
+html.phone.wp12-open-side #wp12SheetHead,html.phone.wp12-open-log #wp12SheetHead{display:flex; align-items:flex-end; position:fixed; left:0; right:0; bottom:calc(var(--wp12nav) + var(--wp12sheet) - 34px); height:34px; z-index:47; background:rgba(24,20,25,.97); border-radius:14px 14px 0 0; border-top:2px solid var(--accent); padding:0 10px 4px}
+#wp12Grab{position:absolute; left:50%; top:5px; width:44px; height:5px; margin-left:-22px; border-radius:3px; background:var(--edge2)}
+#wp12SheetTitle{font-family:var(--serif); color:var(--accent); text-transform:uppercase; letter-spacing:.14em; font-size:12px}
+#wp12SheetClose{margin-left:auto; border:none; background:transparent; color:var(--dim); font-size:15px; padding:2px 8px; min-height:0}
+/* peek ticker: latest log line above the nav bar; tap = open the log sheet */
+html.phone #wp12Peek{display:block; position:fixed; left:0; right:0; bottom:var(--wp12nav); height:var(--wp12peek); z-index:45; background:rgba(14,12,15,.88); backdrop-filter:blur(4px); border-top:1px solid var(--edge); color:var(--dim); font-size:11px; line-height:23px; padding:0 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer}
+/* bottom nav bar (injected) */
+html.phone #phoneNav{position:fixed; left:0; right:0; bottom:0; z-index:48; display:flex; background:rgba(24,20,25,.97); backdrop-filter:blur(6px); border-top:1px solid var(--edge2); padding-bottom:env(safe-area-inset-bottom)}
+html.phone #phoneNav button{flex:1; height:54px; border:none; border-radius:0; background:transparent; color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-family:var(--serif); padding:0 2px; white-space:nowrap}
+html.phone #phoneNav button.active{color:var(--accent-hi); background:linear-gradient(180deg,rgba(201,162,39,.12),transparent); box-shadow:inset 0 2px 0 var(--accent)}
+@keyframes wp12pulse{0%,100%{color:var(--dim); box-shadow:none}50%{color:var(--accent-hi); box-shadow:inset 0 2px 0 var(--accent-hi)}}
+html.phone #phoneNav button.wp12pulse{animation:wp12pulse .9s ease-in-out 5}
+/* board overlays: full width, bottom-anchored above the ticker, bigger targets */
+html.phone #inspector{left:8px; right:8px; bottom:6px; width:auto; max-width:none; max-height:55dvh; font-size:13px}
+html.phone #inspector button{min-height:36px; min-width:36px}
+html.phone #inspector .aim{line-height:normal}
+html.phone #wp7Tray{left:8px; right:8px; bottom:6px; width:auto; max-height:55dvh}
+html.phone #wp7Tray button{min-height:36px}
+html.phone #wp11Banner{top:auto; bottom:6px; left:8px; right:8px; transform:none; max-width:none}
+html.phone #wp11Banner button{min-height:36px}
+/* builder: single column; roster becomes its own bottom sheet toggled from #bHead */
+html.phone #bHead{gap:6px; padding:8px 10px}
+html.phone #bHead .brand{display:none}
+html.phone #bHead select{min-width:0; max-width:40vw}
+html.phone #bHead #bSearch{max-width:none; min-width:110px}
+html.phone #bHead #bTotal{font-size:14px; margin-left:0}
+html.phone #wp12RosterBtn{display:inline-block; order:1; margin-left:auto}
+html.phone #bHead button[title="Back to the table"]{order:2}
+html.phone #bBody{grid-template-columns:1fr}
+html.phone .bGrid{grid-template-columns:1fr}
+html.phone #bLeft{-webkit-overflow-scrolling:touch; padding:10px}
+html.phone #bRight{position:fixed; left:0; right:0; top:auto; bottom:0; height:76dvh; z-index:70; border-left:none; border-top:2px solid var(--accent); border-radius:14px 14px 0 0; box-shadow:0 -10px 34px rgba(0,0,0,.65); background:rgba(24,20,25,.98); transform:translateY(120%); transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+html.phone #builderOverlay.wp12-roster-open #bRight{transform:translateY(0)}
+html.phone #bRoster{-webkit-overflow-scrolling:touch}
+/* dialogs + inputs: phone-sized, no iOS zoom-on-focus */
+html.phone dialog{width:min(94vw,520px)!important; max-width:94vw; max-height:85dvh; overflow-y:auto}
+html.phone input,html.phone select,html.phone textarea{font-size:16px}
+/* ==== end WP12 ==== */
 </style>
 </head>
 <body>
@@ -215,6 +287,11 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
       <h3>You</h3>
       <div class="row"><label>Name</label><input id="myName" type="text" value="Player" style="width:110px" onchange="setName(this.value)">
         <label>Side</label><select id="mySide" onchange="setSide(this.value)"><option value="1">Red (P1)</option><option value="2">Blue (P2)</option></select></div>
+      <!-- ==== WP12: phone ==== screen-layout override (Auto detects phones; iPads stay desktop) -->
+      <div class="row"><label>Layout</label><select id="wp12LayoutSel" onchange="wp12SetPref(this.value)">
+        <option value="auto">Auto (detect device)</option><option value="desktop">Desktop</option><option value="phone">Phone</option></select></div>
+      <div class="small" style="margin-bottom:6px">Phones get a board-first layout: one-row top strip, bottom nav, and slide-up sheets for the tabs and log. Applies immediately — no reload.</div>
+      <!-- ==== end WP12 ==== -->
       <h3>Battlefield</h3>
       <div class="row"><select id="boardSize" onchange="setBoard(this.value)">
         <option value="60x44">Strike Force 60"×44"</option>
@@ -610,7 +687,7 @@ function secCode(n){
 }
 /* ==== end SEC ==== */
 const logEl=document.getElementById("log");
-function logEntry(html,cls){ const d=document.createElement("div"); d.className="e "+(cls||""); d.innerHTML=html; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
+function logEntry(html,cls){ const d=document.createElement("div"); d.className="e "+(cls||""); d.innerHTML=html; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; if(typeof wp12PeekUpdate==="function")wp12PeekUpdate(); /* ==== WP12: phone ==== peek ticker */ }
 function logSys(s){ logEntry("· "+esc(s),"sys"); }
 function logShared(html,cls){ logEntry(html,cls); send({t:"log",html,cls}); }
 function logChat(name,text,mine){ logEntry("<b>"+esc(name)+":</b> "+esc(text), mine?"me":"them"); }
@@ -2175,6 +2252,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   showTab("attack");
   if(typeof aiNoteStage==="function") aiNoteStage(ctx0,tgtTok); /* ==== WP10: ai ==== remember the staged pair for solo auto-casualties */
   logSys(`Attack staged: ${atkName} → ${tgtName} with ${w.n}. Check the Attack tab and roll.`);
+  if(typeof wp12AttackPulse==="function")wp12AttackPulse(); /* ==== WP12: phone ==== pulse the Attack nav button */
 }
 // Manual edits to the Attack tab clear the staged attacker→target label.
 document.getElementById("tab-attack").addEventListener("change",e=>{
@@ -4208,8 +4286,128 @@ function wp11TargetAdjust(s,tgt,exp){
 }
 /* ==== end WP11 ==== */
 
+/* ==== WP12: phone ==== board-first command deck.
+   Desktop DOM/render untouched: everything is gated on the html.phone class, all
+   injected elements (#phoneNav, #wp12Peek, #wp12SheetHead, #wp12RosterBtn) are
+   created once at init and display:none off-phone. No game logic here — pure
+   layout plumbing. Detection: (min screen dimension ≤ 820" AND coarse pointer)
+   OR a phone UA; iPads (incl. iPadOS's "Macintosh" UA with touch) deliberately
+   stay desktop — WP8's touch pass covers them. Node-harness safe: every entry
+   point no-ops to desktop when matchMedia / screen / document.body are absent. */
+let wp12Mode="desktop", wp12Ready=false, wp12Built=false, wp12Els=null, wp12SheetOpen=null, wp12PulseT=null;
+const WP12_TABS={army:"Army",cards:"Cards",attack:"Attack",setup:"Setup",log:"Battle log"};
+function wp12Detect(){ // auto-detection only — the Setup override is applied in wp12Resolve()
+  try{
+    if(typeof window==="undefined"||typeof screen==="undefined"||!screen) return "desktop";
+    const ua=(typeof navigator!=="undefined"&&navigator.userAgent)||"";
+    const mtp=(typeof navigator!=="undefined"&&navigator.maxTouchPoints)||0;
+    if(/iPad/i.test(ua)||(/Macintosh/.test(ua)&&mtp>1)) return "desktop";   // iPads stay desktop
+    if(/iPhone|iPod/.test(ua)||(/Android/i.test(ua)&&/Mobile/i.test(ua))) return "phone";
+    if(typeof window.matchMedia!=="function") return "desktop";
+    const coarse=!!window.matchMedia("(pointer:coarse)").matches;
+    const dim=Math.min(screen.width||1e5,screen.height||1e5);                // min of the DEVICE, not the viewport — a rotated phone is still a phone
+    return (dim<=820&&coarse)?"phone":"desktop";
+  }catch(e){ return "desktop"; }
+}
+function wp12Pref(){ try{ const v=typeof localStorage!=="undefined"&&localStorage.getItem("wh40k_layout"); return (v==="phone"||v==="desktop")?v:"auto"; }catch(e){ return "auto"; } }
+function wp12Resolve(){ const p=wp12Pref(); return p==="auto"?wp12Detect():p; }
+function wp12SetPref(v){
+  try{ if(typeof localStorage!=="undefined"){ if(v==="phone"||v==="desktop") localStorage.setItem("wh40k_layout",v); else localStorage.removeItem("wh40k_layout"); } }catch(e){}
+  wp12Apply(wp12Resolve());
+}
+function wp12Apply(mode){
+  mode=mode==="phone"?"phone":"desktop";
+  const changed=mode!==wp12Mode;
+  wp12Mode=mode;
+  const de=typeof document!=="undefined"&&document.documentElement;
+  if(de&&de.classList&&de.classList.toggle) de.classList.toggle("phone",mode==="phone");
+  if(mode!=="phone") wp12SheetSet(null);            // never leave sheet classes behind on desktop
+  if(changed&&wp12Ready&&typeof resize==="function"){ resize(); if(typeof fitView==="function") fitView(); }
+}
+function wp12Build(){ // injected chrome — created ONCE; visibility is pure CSS (html.phone)
+  if(wp12Built) return;
+  if(typeof document==="undefined"||!document.body||!document.createElement) return;
+  const mk=(tag,id,txt)=>{ const e=document.createElement(tag); if(id)e.id=id; if(txt!=null)e.textContent=txt; return e; };
+  const nav=mk("div","phoneNav");
+  wp12Els={nav,btns:{}};
+  [["army","Army"],["cards","Cards"],["attack","Attack"],["setup","Setup"],["log","Log"],["builder","Builder"]].forEach(([k,label])=>{
+    const b=mk("button","wp12nav-"+k,label); b.onclick=()=>wp12Nav(k); nav.appendChild(b); wp12Els.btns[k]=b;
+  });
+  const peek=mk("div","wp12Peek"); peek.onclick=()=>wp12Nav("log"); wp12Els.peek=peek;
+  const head=mk("div","wp12SheetHead"); head.onclick=()=>wp12SheetSet(null);
+  head.appendChild(mk("div","wp12Grab"));
+  wp12Els.title=mk("span","wp12SheetTitle"); head.appendChild(wp12Els.title);
+  head.appendChild(mk("button","wp12SheetClose","✕"));
+  document.body.appendChild(nav); document.body.appendChild(peek); document.body.appendChild(head);
+  const bh=document.getElementById("bHead");
+  const rb=mk("button","wp12RosterBtn","Roster"); rb.onclick=wp12RosterToggle; wp12Els.roster=rb;
+  if(bh&&bh.appendChild) bh.appendChild(rb);
+  if(typeof renderRoster==="function"){ const rr=renderRoster; renderRoster=function(){ const r=rr.apply(this,arguments); wp12RosterLabel(); return r; }; } // own-block patch: keeps the roster button label live
+  wp12Built=true;
+}
+function wp12Nav(k){
+  if(k==="builder"){
+    wp12SheetSet(null);
+    const bo=typeof document!=="undefined"&&document.getElementById&&document.getElementById("builderOverlay");
+    if(bo&&bo.classList&&bo.classList.remove) bo.classList.remove("wp12-roster-open");
+    if(typeof openBuilder==="function") openBuilder();
+    wp12RosterLabel();
+    return;
+  }
+  if(wp12SheetOpen===k){ wp12SheetSet(null); return; }   // tapping the active tab closes the sheet (back to the board)
+  if(k!=="log"&&typeof showTab==="function") showTab(k);
+  wp12SheetSet(k);
+}
+function wp12SheetSet(k){ // k = army|cards|attack|setup (side sheet), log (log sheet), null (closed)
+  wp12SheetOpen=k||null;
+  const de=typeof document!=="undefined"&&document.documentElement;
+  if(de&&de.classList&&de.classList.toggle){
+    de.classList.toggle("wp12-open-side",!!k&&k!=="log");
+    de.classList.toggle("wp12-open-log",k==="log");
+  }
+  if(wp12Els){
+    if(wp12Els.title) wp12Els.title.textContent=k?WP12_TABS[k]||"":"";
+    for(const key in wp12Els.btns){ const b=wp12Els.btns[key]; if(b.classList&&b.classList.toggle) b.classList.toggle("active",key===k); }
+    const ab=wp12Els.btns.attack;
+    if(k==="attack"&&ab&&ab.classList&&ab.classList.remove) ab.classList.remove("wp12pulse");
+  }
+  if(k==="log"&&typeof logEl!=="undefined"&&logEl) logEl.scrollTop=logEl.scrollHeight;
+}
+function wp12PeekUpdate(){ // called from logEntry (marked hook): mirror the latest log line
+  if(!wp12Els||!wp12Els.peek) return;
+  const le=typeof logEl!=="undefined"&&logEl, kids=le&&le.children;
+  const last=kids&&kids.length?kids[kids.length-1]:null;
+  wp12Els.peek.textContent=last?(last.textContent||String(last.innerHTML||"").replace(/<[^>]*>/g,"")):"";
+}
+function wp12AttackPulse(){ // called from wp3Stage (marked hook)
+  if(wp12Mode!=="phone"||!wp12Els||!wp12Els.btns.attack||wp12SheetOpen==="attack") return;
+  const b=wp12Els.btns.attack;
+  if(b.classList&&b.classList.add){ b.classList.remove("wp12pulse"); void b.offsetWidth; b.classList.add("wp12pulse"); }
+  if(typeof setTimeout==="function"){ clearTimeout(wp12PulseT); wp12PulseT=setTimeout(()=>{ if(b.classList&&b.classList.remove) b.classList.remove("wp12pulse"); },5200); }
+}
+function wp12RosterToggle(){
+  const bo=typeof document!=="undefined"&&document.getElementById&&document.getElementById("builderOverlay");
+  if(bo&&bo.classList&&bo.classList.toggle) bo.classList.toggle("wp12-roster-open");
+  wp12RosterLabel();
+}
+function wp12RosterLabel(){
+  if(!wp12Els||!wp12Els.roster) return;
+  try{ wp12Els.roster.textContent="Roster ("+myList.items.length+") · "+bTotalPts()+"pts"; }catch(e){}
+}
+function wp12Init(){
+  wp12Build();
+  try{ const sel=document.getElementById("wp12LayoutSel"); if(sel) sel.value=wp12Pref(); }catch(e){}
+  wp12Apply(wp12Resolve());
+  if(typeof window!=="undefined"&&window.addEventListener){
+    window.addEventListener("orientationchange",()=>wp12Apply(wp12Resolve()));
+    window.addEventListener("resize",()=>{ if(wp12Pref()==="auto"){ const m=wp12Detect(); if(m!==wp12Mode) wp12Apply(m); } });
+  }
+  wp12Ready=true;
+}
+/* ==== end WP12 ==== */
+
 /* ============ init ============ */
-populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); resize(); fitView();
+populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
 wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
 </script>
