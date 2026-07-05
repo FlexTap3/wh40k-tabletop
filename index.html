@@ -360,7 +360,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <!-- ==== end WP11 ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
-      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== -->
+      <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== --><button onclick="wp21Refit()" title="Recompute every one of your models' base/hull sizes from its army card using the current rules (oval bases, vehicle hull footprints). Fixes tokens deployed or saved before this update — leaves anything already correct alone.">♻ Fix base sizes</button><!-- ==== WP21 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
       <div class="row"><button onclick="if(confirm('Clear the whole table?'))clearTable()">Clear table</button></div>
     </div>
@@ -862,13 +862,15 @@ function populateFactions(){
 }
 function baseFrom(str,W){
   if(str){ let m=String(str).match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*mm/i);
-    if(m) return {shape:"r",wIn:+m[1]/25.4,hIn:+m[2]/25.4};
+    if(m) return {shape:"r",wIn:+m[1]/25.4,hIn:+m[2]/25.4,oval:true}; /* ==== WP21 ==== "A x Bmm" GW bases are OVALS, not rects */
     m=String(str).match(/(\d+(?:\.\d+)?)\s*mm/i);
-    if(m) return {shape:"c",dmm:+m[1]};
+    if(m) return {shape:"c",dmm:+m[1]}; // "NNmm flying base" keeps the stand circle on purpose: a true-hull AIRCRAFT token would be unusable on a 2D table (WP21 hull table catches the ground-skimmers that matter)
     m=String(str).match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*in/i);
     if(m) return {shape:"r",wIn:+m[1],hIn:+m[2]};
   }
   const w=+W||1; // no base (hull/frame vehicles): size by wounds
+  if(w>=30) return {shape:"r",wIn:11,hIn:7};    /* ==== WP21 ==== titan-class tiers (Warlord, gargants) */
+  if(w>=20) return {shape:"r",wIn:9,hIn:5.5};   /* ==== WP21 ==== super-heavy tier (Baneblade class) */
   if(w>=16) return {shape:"r",wIn:7.5,hIn:4.5};
   if(w>=10) return {shape:"r",wIn:6,hIn:3.5};
   if(w>=6)  return {shape:"r",wIn:4,hIn:2.5};
@@ -1081,7 +1083,7 @@ function deployCard(raw){
   let k=0;
   const maxCount=Math.max(...u.profiles.map(p=>+p.count||0));
   u.profiles.forEach(p=>{
-    const b=baseFrom(p.base,p.W);
+    const b=wp21BaseFor(p.n||u.name,p.base,p.W); /* ==== WP21 ==== hull table by name first, then base string / wounds */
     const isLeader=u.profiles.length>1 && (+p.count||0)<maxCount;
     for(let c=0;c<(+p.count||0);c++){
       const col=k%per, row=Math.floor(k/per); k++;
@@ -1472,7 +1474,7 @@ function refreshTrackers(){
   renderScore();
 }
 function setName(v){ myName=v||"Player"; localStorage.setItem("wh40k_name",myName); op({k:"name",side:mySide,name:myName}); }
-function setSide(v){ mySide=+v; op({k:"name",side:mySide,name:myName}); }
+function setSide(v){ wp23SetSide(v); } /* ==== WP23 ==== was: mySide=+v + name op — now the switch re-homes synced cards/tokens pre-battle in a network game and refuses mid-battle; offline keeps the legacy hot-seat flip (see wp23SetSide) ==== end WP23 ==== */
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
 function clearTable(){ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
@@ -1489,7 +1491,24 @@ let tool="select", sel=new Set(), drag=null, marquee=null, ruler=null, theirRule
 /* ---- unit coherency (2" of one squadmate, 9" of all squadmates) ---- */
 let incoherent=new Set();
 const tokRadius=t=>t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2;
-const edgeDist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)-tokRadius(a)-tokRadius(b);
+/* ==== WP22 ==== exact edge-to-edge distance between token footprints (helpers live in
+   the WP22 section before init). Rect tokens use their true rotated w×h footprint
+   instead of the old min-half-dimension shortcut, which understated a vehicle hull's
+   long side by up to ~0.8" per rect. Sign convention: positive = gap, negative =
+   overlapping. Circle↔circle and circle↔rect return the exact penetration depth when
+   overlapping; rect↔rect returns 0 when the perimeters touch/cross and a negative
+   corner-containment depth when a corner of one lies inside the other (a value ≤0 on
+   any overlap — not an exact depth). Oval (WP21) tokens are measured as their full
+   bounding rect: slightly generous at the corners, never short. */
+const edgeDist=(a,b)=>{
+  if(a.shape==="c"){
+    if(b.shape==="c") return Math.hypot(a.x-b.x,a.y-b.y)-tokRadius(a)-tokRadius(b); // hot path: one hypot, no allocations
+    return wp22PtRectSd(a.x,a.y,b)-mmIn(a.dmm)/2;
+  }
+  if(b.shape==="c") return wp22PtRectSd(b.x,b.y,a)-mmIn(b.dmm)/2;
+  return wp22RectRect(a,b);
+};
+/* ==== end WP22 ==== */
 function checkCoherency(){
   incoherent=new Set();
   const byUnit={};
@@ -1754,9 +1773,18 @@ function draw(){
     } else {
       ctx.rotate((t.rot||0)*Math.PI/180);
       const w=t.wIn*view.s,h=t.hIn*view.s;
+      if(t.oval){ /* ==== WP21 ==== oval base (Knights, bikes, monster ovals): true ellipse, no hull-inset rect */
+        const lw=Math.max(1.5,Math.min(w,h)/2*.14);
+        ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,7);
+        ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fill();
+        ctx.lineWidth=lw; ctx.strokeStyle=t.sgt?"#c9922e":"rgba(10,8,10,.8)"; ctx.stroke(); /* WP14 contract: gold rim = leader */
+        ctx.beginPath(); ctx.ellipse(0,0,Math.max(1,w/2-lw*.9),Math.max(1,h/2-lw*.9),0,0,7); /* slightly inset selection ring */
+        ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(255,255,255,.28)"; ctx.stroke();
+      } else { /* ==== end WP21 ==== */
       ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fillRect(-w/2,-h/2,w,h);
       ctx.strokeStyle="rgba(255,255,255,.14)"; ctx.lineWidth=1; ctx.strokeRect(-w/2+2.5,-h/2+2.5,w-5,h-5); /* hull inset */
       ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":(t.sgt?"#c9922e":"rgba(10,8,10,.85)"); ctx.strokeRect(-w/2,-h/2,w,h); /* ==== WP14 ==== gold border = leader */
+      }
       ctx.font="bold "+Math.max(8,h*.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(initials(t.name),0,1.2);
       ctx.fillStyle="#f4efe6"; ctx.fillText(initials(t.name),0,0);
@@ -2039,6 +2067,7 @@ function wp5Enforce(){
 function wp5BaseOverlaps(t,ter){
   // Token base (circle of tokRadius) vs the rotated terrain rect — true overlap,
   // not just centre-inside, so thin walls can't hide under a base edge.
+  // WP21: oval bases deliberately keep this bounding-circle approximation (as rects always did) — collision stays shape-agnostic.
   const cx=ter.x+ter.w/2, cy=ter.y+ter.h/2, a=-(ter.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
   const dx=t.x-cx, dy=t.y-cy, lx=dx*c-dy*s, ly=dx*s+dy*c;
   const qx=Math.max(Math.abs(lx)-ter.w/2,0), qy=Math.max(Math.abs(ly)-ter.h/2,0);
@@ -2367,7 +2396,8 @@ function hitToken(ix,iy){
     if(t.shape==="c"){ if(Math.hypot(ix-t.x,iy-t.y)<=mmIn(t.dmm)/2+.15) return t; }
     else { const a=-(t.rot||0)*Math.PI/180, dx=ix-t.x, dy=iy-t.y;
       const rx=dx*Math.cos(a)-dy*Math.sin(a), ry=dx*Math.sin(a)+dy*Math.cos(a);
-      if(Math.abs(rx)<=t.wIn/2&&Math.abs(ry)<=t.hIn/2) return t; } }
+      if(t.oval){ if((rx/(t.wIn/2+.15))**2+(ry/(t.hIn/2+.15))**2<=1) return t; } /* ==== WP21 ==== ellipse hit for oval bases (same ~.15" slack as circles) */
+      else if(Math.abs(rx)<=t.wIn/2&&Math.abs(ry)<=t.hIn/2) return t; } }
   return null;
 }
 function hitTerrain(ix,iy){
@@ -2886,7 +2916,7 @@ function wp8SideClaim(m){ // called from onMsg "hello"
   else{
     mySide=(mySide===1?2:1);
     const s=document.getElementById("mySide"); if(s) s.value=String(mySide);
-    setTimeout(()=>op({k:"name",side:mySide,name:myName}),300); // after the host's full-state sync lands
+    setTimeout(()=>{ op({k:"name",side:mySide,name:myName}); if(myArmy.length) broadcastCards(); /* ==== WP23 ==== flipped guest re-homes its synced cards under its new side; the contested slot is the HOST's — never cleared — and every on-table token is the host's after the full-state sync, so no re-owning here ==== end WP23 ==== */ },300); // after the host's full-state sync lands
     logSys("⚠ Both players had picked the same side — you are now "+(mySide===1?"Red (P1)":"Blue (P2)")+". Change it in Setup if needed.");
   }
 }
@@ -2897,6 +2927,7 @@ function wp8Coherency(){
   for(let i=0;i<T.length;i++){ const t=T[i];
     h=(Math.imul(h,31)+(t.x*1000|0))|0;
     h=(Math.imul(h,31)+(t.y*1000|0))|0;
+    h=(Math.imul(h,31)+((t.rot||0)*10|0))|0; /* ==== WP22 ==== edgeDist now honors rect rotation, so rotating a hull must re-run coherency (the old edgeDist was rotation-invariant, so rot was safely absent from this signature) ==== end WP22 ==== */
     const u=t.unit||""; for(let j=0;j<u.length;j++) h=(Math.imul(h,31)+u.charCodeAt(j))|0;
   }
   if(h!==wp8CohSig){ wp8CohSig=h; checkCoherency(); }
@@ -5219,6 +5250,211 @@ function wp18OnDmg(m){ /* SEC: hostile payloads must be a silent no-op — every
   logSys("Incoming: "+packets.length+" damage packet"+(packets.length!==1?"s":"")+" against "+t0.name+" — click models in that unit to allocate (wounded model first), or press A to auto-assign.");
 }
 /* ==== end WP18 ==== */
+
+/* ==== WP23 ==== side switching after muster: setSide used to just flip `mySide` and
+   re-send the name op, so a player who mustered and THEN changed side left their
+   synced cards under state.cards[oldSide] and their tokens owned by the old side
+   until a re-muster — the opponent kept seeing the army filed under the wrong player.
+   Fix, scoped to a live NETWORK game (conn truthy — offline keeps the legacy flip
+   untouched, because hot-seat players toggle the selector to act as each side, and
+   pre-battle that flip is how a second army gets mustered from one screen):
+   - pre-battle (wp17PreBattle, the WP17 gate — synced round + phase, so both clients
+     agree): the switch re-owns my on-table tokens (one tok~), re-broadcasts my cards
+     under the new side and vacates the old slot — existing op kinds only ("tok~",
+     "cards"), no new synced state;
+   - battle under way: the switch is refused with a log line and the selector snaps
+     back (reserves trays, CP/VP, state.cards and the phase engine all key on side —
+     a live switch cannot converge).
+   wp8SideClaim's forced guest flip re-broadcasts cards too (hunk there), but never
+   clears the contested slot (the host keeps it) and never re-owns tokens (after the
+   host's full-state sync every token on the table is the host's version). */
+function wp23SetSide(v){
+  const nv=+v; if(nv!==1&&nv!==2) return;
+  if(nv===mySide){ op({k:"name",side:mySide,name:myName}); return; }          // no change — legacy name (re)send
+  if(!conn){ mySide=nv; op({k:"name",side:mySide,name:myName}); return; }     // offline / hot-seat: legacy flip, no re-homing
+  if(!wp17PreBattle()){
+    const s=document.getElementById("mySide"); if(s) s.value=String(mySide);  // snap the selector back
+    logSys("Side switching is for setup only — the battle is already under way. Finish the game (or Clear the table) first.");
+    return;
+  }
+  const old=mySide; mySide=nv;
+  op({k:"name",side:mySide,name:myName});
+  const mine=state.tokens.filter(t=>t.owner===old);
+  if(mine.length) op({k:"tok~",toks:mine.map(t=>({id:t.id,owner:nv}))});      // my models change hands with me
+  if(myArmy.length){ broadcastCards(); op({k:"cards",owner:old,cards:[]}); }  // my synced cards follow; the old slot is vacated (it held mine — I was that side)
+  logSys("You are now "+(nv===1?"Red (P1)":"Blue (P2)")+(mine.length||myArmy.length?" — your models and cards moved with you.":"."));
+}
+/* ==== end WP23 ==== */
+
+/* ==== WP21 ==== base-size & shape correctness.
+   Three fixes: (1) "A x Bmm" GW bases render as OVALS (flag added in baseFrom, drawn
+   in draw(), hit-tested in hitToken); (2) "Use model" hull vehicles get real footprints
+   from the curated WP21_HULLS table below instead of a crude wounds guess; (3) "NNmm
+   flying base" strings keep their stand circle ON PURPOSE — a true-scale AIRCRAFT hull
+   (a 9" Vampire Hunter…) would be unusable on a 2D table. Ground-skimmer transports/
+   gunships that DO want hull footprints (Hammerhead, Raider, Wave Serpent…) are simply
+   listed in the hull table, which takes priority over the base string.
+   Geometry elsewhere (wp5 collision, coherency, edgeDist/tokRadius) is untouched:
+   ovals inherit the same circle/rect approximations rects always used. */
+// APPROXIMATE physical kit footprints in INCHES (measured hulls, not GW rules data).
+// Ordered — matched against norm(unit/profile name), FIRST hit wins, so specific
+// entries (triarch stalker) sit above generic ones (^stalker$). Tunable.
+const WP21_HULLS=[
+  [/triarch stalker/,             {wIn:4.0,hIn:3.0}],
+  [/rhino|razorback|immolator|repressor/, {wIn:4.6,hIn:3.0}],
+  // ^hunter$/^stalker$ anchored: "Warp Hunter"/"Crimson Hunter"/"Vampire Hunter"/
+  // "War Dog Stalker"/"Canoptek Tomb Stalker" etc. must NOT be dragged onto this chassis.
+  [/predator|vindicator|whirlwind|castigator|exorcist|^hunter$|^stalker$/, {wIn:4.6,hIn:3.4}],
+  [/land raider/,                 {wIn:6.0,hIn:4.4}],
+  [/leman russ/,                  {wIn:5.7,hIn:4.0}],
+  [/rogal dorn/,                  {wIn:6.5,hIn:4.3}],
+  [/taurox/,                      {wIn:4.6,hIn:3.3}],
+  // (?! platform): Manticore/Hydra PLATFORMS are static emplacements — they fall
+  // through to the wounds tiers, only the tanks take the chimera chassis.
+  [/\bchimera\b|hellhound|basilisk|\bmanticore\b(?! platform)|\bhydra\b(?! platform)|wyvern|colossus|griffon|salamander|trojan|atlas recovery|centaur/, {wIn:5.3,hIn:3.7}],
+  [/baneblade|banehammer|banesword|doomhammer|hellhammer|shadowsword|stormblade|stormlord|stormsword|fellblade|falchion|stormhammer/, {wIn:9.3,hIn:5.5}],
+  [/macharius/,                   {wIn:7.5,hIn:4.8}],
+  [/malcador|valdor|minotaur/,    {wIn:7.0,hIn:4.6}],
+  [/sicaran/,                     {wIn:5.5,hIn:3.6}],
+  [/kratos/,                      {wIn:6.5,hIn:4.3}],
+  // \bpraetor\b: whole word only — "Vertus Praetors" (jetbikes) and "Triarch
+  // Praetorians" (infantry) must not become super-heavy hulls.
+  [/cerberus|typhon|spartan|\bpraetor\b/, {wIn:7.0,hIn:4.6}],
+  [/crassus|gorgon heavy/,        {wIn:7.5,hIn:5.0}],
+  [/\btrukk\b/,                   {wIn:5.5,hIn:3.2}],
+  [/battlewagon|kannonwagon|deff rolla/, {wIn:7.0,hIn:4.7}],
+  [/big trakk/,                   {wIn:6.0,hIn:3.6}],
+  [/goliath (rockgrinder|truck)/, {wIn:5.5,hIn:3.5}],
+  [/drop pod/,                    {dmm:140}],
+  [/attack bike|\bbike\b|outrider/, {wIn:3.55,hIn:2.05,oval:true}], // 90×52mm oval
+  [/devilfish|hammerhead/,        {wIn:7.0,hIn:4.5}],
+  [/wave serpent|\bfalcon\b|fire prism|night spinner|warp hunter|firestorm(?! redoubt)/, {wIn:6.3,hIn:4.0}],
+  [/^raider$|tantalus/,           {wIn:7.3,hIn:3.2}],
+  [/^venom$|starweaver|voidweaver/, {wIn:4.7,hIn:2.4}],
+  [/ghost ark|doomsday ark/,      {wIn:6.7,hIn:3.5}],
+  [/annihilation barge|command barge/, {wIn:5.3,hIn:3.2}],
+  [/skorpius/,                    {wIn:5.5,hIn:3.3}],
+  [/hekaton land fortress/,       {wIn:7.0,hIn:4.6}],
+  [/sagitaur/,                    {wIn:4.7,hIn:3.0}],
+];
+// The single base-dims oracle for token minting: curated hull table by NAME first
+// (it beats even a parseable base string — that's how flying-stand skimmers get
+// hulls), then baseFrom(base string, wounds) exactly as before.
+function wp21BaseFor(name,baseStr,W){
+  const n=norm(name||"");
+  if(n) for(const [re,d] of WP21_HULLS)
+    if(re.test(n)) return d.dmm?{shape:"c",dmm:d.dmm}:(d.oval?{shape:"r",wIn:d.wIn,hIn:d.hIn,oval:true}:{shape:"r",wIn:d.wIn,hIn:d.hIn});
+  return baseFrom(baseStr,W);
+}
+// "♻ Fix base sizes" (Setup tab): recompute every OWN token's dims from its army
+// card via wp21BaseFor and sync the ones that changed. Old saves stay untouched
+// until the user clicks this.
+function wp21Refit(){
+  const ups=[];
+  state.tokens.forEach(t=>{
+    if(t.owner!==mySide) return;
+    const card=wp3CardFor(t); if(!card||!(card.profiles||[]).length) return;
+    // Same name-matching the deploy path uses to label tokens (token.name = p.n || card.name)
+    const nn=norm(t.name||"");
+    const p=card.profiles.find(q=>norm(q.n||card.name||"")===nn)
+         || card.profiles.find(q=>{const m=norm(q.n||"");return m&&(m.includes(nn)||nn.includes(m));})
+         || (card.profiles.length===1?card.profiles[0]:null);
+    if(!p) return;
+    const b=wp21BaseFor(p.n||card.name,p.base,p.W);
+    const same = t.shape===b.shape && (b.shape==="c"
+      ? +t.dmm===+b.dmm
+      : Math.abs((+t.wIn||0)-b.wIn)<.01 && Math.abs((+t.hIn||0)-b.hIn)<.01 && !!t.oval===!!b.oval);
+    if(same) return;
+    // tok~ is Object.assign: explicitly null the fields the new shape doesn't use,
+    // and give c→r converts a rotation so the rect renderer never sees undefined.
+    ups.push({id:t.id, shape:b.shape,
+      dmm:b.shape==="c"?b.dmm:null,
+      wIn:b.shape==="r"?b.wIn:null, hIn:b.shape==="r"?b.hIn:null,
+      oval:(b.shape==="r"&&b.oval)?true:null,
+      rot:b.shape==="r"?(t.rot||0):0});
+  });
+  if(!ups.length){ logSys("♻ Base sizes already correct — nothing to fix."); return; }
+  op({k:"tok~",toks:ups});
+  logShared("· <b>"+esc(myName)+"</b> ♻ fixed "+ups.length+" model bases","sys");
+}
+/* ==== end WP21 ==== */
+
+/* ==== WP22: exact edge-to-edge geometry helpers ==== */
+// Supports the replaced edgeDist (see the WP22 hunk next to tokRadius). All coordinates
+// are inches; rect tokens have x,y = center, wIn×hIn extents, rot in degrees about the
+// center. The world→local transform matches hitToken/draw(): lx=dx·cos+dy·sin,
+// ly=−dx·sin+dy·cos. Function declarations hoist, so edgeDist (defined earlier) can
+// call these safely.
+
+// 4 world-space corners of a rect token, in perimeter order (consecutive = an edge).
+function wp22RectPts(t){
+  const r=(t.rot||0)*Math.PI/180, cs=Math.cos(r), sn=Math.sin(r);
+  const hw=t.wIn/2, hh=t.hIn/2;
+  return [
+    [t.x+cs*hw-sn*hh, t.y+sn*hw+cs*hh],
+    [t.x-cs*hw-sn*hh, t.y-sn*hw+cs*hh],
+    [t.x-cs*hw+sn*hh, t.y-sn*hw-cs*hh],
+    [t.x+cs*hw+sn*hh, t.y+sn*hw-cs*hh],
+  ];
+}
+// Signed distance from a world point to a rect token's footprint: positive outside
+// (distance to the nearest edge/corner), negative inside (depth to the nearest edge).
+// Circle↔rect distance is exactly this minus the circle's radius.
+function wp22PtRectSd(x,y,rt){
+  const r=(rt.rot||0)*Math.PI/180, cs=Math.cos(r), sn=Math.sin(r);
+  const dx=x-rt.x, dy=y-rt.y;
+  const lx=dx*cs+dy*sn, ly=-dx*sn+dy*cs;             // rotate into the rect's local frame
+  const qx=Math.abs(lx)-rt.wIn/2, qy=Math.abs(ly)-rt.hIn/2;
+  if(qx<=0&&qy<=0) return Math.max(qx,qy);           // inside: negative depth
+  return Math.hypot(Math.max(qx,0),Math.max(qy,0));  // outside: clamp then hypot
+}
+// Minimum distance between two segments p1→q1 and p2→q2 (0 when they cross).
+// Standard closed form (clamp the closest points of the infinite lines to [0,1]).
+function wp22SegSegDist(p1x,p1y,q1x,q1y,p2x,p2y,q2x,q2y){
+  const d1x=q1x-p1x, d1y=q1y-p1y, d2x=q2x-p2x, d2y=q2y-p2y;
+  const rx=p1x-p2x, ry=p1y-p2y;
+  const a=d1x*d1x+d1y*d1y, e=d2x*d2x+d2y*d2y, f=d2x*rx+d2y*ry;
+  let s,t;
+  if(a<=1e-12&&e<=1e-12){ s=0; t=0; }                        // both degenerate: point-point
+  else if(a<=1e-12){ s=0; t=Math.min(Math.max(f/e,0),1); }   // first degenerate
+  else{
+    const c=d1x*rx+d1y*ry;
+    if(e<=1e-12){ t=0; s=Math.min(Math.max(-c/a,0),1); }     // second degenerate
+    else{
+      const b=d1x*d2x+d1y*d2y, den=a*e-b*b;
+      s=den>1e-12?Math.min(Math.max((b*f-c*e)/den,0),1):0;   // parallel → any s; pick 0
+      t=(b*s+f)/e;
+      if(t<0){ t=0; s=Math.min(Math.max(-c/a,0),1); }
+      else if(t>1){ t=1; s=Math.min(Math.max((b-c)/a,0),1); }
+    }
+  }
+  const cx=p1x+d1x*s-(p2x+d2x*t), cy=p1y+d1y*s-(p2y+d2y*t);
+  return Math.hypot(cx,cy);
+}
+// Exact separation between two rotated rect footprints. Overlap convention (documented
+// at edgeDist): corner of one inside the other → deepest (most negative) containment
+// depth; perimeters merely crossing/touching → 0; otherwise the minimum of the 16
+// edge-pair distances (both hulls convex, so corners-vs-edges covers the true minimum).
+function wp22RectRect(A,B){
+  const pa=wp22RectPts(A), pb=wp22RectPts(B);
+  let pen=0;
+  for(let i=0;i<4;i++){
+    const da=wp22PtRectSd(pa[i][0],pa[i][1],B); if(da<pen)pen=da;
+    const db=wp22PtRectSd(pb[i][0],pb[i][1],A); if(db<pen)pen=db;
+  }
+  if(pen<0) return pen;
+  let min=Infinity;
+  for(let i=0;i<4;i++){
+    const a1=pa[i], a2=pa[(i+1)&3];
+    for(let j=0;j<4;j++){
+      const b1=pb[j], b2=pb[(j+1)&3];
+      const d=wp22SegSegDist(a1[0],a1[1],a2[0],a2[1],b1[0],b1[1],b2[0],b2[1]);
+      if(d<min)min=d;
+    }
+  }
+  return min;
+}
+/* ==== end WP22 ==== */
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
