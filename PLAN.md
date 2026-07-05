@@ -451,6 +451,70 @@ Cancel-safety: clear/load/undo during allocation discards the pending queue.
   `run_all.sh` green; §5 protocol (node --check, JSON parse); headless
   screenshot of the allocation banner mid-game.
 
+### WP12 — Phone layout: board-first command deck  [M–L] — needs WP8/WP9/WP11
+The desktop layout is untouched; phones get a dedicated re-layout. Marked
+`/* ==== WP12: phone ==== */` (CSS + JS). No DOM restructuring of existing
+elements — phone mode may inject its OWN elements (nav bar, peek ticker,
+sheet chrome) and toggle classes, but desktop must render byte-identical.
+
+- **Detection (auto)**: root class `phone` on `<html>` when
+  (min(screen.w,screen.h) ≤ 820 AND `(pointer:coarse)`) OR UA matches
+  iPhone/Android-mobile. iPads deliberately stay desktop (WP8 touch pass
+  covers them). Re-evaluate on resize/orientationchange (a rotated phone is
+  still a phone — key off the device, not the current viewport). Setup
+  select "Layout: Auto / Desktop / Phone" persisted in localStorage
+  (`wh40k_layout`), applied before first draw to avoid a flash.
+- **Structure in phone mode** (all via `.phone` CSS unless noted):
+  - `#topbar`: single row, `flex-wrap:nowrap; overflow-x:auto`, brand hidden,
+    trackers compacted (smaller padding/font, CP/VP labels shortened via CSS
+    only — no HTML edits), conn status last; safe-area top padding;
+    `viewport-fit=cover` added to the existing viewport meta (additive).
+  - `#toolbar`: horizontal row below the top strip, 44px targets,
+    `overflow-x:auto`.
+  - `#side`: fixed bottom sheet (100% width, 85dvh, `translateY` slide,
+    rounded top corners, grab-handle bar + ✕). Closed by default. The
+    existing `#tabs` row is hidden on phone; a phone-only injected
+    `#phoneNav` (fixed bottom, safe-area bottom padding) has buttons
+    Army/Cards/Attack/Setup/Log/Builder — each calls the existing
+    `showTab(...)`/builder-open functions then opens/closes the sheet.
+    Nav buttons show an active state; Attack nav button pulses when WP3
+    stages an attack (one marked hook line in `wp3Stage`).
+  - `#bottombar` (log+chat): same sheet treatment via the Log nav button;
+    phone-only injected one-line peek ticker (latest log entry, tap =
+    open sheet) sitting above `#phoneNav`; new log entries update it (one
+    marked hook line in `logEntry`).
+  - `#inspector`, `#wp7Tray`, `#wp11Banner`: full-width, bottom-anchored
+    above the nav bar, max-height 55dvh, larger buttons.
+  - `#boardwrap`: fills everything between top strip and nav bar; canvas
+    `resize()`/`fitView()` fired on layout-mode change and sheet open/close
+    ONLY if it changes boardwrap size (sheets overlay — they shouldn't).
+  - `#builderOverlay`: `#bBody` single column; `#bRight` roster becomes a
+    toggleable sheet ("Roster (N) · pts" button in `#bHead`); browse grid
+    single column; dialogs `width:min(94vw,520px); max-height:85dvh`.
+  - Global phone polish: `-webkit-tap-highlight-color:transparent`,
+    `100dvh` (not vh) everywhere phone heights are set, inputs ≥16px font
+    (blocks iOS zoom-on-focus), momentum scrolling in sheets.
+- **JS behaviours** (`wp12Detect`, `wp12Apply`, `wp12Nav`, `wp12Peek`,
+  `wp12Sheet(open/close)`): tiny, no game logic; everything gated on the
+  `phone` class; all injected elements created once at init, `display:none`
+  off-phone. Desktop path must not execute any of it beyond detection.
+- **Acceptance**: run_all.sh green (phone off under stubs — detection must
+  no-op safely without matchMedia/screen); `tools/tests/wp12-tests.js`:
+  detection matrix (narrow+coarse→phone, wide+fine→desktop, override wins,
+  rotation keeps phone), injected nav present only in phone mode, sheet
+  open/close toggles classes, peek updates on logEntry, desktop DOM
+  untouched when `phone` absent (snapshot innerHTML of `#topbar`+`#side`
+  with detection forced off === baseline). Headless Brave proof at
+  390×844 DPR3: (1) board view — board ≥ 60% of viewport height, top strip
+  one row, nav bar visible; (2) Army sheet open; (3) Attack sheet with a
+  staged attack; (4) log sheet + chat; (5) solo game mid-AI-turn with
+  allocation banner; (6) builder single-column; plus one 844×390 landscape
+  board shot and one 1680×1000 desktop shot diffed against pre-WP12 (must
+  be pixel-identical except nothing — assert no `.phone` rules leak).
+  LOOK at every screenshot. No horizontal page scroll anywhere
+  (`document.documentElement.scrollWidth <= innerWidth` asserted via
+  injected check). Real-iPhone Safari pass remains for the human.
+
 ---
 
 ## 5. Execution model for agents
