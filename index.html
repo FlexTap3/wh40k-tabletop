@@ -526,11 +526,11 @@ function wireConn(){
 function send(m){ if(conn && conn.open) conn.send(m); }
 function onMsg(m){
   switch(m.t){
-    case "hello": state.names[m.side]=m.name; refreshTrackers(); logSys(m.name+" joined as "+(m.side==1?"Red":"Blue")+"."); wp8SideClaim(m); /* WP8 */ break;
+    case "hello": { const hn=secStr(m.name,40)||"Player"; /* SEC */ state.names[m.side]=hn; refreshTrackers(); logSys(hn+" joined as "+(m.side==1?"Red":"Blue")+"."); wp8SideClaim(m); /* WP8 */ } break;
     case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ fitView(); refreshTrackers(); renderCards(); draw(); break;
     case "op": applyOp(m.op,false); break;
-    case "chat": logChat(m.name,m.text,false); break;
-    case "log": logEntry(m.html,m.cls); break;
+    case "chat": logChat(secStr(m.name,40),secStr(m.text,500),false); break; /* SEC */
+    case "log": logEntry(secSanLog(m.html),secStr(m.cls,12)); break; /* SEC: never render raw peer HTML */
     case "ruler": theirRuler=m.r; draw(); if(theirRulerTimer)clearTimeout(theirRulerTimer); theirRulerTimer=setTimeout(()=>{theirRuler=null;draw();},4000); break;
     /* ==== WP2: move measure ==== */
     case "movepath": wp2TheirPath(m.mp); break;
@@ -551,12 +551,12 @@ function applyOp(o,mine){
     case "obj+": O.push(o.obj); break;
     case "obj-": {const i=O.findIndex(x=>x.id===o.id); if(i>=0)O.splice(i,1);} break;
     case "track": state.trackers=o.trackers; refreshTrackers(); break;
-    case "sec+": state.sec.push(o.card); renderCards(); break;
+    case "sec+": if(o.card) state.sec.push({id:secStr(o.card.id,20),owner:o.card.owner===2?2:1,name:secStr(o.card.name,120)}); renderCards(); break; /* SEC: coerce shape */
     case "sec-": {const i=state.sec.findIndex(c=>c.id===o.id); if(i>=0)state.sec.splice(i,1); renderCards();} break;
     case "mission": state.mission=o.mission; renderCards(); break;
-    case "cardtext": if(mine!==true){ cardText[o.name]=o.text; localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
+    case "cardtext": if(mine!==true){ const cn=secStr(o.name,120); if(cn&&cn!=="__proto__"&&cn!=="constructor") cardText[cn]=secStr(o.text,4000); /* SEC */ localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
     case "board": state.board=o.board; fitView(); break;
-    case "name": state.names[o.side]=o.name; refreshTrackers(); break;
+    case "name": state.names[o.side]=secStr(o.name,40)||"Player"; refreshTrackers(); break; /* SEC */
     case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ break;
     case "dz": state.dz=o.dz; break;
     /* ==== WP0: foundations ==== */
@@ -580,6 +580,35 @@ function applyOp(o,mine){
 }
 
 /* ============ log / chat / dice ============ */
+/* ==== SEC: remote-input hardening (public-hosting security pass) ==== */
+const secStr=(s,n)=>String(s??"").slice(0,n); // coerce+cap any remote string
+function secSanLog(h){
+  // Remote log lines may carry simple formatting; allow ONLY harmless inline tags,
+  // strip every attribute. Falls back to full escaping outside a real DOM.
+  try{
+    const t=document.createElement("template");
+    if(!t.content||!t.content.querySelectorAll) return esc(String(h).slice(0,4000));
+    t.innerHTML=String(h).slice(0,4000);
+    const ok={B:1,I:1,EM:1,STRONG:1,BR:1,SMALL:1,SPAN:1};
+    for(let guard=0;guard<40;guard++){
+      let changed=false;
+      for(const el of [...t.content.querySelectorAll("*")]){
+        if(!ok[el.tagName]){ el.replaceWith(...el.childNodes); changed=true; }
+        else for(const a of [...el.attributes]) el.removeAttribute(a.name);
+      }
+      if(!changed) break;
+    }
+    return t.innerHTML;
+  }catch(e){ return esc(String(h).slice(0,4000)); }
+}
+function secCode(n){
+  // Crypto-strength room codes (no lookalike chars). ~50 bits at n=10.
+  const a="abcdefghjkmnpqrstuvwxyz23456789"; let out="";
+  try{ const b=new Uint32Array(n); crypto.getRandomValues(b); for(let i=0;i<n;i++) out+=a[b[i]%a.length]; }
+  catch(e){ for(let i=0;i<n;i++) out+=a[Math.floor(Math.random()*a.length)]; }
+  return out;
+}
+/* ==== end SEC ==== */
 const logEl=document.getElementById("log");
 function logEntry(html,cls){ const d=document.createElement("div"); d.className="e "+(cls||""); d.innerHTML=html; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
 function logSys(s){ logEntry("· "+esc(s),"sys"); }
@@ -2342,7 +2371,7 @@ function wp1Room(){ try{ return JSON.parse(localStorage.getItem(WP1_ROOM_KEY)||"
 function wp1HostCode(){ // reuse the last hosted code (≤12h old) so "Reconnect"/re-Host lands in the same room
   const r=wp1Room();
   if(r&&r.host&&r.code&&Date.now()-(r.ts||0)<12*36e5){ wp1SaveRoom(r.code,true); return r.code; }
-  const code="wh40k-"+Math.random().toString(36).slice(2,7);
+  const code="wh40k-"+(typeof secCode==="function"?secCode(10):Math.random().toString(36).slice(2,12)); /* SEC: crypto-strength, ~50 bits — not guessable (typeof guard: WP1 block runs standalone in tests) */
   wp1SaveRoom(code,true); return code;
 }
 function wp1ShowReconnect(show){ const b=document.getElementById("btnReconnect"); if(b) b.style.display=show?"":"none"; }
