@@ -510,6 +510,17 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
     <button onclick="document.getElementById('listDlg').close()">Cancel</button>
     <button class="primary" onclick="importArmyList()">Import list</button>
   </div>
+  <!-- ==== WP-C: auto-import (embedded top-5 lists + optional web fetch) ==== -->
+  <div style="border-top:1px solid var(--edge);margin-top:10px;padding-top:8px">
+    <div class="row"><label>Auto-import</label>
+      <select id="metaListPick" style="flex:1" onchange="wpImportBlurb()"></select></div>
+    <div class="small" id="wpImportBlurbEl" style="margin:2px 0 6px"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button onclick="wpImportFetchWeb()" title="Pull the latest community/GT list pack from the web — the built-in top-5 always work offline regardless">⟳ Fetch latest lists</button>
+      <button class="primary" onclick="wpImportSelected()">Import selected list</button>
+    </div>
+  </div>
+  <!-- ==== end WP-C ==== -->
 </dialog>
 
 <!-- ==== WP10: ai ==== solo-mode setup dialog -->
@@ -918,6 +929,7 @@ function addFromDb(fid,idx,forcedSize,quiet){
 function openListImport(){
   const sel=document.getElementById("listFaction");
   if(myList.faction) sel.value=myList.faction;
+  if(typeof wpImportPopulate==="function") wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== */
   document.getElementById("listDlg").showModal();
 }
 function importArmyList(){
@@ -4274,6 +4286,61 @@ function wp11MusterList(m,parsed,fid){
   }
   return {units:count,pts};
 }
+/* ==== WP-C: auto-import registry ==== embedded top-5 lists + optional web-fetched lists, feeding the
+   existing importArmyList() pipeline (same parser wp11ParseList/importArmyList already use — no
+   reimplementation). Web lists are cached in localStorage["wh40k_web_lists"] as [{name,faction,text}].
+   De-dupe by name: embedded always wins on collision. ==== */
+function wpImportRegistry(){
+  const reg=AI_META_LISTS.map(m=>({name:m.name,text:m.text,blurb:m.blurb||"",fid:m.fid||null}));
+  const seen=new Set(reg.map(r=>r.name));
+  let web=[];
+  try{ web=JSON.parse(localStorage.getItem("wh40k_web_lists")||"[]"); }catch(e){ web=[]; }
+  if(!Array.isArray(web)) web=[];
+  web.forEach(w=>{
+    if(!w||typeof w!=="object") return;                 // skip malformed entries
+    const name=String(w.name||"").trim();
+    const text=String(w.text||"");
+    if(!name||!text) return;
+    if(seen.has(name)) return;                           // embedded wins on name collision
+    seen.add(name);
+    reg.push({name,text,blurb:"",fid:w.faction?String(w.faction):null});
+  });
+  return reg;
+}
+function wpImportPopulate(){
+  const sel=document.getElementById("metaListPick"); if(!sel) return;
+  sel.innerHTML=wpImportRegistry().map((m,i)=>`<option value="${i}">${esc(m.name)}</option>`).join("");
+  wpImportBlurb();
+}
+function wpImportBlurb(){
+  const sel=document.getElementById("metaListPick"), el=document.getElementById("wpImportBlurbEl");
+  if(!sel||!el) return;
+  const m=wpImportRegistry()[parseInt(sel.value)];
+  el.textContent=(m&&m.blurb)||"";
+}
+function wpImportSelected(){
+  const sel=document.getElementById("metaListPick"); if(!sel) return;
+  const m=wpImportRegistry()[parseInt(sel.value)];
+  if(!m){ logSys("Pick a list from Auto-import first."); return; }
+  const g=id=>document.getElementById(id);
+  g("listText").value=m.text;                            // feed the EXISTING paste-box pipeline
+  let fid=m.fid; if(!fid){ try{ fid=wp11ParseList(m.text).fid; }catch(e){ fid=null; } }
+  if(fid) g("listFaction").value=fid;
+  importArmyList();                                       // dropdown path == paste path
+}
+function wpImportFetchWeb(){
+  try{
+    fetch("https://flextap3.github.io/wh40k-tabletop/lists.json").then(r=>r.json()).then(data=>{
+      if(!Array.isArray(data)) throw new Error("lists.json: not an array");
+      const clean=data.filter(x=>x&&typeof x==="object"&&x.name&&x.text).map(x=>(
+        {name:String(x.name),faction:x.faction?String(x.faction):"",text:String(x.text)}));
+      localStorage.setItem("wh40k_web_lists",JSON.stringify(clean));
+      wpImportPopulate();
+      logSys("Fetched "+clean.length+" web lists.");
+    }).catch(()=>{ logSys("Couldn't fetch web lists — using built-in lists."); });
+  }catch(e){ logSys("Couldn't fetch web lists — using built-in lists."); }
+}
+/* ==== end WP-C ==== */
 /* ---- plan application + once-per-round strategic brief ---- */
 let wp11ShotMark=0, wp11BriefRound=0, wp11MoveCache={key:""};
 function wp11TurnStart(round){ // aiPlanPhase case 0 hook — start of every AI turn
@@ -5458,6 +5525,7 @@ function wp22RectRect(A,B){
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
+wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== populate on load; wpImportFetchWeb() re-populates after a web fetch */
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
 wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
 </script>
