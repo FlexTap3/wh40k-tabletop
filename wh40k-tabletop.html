@@ -959,6 +959,18 @@ function importArmyList(){
   const lines=text.split("\n").map(l=>l.replace(/[•●▪]/g,"").trim());
   // auto-detect faction from a line exactly matching a faction name
   for(const l of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
+  /* ==== WP-IMPORTFIX: the Army-tab summary (renderArmy) reads myList.faction/myList.det, which
+     otherwise stay at the Builder's default (first faction alphabetically, its first detachment) —
+     that's what caused the imported army to display under the WRONG faction/detachment label even
+     though the deployed tokens/cards were correct. Sync the builder state to the import's real fid,
+     and to the list's own detachment line when the parser found one (blank otherwise — we'd rather
+     show nothing than a guessed/stale detachment name). Reuses wp11ParseList so there's one parser. */
+  let importedDet="";
+  try{ importedDet=wp11ParseList(text).det||""; }catch(e){ importedDet=""; }
+  myList.faction=fid; myList.det=importedDet;
+  myList.importedNote=true; // pasted-list units are priced from base datasheets only — no enhancement/wargear points
+  bSave();
+  /* ==== end WP-IMPORTFIX (faction/detachment sync) ==== */
   const units=DB.units[fid]||[];
   const found=[], missed=[];
   const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
@@ -1077,7 +1089,8 @@ function renderArmy(){
       const fname=(DB.factions.find(f=>f[0]===myList.faction)||["",""])[1];
       const pts=myArmy.reduce((s,c)=>s+(parseInt(c.pts)||0),0);
       sum.innerHTML=`<div class="card" style="margin-bottom:8px"><b>${esc(fname||"Your army")}</b>${myList.det?` · ${esc(myList.det)}`:""}<br>
-        <span class="small">${myArmy.length} unit${myArmy.length!==1?"s":""} · <b style="color:var(--accent)">${pts} pts</b></span></div>`;
+        <span class="small">${myArmy.length} unit${myArmy.length!==1?"s":""} · <b style="color:var(--accent)">${pts} pts</b>
+        ${myList.importedNote?` <span class="small" style="color:var(--dim)">(base datasheet pts)</span>`:""}</span></div>`;
     } else sum.innerHTML="";
   }
   const el=document.getElementById("unitList"); el.innerHTML="";
@@ -1287,6 +1300,7 @@ function wgSave(){
 function bToGame(){
   if(!myList.items.length) return;
   myArmy=[]; // the Army tab mirrors the mustered list
+  myList.importedNote=false; bSave(); /* ==== WP-IMPORTFIX: Builder muster prices enhancements/wargear properly — no "base datasheet pts" caveat needed ==== */
   let n=0;
   const wp17Before=state.tokens.length; /* ==== WP17 ==== snapshot: tokens minted below are the fresh muster ==== end WP17 ==== */
   myList.items.forEach(it=>{
@@ -4553,9 +4567,11 @@ function wp11SetPlan(p,src){
 /* ---- meta muster: the verified importArmyList path, run as side 2 ---- */
 function wp11ParseList(text){ // header parsing the way importArmyList does it
   const lines=String(text).split("\n").map(l=>l.replace(/[•●▪]/g,"").trim());
-  let fid=null,disp="",total=0;
+  let fid=null,disp="",det="",total=0;
   for(const l of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
   for(const l of lines.slice(0,8)){ const m=l.match(/^force dispositions?:\s*(.+)$/i); if(m){ disp=m[1].trim(); break; } }
+  /* ==== WP-IMPORTFIX: detachment line, e.g. "Hammer of Avernii and Librarius Conclave (3 Detachment Points)" ==== */
+  for(const l of lines.slice(0,8)){ const m=l.match(/^(.+?)\s*\(\d+\s*detachment points?\)$/i); if(m){ det=m[1].trim(); break; } }
   const m0=(lines[0]||"").match(/\((\d+)\s*points?\)/i); if(m0) total=+m0[1];
   const units=[]; let cur=null;
   const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
@@ -4565,7 +4581,7 @@ function wp11ParseList(text){ // header parsing the way importArmyList does it
     if(um&&!sizeRx.test(l)&&li>0){ cur={name:um[1],pts:+um[2],models:0}; units.push(cur); return; }
     if(cur){ const bm=l.match(/^(\d+)x\s+/i); if(bm) cur.models+=+bm[1]; }
   });
-  return {fid,disp,total,units};
+  return {fid,disp,det,total,units};
 }
 function wp11PopulateMeta(){
   const sel=document.getElementById("aiMetaSel"); if(!sel) return;
@@ -4599,6 +4615,12 @@ function wp11MusterList(m,parsed,fid){
   const prevArmy=myArmy, prevSide=mySide, prevName=myName;
   const g=id=>document.getElementById(id);
   const prevText=g("listText").value, prevFac=g("listFaction").value, prevDep=g("listDeploy").checked;
+  /* ==== WP-IMPORTFIX: importArmyList() now syncs myList.faction/det (see there) so the Army-tab
+     summary reflects whichever army it just imported — but this function musters the AI's list
+     (side 2) through that same import pipeline while borrowing myArmy/mySide. Without saving and
+     restoring myList too, the AI's faction/detachment would stick and mislabel the HUMAN's own
+     Army-tab summary once this finally block hands mySide/myArmy back. ==== */
+  const prevListFaction=myList.faction, prevListDet=myList.det, prevListNote=myList.importedNote;
   mySide=2; myName=state.names[2]||"AI";
   const before=state.tokens.length;
   let count=0, pts=0;
@@ -4635,6 +4657,7 @@ function wp11MusterList(m,parsed,fid){
   } finally {
     wp11LooseCount=false;
     myArmy=prevArmy; mySide=prevSide; myName=prevName;
+    myList.faction=prevListFaction; myList.det=prevListDet; myList.importedNote=prevListNote; bSave(); /* ==== WP-IMPORTFIX: undo the AI-muster's myList sync ==== */
     g("listText").value=prevText; g("listFaction").value=prevFac; g("listDeploy").checked=prevDep;
     try{ localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); }catch(e){}
     renderArmy();
@@ -4696,6 +4719,44 @@ function wpImportFetchWeb(){
   }catch(e){ logSys("Couldn't fetch web lists — using built-in lists."); }
 }
 /* ==== end WP-C ==== */
+/* ==== WP-DEEPLINK-APP: auto-import from a URL query param, so the meta dashboard's
+   "▶ Practice vs <name>" links land here already loaded. Two forms, ?list wins if both
+   are present:
+     ?list=<url-encoded name>   — matched (case/punct/whitespace-insensitive via norm())
+                                  against wpImportRegistry() entries by name, then fed
+                                  through the SAME dropdown import path as wpImportSelected().
+     ?import=<url-encoded text> — raw list text, decoded straight into #listText and
+                                  imported as-is.
+   Must run AFTER init has populated DB/registry (populateFactions/wpImportPopulate/etc.)
+   — called from the bottom of the init block. Wrapped so a malformed/missing query
+   string can never break page load. */
+function wpDeepLinkInit(){
+  try{
+    if(typeof window==="undefined"||!window.location||typeof URLSearchParams==="undefined") return;
+    const qs=new URLSearchParams(window.location.search||"");
+    if(qs.has("list")){
+      const raw=qs.get("list")||"";
+      const want=norm(raw);
+      const m=wpImportRegistry().find(r=>norm(r.name)===want);
+      if(!m){ logSys(`Deep-link: no list found matching "${raw}".`); return; }
+      const g=id=>document.getElementById(id);
+      g("listText").value=m.text;                              // same pipeline as wpImportSelected()
+      let fid=m.fid; if(!fid){ try{ fid=wp11ParseList(m.text).fid; }catch(e){ fid=null; } }
+      if(fid) g("listFaction").value=fid;
+      importArmyList();
+      logSys(`Deep-link loaded list: ${m.name}`);
+      return;
+    }
+    if(qs.has("import")){
+      const text=qs.get("import")||"";                         // URLSearchParams already decodes
+      if(!text.trim()) return;
+      document.getElementById("listText").value=text;
+      importArmyList();
+      logSys("Deep-link imported a pasted list from the URL.");
+    }
+  }catch(e){ try{ logSys("Deep-link: couldn't load the list from the URL — malformed link."); }catch(e2){} }
+}
+/* ==== end WP-DEEPLINK-APP ==== */
 /* ---- plan application + once-per-round strategic brief ---- */
 let wp11ShotMark=0, wp11BriefRound=0, wp11MoveCache={key:""};
 function wp11TurnStart(round){ // aiPlanPhase case 0 hook — start of every AI turn
@@ -4901,19 +4962,27 @@ function wp11TargetAdjust(s,tgt,exp){
    Desktop DOM/render untouched: everything is gated on the html.phone class, all
    injected elements (#phoneNav, #wp12Peek, #wp12SheetHead, #wp12RosterBtn) are
    created once at init and display:none off-phone. No game logic here — pure
-   layout plumbing. Detection: (min screen dimension ≤ 820" AND coarse pointer)
-   OR a phone UA; iPads (incl. iPadOS's "Macintosh" UA with touch) deliberately
-   stay desktop — WP8's touch pass covers them. Node-harness safe: every entry
-   point no-ops to desktop when matchMedia / screen / document.body are absent. */
+   layout plumbing. Detection: (min screen dimension ≤ 820 AND coarse pointer)
+   OR a phone UA OR a narrow VIEWPORT (innerWidth ≤ 820 — ==== WP-MOBILE: catches a
+   narrow browser window/split-view on an otherwise-desktop UA+pointer, which used
+   to fall through to the cramped desktop layout); iPads (incl. iPadOS's
+   "Macintosh" UA with touch) deliberately stay desktop regardless of width —
+   WP8's touch pass covers them. Node-harness safe: every entry point no-ops to
+   desktop when window / matchMedia / screen / document.body are absent. */
 let wp12Mode="desktop", wp12Ready=false, wp12Built=false, wp12Els=null, wp12SheetOpen=null, wp12PulseT=null;
 const WP12_TABS={army:"Army",cards:"Cards",attack:"Attack",setup:"Setup",log:"Battle log"};
 function wp12Detect(){ // auto-detection only — the Setup override is applied in wp12Resolve()
   try{
-    if(typeof window==="undefined"||typeof screen==="undefined"||!screen) return "desktop";
+    if(typeof window==="undefined") return "desktop";
     const ua=(typeof navigator!=="undefined"&&navigator.userAgent)||"";
     const mtp=(typeof navigator!=="undefined"&&navigator.maxTouchPoints)||0;
-    if(/iPad/i.test(ua)||(/Macintosh/.test(ua)&&mtp>1)) return "desktop";   // iPads stay desktop
+    if(/iPad/i.test(ua)||(/Macintosh/.test(ua)&&mtp>1)) return "desktop";   // iPads stay desktop regardless of width
     if(/iPhone|iPod/.test(ua)||(/Android/i.test(ua)&&/Mobile/i.test(ua))) return "phone";
+    /* ==== WP-MOBILE: narrow viewport also gets the phone command deck, independent of pointer/UA ==== */
+    const iw=(typeof window.innerWidth==="number")?window.innerWidth:0;
+    if(iw>0&&iw<=820) return "phone";
+    /* ==== end WP-MOBILE ==== */
+    if(typeof screen==="undefined"||!screen) return "desktop";
     if(typeof window.matchMedia!=="function") return "desktop";
     const coarse=!!window.matchMedia("(pointer:coarse)").matches;
     const dim=Math.min(screen.width||1e5,screen.height||1e5);                // min of the DEVICE, not the viewport — a rotated phone is still a phone
@@ -5901,6 +5970,7 @@ wpRulesLoadNotes(); wpRulesRenderStrats(); /* ==== WP-RULES ==== */
 wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== populate on load; wpImportFetchWeb() re-populates after a web fetch */
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
 wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
+wpDeepLinkInit(); /* ==== WP-DEEPLINK-APP ==== ?list=<name> or ?import=<text> auto-import — runs last, after DB/registry are populated */
 </script>
 </body>
 </html>
