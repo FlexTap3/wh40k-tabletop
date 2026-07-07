@@ -107,20 +107,35 @@
   assert(wp11PlanFromDisposition("Purge the Foe")==="purge","Purge the Foe → purge plan");
   assert(wp11PlanFromDisposition("Disruption, Take and Hold")==="hold","Disruption, Take and Hold → hold plan");
   assert(wp11PlanFromDisposition("Reconnaissance")==="recon","Reconnaissance → recon plan");
-  // no GW rules prose in the embedded list text: unit/points/count/header lines only
+  // no GW rules prose in the embedded list text: unit/points/count/header/structural lines only.
+  // (WP-META-REFRESH: the June-27 refresh switched to FULL verbatim list text — including wargear
+  // breakdowns and section headers — so the source lists still parse cleanly for faction/disposition
+  // detection. That legitimately introduces new, non-prose line shapes: section headers, "Attached
+  // Unit N" markers, "Attached as: Leader/Bodyguard/Support (Character)", "Warlord",
+  // "Enhancement(s): <name>", and legion/chapter declaration lines (e.g. "Dark Angels", "Iron Hands" —
+  // proper nouns, not rules text). None of these are GW rules PROSE (ability wording/rules text) —
+  // they're still just names/structure — so the allow-list grows but the real assertion (no rules
+  // prose ever gets embedded) is unchanged and still enforced.)
+  const chapterNames=new Set(["dark angels","iron hands"]);
   AI_META_LISTS.forEach(m=>{
     const bad=m.text.split("\n").filter(l=>{
       l=l.replace(/[•●▪]/g,"").trim();
-      return l&&!/^\d+x\s+/.test(l)&&!/\(\d+\s*points?\)$/i.test(l)&&!/^force dispositions?:/i.test(l)
-        &&!/\(\d+\s*detachment points?\)$/i.test(l)&&!DB.factions.some(([id,n])=>norm(n)===norm(l));
+      return l&&!/^\d+x\s+/.test(l)&&!/\(\d[\d,]*\s*points?\)$/i.test(l)&&!/^force dispositions?:/i.test(l)
+        &&!/\(\d[\d,]*\s*detachment points?\)$/i.test(l)&&!DB.factions.some(([id,n])=>norm(n)===norm(l))
+        &&!chapterNames.has(norm(l))
+        &&!/^attached units?(\s+\d+)?$/i.test(l)
+        &&!/^attached as:\s*(leader|bodyguard|support)(\s*\(character\))?$/i.test(l)
+        &&!/^(characters|battleline|dedicated transports|other datasheets)$/i.test(l)
+        &&!/^enhancements?:/i.test(l)
+        &&!/^warlord$/i.test(l);
     });
-    assert(bad.length===0,m.name+": list text is names/points/counts only"+(bad.length?" (offending: "+bad[0]+")":""));
+    assert(bad.length===0,m.name+": list text is names/points/counts/structural-header lines only, no rules prose"+(bad.length?" (offending: "+bad[0]+")":""));
   });
 
   const layoutKey=Object.keys(LAYOUTS).find(k=>k.startsWith("Official 1A"));
-  const expect=[ // printed totals + plan per list header
-    {pts:2000,plan:"hold",units:14},{pts:2000,plan:"purge",units:17},{pts:2000,plan:"hold",units:14},
-    {pts:1995,plan:"hold",units:14},{pts:1995,plan:"purge",units:11}];
+  const expect=[ // printed totals + plan per list header (June-27 refresh: 5 new top-table lists)
+    {pts:2000,plan:"hold",units:18},{pts:1995,plan:"hold",units:15},{pts:1985,plan:"hold",units:17},
+    {pts:2000,plan:"hold",units:14},{pts:1975,plan:"recon",units:19}];
   AI_META_LISTS.forEach((m,i)=>{
     clearTable();
     g("terrLayout").value=layoutKey; loadLayout();
