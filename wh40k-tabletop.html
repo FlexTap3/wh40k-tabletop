@@ -111,6 +111,11 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #wp11Banner .small{color:var(--dim)}
 #wp11Banner button{margin-left:10px; vertical-align:middle}
 /* ==== end WP11 ==== */
+/* ==== WP-RULES: per-phase reminder banner ==== */
+#wpRulesReminder{position:absolute; left:50%; transform:translateX(-50%); top:54px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:7px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:12; font-size:12px; text-align:center; line-height:1.4}
+#wpRulesReminder button{margin-left:10px; vertical-align:middle}
+html.phone #wpRulesReminder{top:auto; bottom:50px; left:8px; right:8px; transform:none; max-width:none}
+/* ==== end WP-RULES ==== */
 /* ==== WP12: phone ==== board-first command deck. Every rule is gated on html.phone
    (set by wp12Apply) — with the class absent, none of this applies and desktop renders
    untouched. Injected elements (#phoneNav, #wp12Peek, #wp12SheetHead, #wp12RosterBtn)
@@ -269,6 +274,14 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
         <button onclick="openBulk()">Import card text</button>
       </div>
       <div id="secDraws" style="margin-top:8px"></div>
+      <!-- ==== WP-RULES: CP economy / stratagems / detachment notes ==== -->
+      <h3>Stratagems</h3>
+      <div class="small" style="margin-bottom:6px">Core stratagems for the current phase. Clicking spends CP from <b>your</b> pool (blocked if you can't afford it) — effect text isn't shown here, check your codex/app.</div>
+      <div class="row" id="wpRulesStrats" style="flex-wrap:wrap"></div>
+      <h3>My detachment notes</h3>
+      <div class="small" style="margin-bottom:6px">Type your own detachment stratagem/ability names + short notes here — this is yours, saved only in your browser, never shipped rules text.</div>
+      <textarea id="wpRulesNotes" rows="5" style="width:100%" placeholder="e.g. Rhino Rush — 1CP, Charge phase — my note…" onchange="wpRulesSaveNotes()"></textarea>
+      <!-- ==== end WP-RULES ==== -->
     </div>
 
     <div class="tabpane active" id="tab-army">
@@ -394,6 +407,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
     <!-- ==== WP11: allocation ==== pending-damage banner (solo: you allocate your own casualties) -->
     <div id="wp11Banner" style="display:none"></div>
     <!-- ==== end WP11 ==== -->
+    <!-- ==== WP-RULES: per-phase reminder banner ==== -->
+    <div id="wpRulesReminder" style="display:none"></div>
+    <!-- ==== end WP-RULES ==== -->
   </div>
 </div>
 
@@ -667,7 +683,7 @@ function send(m){ if(conn && conn.open) conn.send(m); }
 function onMsg(m){
   switch(m.t){
     case "hello": { const hn=secStr(m.name,40)||"Player"; /* SEC */ state.names[m.side]=hn; refreshTrackers(); logSys(hn+" joined as "+(m.side==1?"Red":"Blue")+"."); wp8SideClaim(m); /* WP8 */ } break;
-    case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ fitView(); refreshTrackers(); renderCards(); draw(); break;
+    case "state": state=m.state; if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ wpCapMode=null; /* ==== WP-FIGHT ==== */ fitView(); refreshTrackers(); renderCards(); if(typeof wpRulesRenderStrats==="function"){wpRulesRenderStrats();wpRulesShowReminder();} /* ==== WP-RULES ==== */ draw(); break;
     case "op": applyOp(m.op,false); break;
     case "chat": logChat(secStr(m.name,40),secStr(m.text,500),false); break; /* SEC */
     case "log": logEntry(secSanLog(m.html),secStr(m.cls,12)); break; /* SEC: never render raw peer HTML */
@@ -700,7 +716,7 @@ function applyOp(o,mine){
     case "cardtext": if(mine!==true){ const cn=secStr(o.name,120); if(cn&&cn!=="__proto__"&&cn!=="constructor") cardText[cn]=secStr(o.text,4000); /* SEC */ localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
     case "board": state.board=o.board; fitView(); break;
     case "name": state.names[o.side]=secStr(o.name,40)||"Player"; refreshTrackers(); break; /* SEC */
-    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ if(typeof wpResetMove==="function") wpResetMove(); /* ==== WP-A ==== */ break;
+    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ if(typeof wpResetMove==="function") wpResetMove(); /* ==== WP-A ==== */ wpCapMode=null; if(typeof wpRulesRenderStrats==="function"){wpRulesRenderStrats();wpRulesShowReminder();} /* ==== WP-RULES/WP-FIGHT ==== */ break;
     case "dz": state.dz=o.dz; break;
     /* ==== WP0: foundations ==== */
     case "cards": if(!state.cards)state.cards={1:[],2:[]}; state.cards[o.owner]=o.cards||[]; break;
@@ -1483,7 +1499,11 @@ function saveSecDeck(){ secDeck=document.getElementById("secDeckText").value.spl
 function resetSecDeck(){ document.getElementById("secDeckText").value=DEFAULT_SEC.join("\n"); }
 
 /* ============ trackers / setup ============ */
-function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(state.trackers[key]||0)+dv); refreshTrackers(); op({k:"track",trackers:state.trackers}); /* WP1: route through applyOp so autosave (and redraws) fire */ }
+function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(state.trackers[key]||0)+dv); refreshTrackers(); op({k:"track",trackers:state.trackers}); /* WP1: route through applyOp so autosave (and redraws) fire */
+  /* ==== WP-RULES: CP economy ==== manual CP adjustments get a shared log line too (auto Command-phase +1 already logs via wp7ApplyPhase) */
+  if(/^cp[12]$/.test(key)){ const side=key.slice(2), nm=esc((state.names&&state.names[side])||("Player "+side));
+    logShared(`· <b>${nm}</b> ${dv>0?"gained":"spent"} ${Math.abs(dv)} CP (now ${state.trackers[key]})`,"sys"); }
+}
 function refreshTrackers(){
   const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}, g=id=>document.getElementById(id); /* WP8: spectator/legacy-safe */
   g("tRound").textContent=t.round; g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
@@ -1495,7 +1515,7 @@ function setSide(v){ wp23SetSide(v); } /* ==== WP23 ==== was: mySide=+v + name o
 function setBoard(v){ const [w,h]=v.split("x").map(Number); op({k:"board",board:{w,h}}); }
 function clearTable(){ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ op({k:"clear"}); logShared("· Table cleared","sys"); }
 function saveGame(){ dl("wh40k-game.json",JSON.stringify(state)); }
-function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ refreshTrackers(); fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
+function loadGame(inp){ const f=inp.files[0]; if(!f)return; f.text().then(t=>{ if(typeof aiInterrupt==="function") aiInterrupt(); /* ==== WP10: ai ==== */ state=JSON.parse(t); if(!state.sec)state.sec=[]; if(!state.cards)state.cards={1:[],2:[]}; /* WP0 back-compat */ wp1Compat(state); wp1Autosave(); /* WP1 */ wpCapMode=null; /* ==== WP-FIGHT ==== */ refreshTrackers(); if(typeof wpRulesRenderStrats==="function"){wpRulesRenderStrats();wpRulesShowReminder();} /* ==== WP-RULES ==== */ fitView(); send({t:"state",state}); logSys("Game loaded."); }); inp.value=""; }
 function showTab(name){
   document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.id==="tab-"+name));
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
@@ -1512,6 +1532,10 @@ const wpMoveStart={};         // unit -> [{id,x,y,rot}] snapshot taken the first
 const wpDone=new Set();       // unit ids explicitly marked "Movement complete" — locked regardless of wpMoved state
 function wpResetMove(){ wpMoved.clear(); wpDone.clear(); for(const k in wpMoveStart) delete wpMoveStart[k]; }
 /* ==== end WP-A ==== */
+/* ==== WP-FIGHT: pile-in / consolidate ==== client-local armed state, same philosophy as `sel` —
+   {mode:"pile"|"consolidate", unit, cap:3} while armed, else null. Not synced, not saved. */
+let wpCapMode=null;
+/* ==== end WP-FIGHT ==== */
 /* ---- unit coherency (2" of one squadmate, 9" of all squadmates) ---- */
 let incoherent=new Set();
 const tokRadius=t=>t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2;
@@ -1899,6 +1923,7 @@ function draw(){
     }
     if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
     if(t.lvl) drawLvlBadge(t); /* ==== WP5: floor badge ==== */
+    if(t.fellBack) drawFallBackBadge(t); /* ==== WP-FIGHT: Fell back badge ==== */
     /* ==== WP-A: structured movement ==== a green ring/pip marks a model that's used its move this
        phase; a solid ✓ pip (unit marked "Movement complete") is drawn on top and reads at a glance. */
     if(wpMoved.has(t.id)||wpDone.has(t.unit)){
@@ -2097,6 +2122,18 @@ function drawHiddenBadge(t){
   ctx.fillText("H",-r*.75,-r*.75+.5);
   ctx.restore();
 }
+/* ==== WP-FIGHT: Fell back badge ==== top-right pip, orange, so it never collides with the
+   Hidden badge (top-left) or the floor/role/tag chips (bottom). Visual-only, drawn from t.fellBack. */
+function drawFallBackBadge(t){
+  const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+  ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+  const br=Math.max(5,view.s*.35);
+  ctx.beginPath(); ctx.arc(r*.75,-r*.75,br,0,7); ctx.fillStyle="#a85a1a"; ctx.fill();
+  ctx.strokeStyle="#e8b23a"; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle="#fff2d6"; ctx.font="bold "+Math.max(7,view.s*.45)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("F",r*.75,-r*.75+.5);
+  ctx.restore();
+}
 function drawLos(){
   if(tool!=="los"||!losSrc) return;
   const src=state.tokens.filter(t=>t.unit===losSrc);
@@ -2211,6 +2248,8 @@ let wp2Their=null, wp2TheirTimer=null, wp2LastSend=0;
 const WP2_JITTER=0.05;            // inches — micro-jitter below this doesn't count
 const wp2Extra=()=>(drag&&drag.lvlExtra)||0; // WP5 floors: F mid-drag adds 3"/level to the measured move
 function wp2Cap(){
+  /* ==== WP-FIGHT: pile-in/consolidate ==== armed + the drag touches the armed unit → hard 3" cap overrides Mv */
+  if(wpCapMode&&state.tokens.some(t=>sel.has(t.id)&&t.unit===wpCapMode.unit)) return {cap:wpCapMode.cap,mixed:false};
   // lowest Mv among the dragged (selected) tokens; cap=null if none carry stats (legacy tokens)
   const vals=state.tokens.filter(t=>sel.has(t.id)&&typeof t.Mv==="number").map(t=>t.Mv);
   if(!vals.length) return {cap:null,mixed:false};
@@ -2218,7 +2257,9 @@ function wp2Cap(){
 }
 function wp2DragStart(ix,iy){
   const c=wp2Cap();
-  wp2Move={pts:[[ix,iy]], dist:0, cap:c.cap, mixed:c.mixed};
+  // ==== WP-FIGHT: this particular drag is under an armed pile-in/consolidate cap (no M+6 advance leeway, always enforced)
+  const forced=!!(wpCapMode&&state.tokens.some(t=>sel.has(t.id)&&t.unit===wpCapMode.unit));
+  wp2Move={pts:[[ix,iy]], dist:0, cap:c.cap, mixed:c.mixed, forced};
 }
 function wp2DragMove(ix,iy){
   if(!wp2Move) return;
@@ -2238,6 +2279,15 @@ function wp2DragEnd(){
 function wp2DropCheck(){
   if(!wp2Move||wp2Move.cap===null) return false;
   const d=wp2Move.dist+wp2Extra();
+  /* ==== WP-FIGHT: pile-in/consolidate — hard cap, no advance leeway, always enforced regardless of the Setup toggle */
+  if(wp2Move.forced){
+    if(d>wp2Move.cap+WP2_JITTER){
+      op({k:"tok~",toks:drag.snap});
+      logSys(`${wpCapMode&&wpCapMode.mode==="consolidate"?"Consolidate":"Pile in"} undone: ${d.toFixed(1)}" is beyond the 3" cap.`);
+      return true;
+    }
+    return false;
+  }
   if(d>wp2Move.cap+6+WP2_JITTER && document.getElementById("strictMove").checked){
     op({k:"tok~",toks:drag.snap});
     logSys(`Move undone: ${d.toFixed(1)}" is beyond M+6" (M ${wp2Move.cap}"). Untick "Enforce movement caps" in Setup to allow it.`);
@@ -2249,6 +2299,11 @@ function wp2DropCheck(){
 function wp2LogMove(){
   if(!wp2Move||wp2Move.cap===null) return;
   const d=wp2Move.dist+wp2Extra(), cap=wp2Move.cap;
+  /* ==== WP-FIGHT: pile-in/consolidate move log ==== */
+  if(wp2Move.forced){
+    if(d>WP2_JITTER) logShared(`· <b>${esc(myName)}</b> ${wpCapMode&&wpCapMode.mode==="consolidate"?"consolidated":"piled in"} ${d.toFixed(1)}" (cap 3")`,"sys");
+    return;
+  }
   if(d<=cap+WP2_JITTER) return;
   if(d<=cap+6+WP2_JITTER) logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" (M ${cap}") — advance? (M+D6", no shooting or charging)`,"sys");
   else logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" — beyond M+6" (M ${cap}")`,"sys");
@@ -2369,6 +2424,7 @@ function wp3Inspect(){
   if(card&&card.notes) html+=`<div class="small" style="margin-top:4px">${esc(card.notes)}</div>`;
   html+=wp7InspectorHtml(tok); /* ==== WP7: phases ==== "→ Reserves" / Attach / Detach actions */
   html+=wpMoveInspectorHtml(tok); /* ==== WP-A: structured movement ==== "Movement complete" / "↩ Undo move" */
+  html+=wpFightInspectorHtml(tok); /* ==== WP-FIGHT ==== Fall Back / Pile in / Consolidate / Fire Overwatch */
   inspEl.innerHTML=html; inspEl.style.display="block";
 }
 function wp3Aim(wi){
@@ -2691,7 +2747,7 @@ window.addEventListener("keydown",e=>{
   }
   else if(e.key==="h"||e.key==="H"){ toggleHidden(); } /* ==== WP4: Hidden toggle ==== */
   else if(e.key==="f"||e.key==="F"){ cycleFloor(); } /* ==== WP5: floor level ==== */
-  else if(e.key==="Escape"){ sel.clear(); wp19End(true); /* ==== WP19 ==== end the waypoint chain + final send */ ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ draw(); }
+  else if(e.key==="Escape"){ sel.clear(); wp19End(true); /* ==== WP19 ==== end the waypoint chain + final send */ ruler=null; losSrc=null; /* WP4 */ wp3CancelAim(); wp3Hide(); /* ==== WP3: inspector ==== */ wp15Disarm(); /* ==== WP15 ==== drop the armed attacker */ wpCapMode=null; /* ==== WP-FIGHT: drop any armed pile-in/consolidate ==== */ draw(); }
 });
 
 /* ==== WP1: resilience — autosave, resume, reconnect, undo ==== */
@@ -3054,6 +3110,86 @@ function wp8Coherency(){
 const WP7_PHASES=["Command","Movement","Shooting","Charge","Fight","End"];
 let wp7Placing=null;          // {id} of the reserves entry being placed (click the board to arrive)
 let wp7TrayOpen=true, wp7UiSig=null;
+
+/* ==== WP-RULES: CP economy / core stratagems / per-phase reminders ==== bounded rules-aid layer —
+   tracker + reminders only, NEVER effect prose. Game-functional data ONLY: names, CP costs, the
+   phase they're used in. Where an effect matters, it's a user-editable note (see wpRulesNotes),
+   never shipped text. */
+const WP_RULES_PHASE_TAGS=["command","movement","shooting","charge","fight","end"]; // index-matches WP7_PHASES
+const CORE_STRATS=[ // the universal Core Stratagems — name, CP cost, phase tag only
+  {name:"Command Re-roll",   cp:1, phase:"any"},
+  {name:"Counter-offensive", cp:2, phase:"fight"},
+  {name:"Epic Challenge",    cp:1, phase:"fight"},
+  {name:"Insane Bravery",    cp:1, phase:"command"},
+  {name:"Grenade",           cp:1, phase:"shooting"},
+  {name:"Tank Shock",        cp:1, phase:"charge"},
+  {name:"Fire Overwatch",    cp:1, phase:"movement"},
+  {name:"Rapid Ingress",     cp:1, phase:"end"},
+  {name:"Go to Ground",      cp:1, phase:"shooting"},
+  {name:"Smokescreen",       cp:1, phase:"shooting"},
+  {name:"Heroic Intervention",cp:1, phase:"charge"},
+];
+function wpRulesStratsForPhase(ph){
+  const tag=WP_RULES_PHASE_TAGS[ph];
+  if(!tag) return CORE_STRATS.slice();
+  return CORE_STRATS.filter(s=>s.phase==="any"||s.phase===tag);
+}
+function wpRulesUseStrat(name){
+  const s=CORE_STRATS.find(x=>x.name===name); if(!s) return;
+  const key="cp"+mySide, have=(state.trackers&&state.trackers[key])||0;
+  if(have<s.cp){ logSys(`Not enough CP for ${s.name} — need ${s.cp}, you have ${have}.`); return; }
+  state.trackers[key]=have-s.cp;
+  refreshTrackers();
+  op({k:"track",trackers:state.trackers});
+  logShared(`· <b>${esc(myName)}</b> used <b>${esc(s.name)}</b> (${s.cp}CP)`,"sys");
+}
+function wpRulesRenderStrats(){
+  const el=document.getElementById("wpRulesStrats"); if(!el) return;
+  const ph=(state.phase&&typeof state.phase.ph==="number")?state.phase.ph:-1;
+  const list=wpRulesStratsForPhase(ph);
+  el.innerHTML=list.length?list.map(s=>
+    `<button onclick="wpRulesUseStrat(${JSON.stringify(s.name)})" title="${s.phase==="any"?"Any phase":esc(WP7_PHASES[WP_RULES_PHASE_TAGS.indexOf(s.phase)])+" phase"}">${esc(s.name)} · ${s.cp}CP</button>`
+  ).join("") : `<span class="small">No Core Stratagems for this phase.</span>`;
+}
+// Per-phase reminder banner: dismissible, game-functional cues only (no rules prose).
+const WP_RULES_REMINDERS=[
+  "Gain 1 CP · Battle-shock tests for units at half strength or less",
+  "Normal/Advance moves · Reserves may arrive · Fall Back available",
+  "Shooting attacks · the non-active player may Fire Overwatch",
+  "Charges · the non-active player may Fire Overwatch",
+  "Fight — pile in, resolve attacks, then consolidate",
+  "End of turn — Rapid Ingress may be used",
+];
+function wpRulesSideIsSM(side){ // best-effort: any card/token on this side carrying the SPACE MARINES keyword
+  try{
+    const cards=side===mySide?myArmy.map(migrateCard):((state.cards&&state.cards[side])||[]);
+    if(cards.some(c=>(c.kw||[]).some(k=>/SPACE MARINES/i.test(String(k))))) return true;
+    return state.tokens.some(t=>t.owner===side&&tokKw(t).includes("SPACE MARINES"));
+  }catch(e){ return false; }
+}
+function wpRulesReminderText(ph,side){
+  let t=WP_RULES_REMINDERS[ph]||"";
+  if(ph===0&&wpRulesSideIsSM(side)) t+=" · Oath of Moment: pick a target (Space Marines)";
+  return t;
+}
+function wpRulesShowReminder(){
+  const el=document.getElementById("wpRulesReminder"); if(!el) return;
+  const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(typeof p.ph!=="number"||p.ph<0){ el.style.display="none"; return; }
+  el.innerHTML=`<span>${esc(WP7_PHASES[p.ph]||"")}: ${esc(wpRulesReminderText(p.ph,p.side))}</span> <button onclick="document.getElementById('wpRulesReminder').style.display='none'">✕</button>`;
+  el.style.display="block";
+}
+// Per-detachment / faction notes: purely user-entered, localStorage only, never synced or shipped.
+let wpRulesNotes=(typeof localStorage!=="undefined"&&localStorage.getItem("wh40k_detachment_notes"))||"";
+function wpRulesSaveNotes(){
+  const el=document.getElementById("wpRulesNotes"); if(!el) return;
+  wpRulesNotes=el.value;
+  try{ localStorage.setItem("wh40k_detachment_notes",wpRulesNotes); }catch(e){}
+}
+function wpRulesLoadNotes(){
+  const el=document.getElementById("wpRulesNotes"); if(el) el.value=wpRulesNotes;
+}
+/* ==== end WP-RULES ==== */
 /* ---- back-compat defaults (called from wp1Compat on every load/sync/restore) ---- */
 function wp7Compat(st){
   st.reserves=st.reserves||{1:[],2:[]};
@@ -3096,6 +3232,13 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
      move-once lock, done-flags and snap-back snapshots — a fresh phase, a fresh start. */
   if(((o.ph===1&&prevPh!==1)||(prevPh===1&&o.ph!==1))&&typeof wpResetMove==="function") wpResetMove();
   /* ==== end WP-A ==== */
+  /* ==== WP-FIGHT: a fresh Movement phase (new turn) clears every unit's Fall Back flag — direct
+     mutation, not a nested op, because this function already runs identically on both peers from
+     the synced "phase" op (same pattern as the CP auto-grant a few lines down). */
+  if(o.ph===1&&prevPh!==1) state.tokens.forEach(t=>{ if(t.fellBack) t.fellBack=false; });
+  // any phase change drops an armed pile-in/consolidate — client-local UI state, not synced
+  if(o.ph!==prevPh) wpCapMode=null;
+  /* ==== end WP-FIGHT ==== */
   if(typeof o.round==="number"&&state.trackers&&o.round!==state.trackers.round)
     state.trackers.round=Math.max(1,o.round); // WP6's end-of-round log picks this up in draw() — exactly once
   if(o.ph===0){
@@ -3110,6 +3253,8 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
     }
   }
   refreshTrackers();
+  if(typeof wpRulesRenderStrats==="function") wpRulesRenderStrats(); /* ==== WP-RULES ==== */
+  if(typeof wpRulesShowReminder==="function") wpRulesShowReminder(); /* ==== WP-RULES ==== */
   if(typeof aiOnPhase==="function") aiOnPhase(); /* ==== WP10: ai ==== the AI plays side 2's phases in solo mode */
 }
 function wp7BelowHalf(owner){
@@ -3274,6 +3419,80 @@ function wpUndoMove(unitId){
   wp3Inspect(); draw();
 }
 /* ==== end WP-A ==== */
+
+/* ==== WP-FIGHT: Fire Overwatch / Pile in / Consolidate / Fall Back ====
+   Every action here is a MEASURED, ASSISTED action — this app assists, it doesn't fully
+   adjudicate. Nothing below encodes rules effect text; only names/phases/costs and geometry. */
+function wpFightInspectorHtml(tok){
+  if(tok.owner!==mySide) return "";
+  const ph=(state.phase&&typeof state.phase.ph==="number")?state.phase.ph:-1;
+  let h="";
+  if(ph===1){ // Movement phase: Fall Back
+    h+=`<div class="row" style="margin-top:4px;margin-bottom:0">`+
+      `<button onclick="wpFallBack('${tok.unit}')" title="Mark this unit as having fallen back this turn — a reminder it can't shoot or charge"${tok.fellBack?" disabled":""}>${tok.fellBack?"⚑ Fell back":"⚑ Fall Back"}</button></div>`;
+  }
+  if(ph===4){ // Fight phase: Pile in / Consolidate
+    const armed=wpCapMode&&wpCapMode.unit===tok.unit;
+    h+=`<div class="row" style="margin-top:4px;margin-bottom:0">`+
+      `<button onclick="wpFightMove('pile')" title="Arm Pile in — each model in this unit may then be dragged up to 3&quot; toward the nearest enemy model">${armed&&wpCapMode.mode==="pile"?"● Pile in armed":'Pile in (3")'}</button> `+
+      `<button onclick="wpFightMove('consolidate')" title="Arm Consolidate — offer this after the fight is resolved; each model may then be dragged up to 3&quot; toward the nearest enemy model">${armed&&wpCapMode.mode==="consolidate"?"● Consolidate armed":'Consolidate (3")'}</button></div>`;
+  }
+  const selUnits=[...new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit))];
+  if((ph===1||ph===3)&&mySide!==state.phase.side&&selUnits.length===2){ // reactive player, their opponent's Movement/Charge phase
+    h+=`<div class="row" style="margin-top:4px;margin-bottom:0">`+
+      `<button onclick="wpFightOverwatch()" title="Fire Overwatch: shoot the selected enemy unit with your selected unit, routed through the normal attack roller">🔥 Fire Overwatch</button></div>`;
+  }
+  return h;
+}
+// Fall Back — Movement phase only. Stamps t.fellBack on every model in the unit (synced via tok~);
+// cleared automatically the next time a fresh Movement phase begins (see wp7ApplyPhase).
+function wpFallBack(unitId){
+  if((state.phase&&state.phase.ph)!==1){ logSys("Fall Back is a Movement-phase action."); return; }
+  const toks=state.tokens.filter(t=>t.unit===unitId);
+  if(!toks.length||toks[0].owner!==mySide) return;
+  op({k:"tok~",toks:toks.map(t=>({id:t.id,fellBack:true}))});
+  logShared(`· <b>${esc(myName)}</b>'s <b>${esc(toks[0].name)}</b> falls back — no shooting or charging this turn`,"sys");
+  wp3Inspect(); draw();
+}
+// Pile in / Consolidate — Fight phase. Arms a hard 3" cap (see wp2Cap/wp2DropCheck/wp2LogMove)
+// on the selected unit; drag each model toward the nearest enemy model, measured with edgeDist —
+// a drop beyond 3" snaps the whole move back, same UX as every other capped drag in this app.
+function wpFightMove(mode){
+  const toks=state.tokens.filter(t=>sel.has(t.id));
+  if(!toks.length||toks[0].owner!==mySide){ logSys("Select your unit first, then Pile in / Consolidate."); return; }
+  const unit=toks[0].unit, mine=state.tokens.filter(t=>t.unit===unit);
+  const enemies=state.tokens.filter(t=>t.owner!==mySide);
+  let hint="", best=Infinity;
+  mine.forEach(m=>enemies.forEach(e=>{ const d=edgeDist(m,e); if(d<best) best=d; }));
+  if(isFinite(best)) hint=` — nearest enemy model is ${Math.max(0,best).toFixed(1)}" away`;
+  wpCapMode={mode,unit,cap:3};
+  logSys(`${mode==="consolidate"?"Consolidate (3\")":"Pile in (3\")"} armed for ${mine[0].name}${hint}. Drag each model toward the nearest enemy model — drops beyond 3" snap back.`);
+  wp3Inspect(); draw();
+}
+// Fire Overwatch — reactive shoot, Movement/Charge phase, non-active player only. Select your unit
+// + the enemy unit (shift-click both), then use this action: it routes the pair through the SAME
+// two-click attack machinery as the ⚔ tool (wp15Go → wp3Stage/akResult), then nudges "Hit on" to
+// 6+ (the Overwatch convention — a mechanical value, not rules prose) and logs it as Overwatch.
+function wpFightOverwatch(){
+  const ph=state.phase&&state.phase.ph;
+  if(ph!==1&&ph!==3){ logSys("Fire Overwatch is only available in the Movement or Charge phase."); return; }
+  if(mySide===state.phase.side){ logSys("Fire Overwatch is for the player who is NOT taking their turn."); return; }
+  const selToks=state.tokens.filter(t=>sel.has(t.id));
+  const units=[...new Set(selToks.map(t=>t.unit))];
+  if(units.length!==2){ logSys("Fire Overwatch: shift-click your shooting unit AND the enemy unit that's moving/charging, then use this action."); return; }
+  const groups=units.map(uk=>state.tokens.filter(t=>t.unit===uk));
+  const mineIdx=groups[0][0].owner===mySide&&groups[1][0].owner!==mySide?0
+               :groups[1][0].owner===mySide&&groups[0][0].owner!==mySide?1:-1;
+  if(mineIdx<0){ logSys("Fire Overwatch: select one of your units and one enemy unit."); return; }
+  const shooter=groups[mineIdx][0], target=groups[1-mineIdx][0];
+  wp3Label="";
+  wp15Atk={unit:shooter.unit,owner:shooter.owner};
+  wp15Go(target);
+  if(!wp3Label) return; // wp15Go bailed (no card/weapons for the shooter) — nothing staged, nothing to log
+  const bsEl=document.getElementById("akBS"); if(bsEl) bsEl.value="6+"; // Overwatch: hits only on an unmodified 6
+  logShared(`🔥 <b>${esc(myName)}</b> fires Overwatch: <b>${esc(shooter.name)}</b> → <b>${esc(target.name)}</b>`,"sys");
+}
+/* ==== end WP-FIGHT ==== */
 /* ---- board overlay + UI refresh (called from draw()) ---- */
 function wp7SyncUi(){ // phase label + tray, memoized so draw() stays cheap
   const R=state.reserves||{1:[],2:[]}, p=state.phase||{ph:-1,side:1};
@@ -4876,6 +5095,12 @@ function wp13MenuRender(){
   if(mine&&attached) h+=row("wp13Detach()","⇤","Detach character");
   else if(mine&&selUnits.length===2) h+=row("wp13Attach()","⇥","Attach to unit");
   if(mine) h+=row("wp13Reserves()","🛸","Into Reserves");
+  /* ==== WP-FIGHT: token-menu entries, phase-gated ==== */
+  const ph=(state.phase&&typeof state.phase.ph==="number")?state.phase.ph:-1;
+  if(mine&&ph===1) h+=row(`wpFallBack('${t.unit}')`,"⚑",t.fellBack?"Fell back":"Fall Back");
+  if(mine&&ph===4){ h+=row("wpFightMove('pile')","👣",'Pile in (3")'); h+=row("wpFightMove('consolidate')","👣",'Consolidate (3")'); }
+  if(mine&&(ph===1||ph===3)&&mySide!==state.phase.side&&selUnits.length===2) h+=row("wpFightOverwatch()","🔥","Fire Overwatch");
+  /* ==== end WP-FIGHT ==== */
   h+=row("wp13Delete()","✖",wp13DelArm?("Really delete "+selToks.length+" model"+(selToks.length!==1?"s":"")+"?"):"Delete model(s)","w13del");
   el.innerHTML=h;
 }
@@ -5672,6 +5897,7 @@ function wp22RectRect(A,B){
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
+wpRulesLoadNotes(); wpRulesRenderStrats(); /* ==== WP-RULES ==== */
 wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== populate on load; wpImportFetchWeb() re-populates after a web fetch */
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
 wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
