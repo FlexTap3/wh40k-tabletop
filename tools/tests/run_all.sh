@@ -33,4 +33,6 @@ node test_wp6.js
 node test_wp7.js
 node test_wp8.js
 node harness.js wpmove-tests.js
+node harness.js wpfight-tests.js
+node harness.js wprules-tests.js
 echo "ALL SUITES PASSED"
