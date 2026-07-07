@@ -1,0 +1,14 @@
+{
+  "name": "wh40k-shots",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev-only headless Chromium screenshot harness for wh40k-tabletop.html (immune to GUI Brave).",
+  "main": "shoot.js",
+  "scripts": {
+    "shoot": "node shoot.js"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}
