@@ -31,6 +31,14 @@ one agent edits it per wave** (disjoint-repo/disjoint-path agents run parallel).
   gap; verify the new WP-FIGHT/RULES/movement controls are reachable on touch.
 - **WP-DEEPLINK-APP** *(wave 2)* — on load, parse `?import=<encoded list>` (and/
   or `?list=<name>`) and auto-run `importArmyList()`; pairs with the dashboard side.
+- **WP-IMPORTFIX** *(wave 2)* — import display bug found by WP-VERIFY: after
+  `importArmyList()` the Army-tab summary still shows the builder's DEFAULT
+  faction/detachment ("Adepta Sororitas · Army of Faith") instead of the imported
+  faction (e.g. Space Marines). Units deploy correctly (39 tokens) — only the
+  summary label desyncs. Sync the builder faction/detachment display to the
+  imported `fid`. (Separately: imported pts read 1485 vs listed 2000 because base
+  datasheets are priced without enhancements — KNOWN limitation, note in UI, not
+  a wave-2 fix unless cheap.)
 
 ### Tooling (`tools/`, new files — parallel-safe)
 - **WP-VERIFY** — dev-only Playwright/Chromium screenshot harness under
