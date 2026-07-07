@@ -26,9 +26,7 @@
   clearTable(); myArmy=[];
   myList.faction="XX_BUILDER_DEFAULT"; myList.det="XX_BUILDER_DEFAULT_DET"; myList.importedNote=false; bSave();
   g("listText").value=ironHands.text; g("listFaction").value="XX_BUILDER_DEFAULT"; g("listDeploy").checked=true;
-  wp11LooseCount=true;
-  importArmyList();
-  wp11LooseCount=false;
+  importArmyList(); // ==== WP-MODELFIX: wp11LooseCount retired, no hook needed around this call any more ====
   assert(myList.faction==="SM","importArmyList() syncs myList.faction to the auto-detected fid ('"+myList.faction+"')");
   assert(myList.det==="Hammer of Avernii and Librarius Conclave",
     "importArmyList() syncs myList.det from the list's own detachment line");

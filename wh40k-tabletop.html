@@ -946,6 +946,53 @@ function addFromDb(fid,idx,forcedSize,quiet){
   myArmy.push(card); localStorage.setItem("wh40k_army",JSON.stringify(myArmy)); renderArmy();
   return card;
 }
+/* ==== WP-MODELFIX: distinguish MODEL lines from WARGEAR lines in a pasted/embedded army-list block.
+   Full BCP exports list a unit's models AND their wargear as bullet lines at different indent depths
+   ("• 2x Paragon" then, nested one level deeper, "  • 2x Multi-melta"). Two signals disambiguate:
+   (1) indentation — a line indented under a model line is its wargear, never a model, full stop;
+   (2) for base-level (unindented) lines, does the name match one of the datasheet's own model names?
+   We match against BOTH u.m (the DB's stat-profile names) and u.c (the datasheet's own composition
+   lines, e.g. "1 Paragon Superior"/"2 Paragons") because some datasheets (Paragon Warsuits included)
+   collapse several differently-named roles onto ONE shared stat profile — u.c is the only place
+   those per-role BCP names actually appear in the DB. Lone characters whose only bullets are
+   wargear/metadata (no base-level line names a model at all — e.g. Morvenn Vahl: "Attached as:",
+   "Warlord", "1x Fidelis") fall back to the datasheet's own default composition count via
+   profilesFromDb(), the same function addFromDb() already uses for default sizing everywhere else. */
+function wp11Singular(s){ // "missionaries"->"missionary", "paragons"->"paragon", "talos"->"talos"
+  s=norm(s);
+  if(/ies$/.test(s)) return s.replace(/ies$/,"y");
+  if(/s$/.test(s)) return s.replace(/s$/,"");
+  return s;
+}
+function wp11ModelNameSet(u){
+  const names=new Set();
+  (u.m||[]).forEach(mp=>{ if(mp.n) names.add(wp11Singular(mp.n)); });
+  (u.c||[]).forEach(line=>{
+    const mm=String(line).match(/^(\d+)[-–]?(\d+)?\s+(.+)$/);
+    if(mm) names.add(wp11Singular(mm[3]));
+  });
+  return names;
+}
+function wp11IsModelBulletName(name,nameSet){
+  const nm=wp11Singular(name);
+  if(!nm) return false;
+  for(const pn of nameSet){ if(pn&&(pn===nm||nm.includes(pn)||pn.includes(nm))) return true; }
+  return false;
+}
+function wp11CountUnitModels(u,blockLines){
+  // blockLines: [{indent,text}] — every line under one unit header up to (not including) the next
+  // unit header, with the ORIGINAL leading-whitespace indent preserved by the caller.
+  const names=wp11ModelNameSet(u);
+  let count=0, matched=false;
+  (blockLines||[]).forEach(({indent,text})=>{
+    if(indent>=2) return; // indented under a model line => wargear, never a model
+    const bm=text.match(/^(\d+)x\s+(.+)/i); if(!bm) return;
+    if(wp11IsModelBulletName(bm[2],names)){ count+=+bm[1]; matched=true; }
+  });
+  if(matched) return count;
+  const profs=profilesFromDb(u); // character/vehicle fallback: datasheet's own default model count
+  return profs.reduce((s,p)=>s+p.count,0)||1;
+}
 /* ---- army list import ---- */
 function openListImport(){
   const sel=document.getElementById("listFaction");
@@ -956,9 +1003,12 @@ function openListImport(){
 function importArmyList(){
   const text=document.getElementById("listText").value;
   let fid=document.getElementById("listFaction").value;
-  const lines=text.split("\n").map(l=>l.replace(/[•●▪]/g,"").trim());
+  /* ==== WP-MODELFIX: keep each line's leading-whitespace INDENT alongside its cleaned text — the
+     original `.trim()`-only version threw indentation away, which is exactly the signal that tells
+     a model line ("• 2x Paragon") apart from its nested wargear ("  • 2x Multi-melta"). ==== */
+  const lines=text.split("\n").map(raw=>({indent:(raw.match(/^\s*/)||[""])[0].length,text:raw.replace(/[•●▪]/g,"").trim()}));
   // auto-detect faction from a line exactly matching a faction name
-  for(const l of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
+  for(const {text:l} of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
   /* ==== WP-IMPORTFIX: the Army-tab summary (renderArmy) reads myList.faction/myList.det, which
      otherwise stay at the Builder's default (first faction alphabetically, its first detachment) —
      that's what caused the imported army to display under the WRONG faction/detachment label even
@@ -978,19 +1028,14 @@ function importArmyList(){
   const flush=()=>{ if(!current) return;
     const match=matchUnit(units,current.name);
     if(match<0){ missed.push(current.name); current=null; return; }
-    const size=current.models||null;
+    const size=wp11CountUnitModels(units[match],current.lines)||null; /* ==== WP-MODELFIX: models vs wargear, DB-matched ==== */
     found.push({idx:match,size,name:units[match].n});
     current=null; };
-  lines.forEach((l,li)=>{
+  lines.forEach(({indent,text:l},li)=>{
     if(!l) return;
     const um=l.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
-    if(um && !sizeRx.test(l) && li>0){ flush(); current={name:um[1],models:0}; return; }
-    if(current){ const bm=l.match(/^(\d+)x\s+(.+)/i);
-      if(bm){ const u=units[matchUnit(units,current.name)];
-        if(u && (u.m||[]).some(m=>norm(bm[2]).includes(norm(m.n).replace(/s$/,""))||norm(m.n).replace(/s$/,"").includes(norm(bm[2]).replace(/s$/,""))))
-          current.models+=+bm[1];
-        else if(u&&typeof wp11LooseCount!=="undefined"&&wp11LooseCount) current.models+=+bm[1]; /* ==== WP11: meta-pack lists name MODELS ("9x Assault Terminator"), not datasheet profiles — in that trusted context every Nx line is a model line ==== */
-      } }
+    if(um && !sizeRx.test(l) && li>0){ flush(); current={name:um[1],lines:[]}; return; }
+    if(current) current.lines.push({indent,text:l});
   });
   flush();
   const deploy=document.getElementById("listDeploy").checked;
@@ -4414,7 +4459,11 @@ function wp10AttackDone(final,failed,mortals,dmgRolls){ // rollAttack hook (solo
 
 /* ---- Part A: defender casualty allocation ---- */
 let wp11Alloc=null; // {tgtUk,atkUk,packets:[],applied,budget,label} — transient, module-side by design
-let wp11LooseCount=false; // importArmyList hook: trust every "Nx" line as a model line (meta muster only)
+/* ==== WP-MODELFIX: wp11LooseCount (formerly: "trust every Nx line as a model line during meta
+   muster") is RETIRED — it's what caused the AI solo-muster to count wargear lines as models on
+   full BCP exports (~238 tokens for a ~80-model Sororitas list). importArmyList()/wp11ParseList()
+   now count models the same correct way on both paths (see wp11CountUnitModels above), so no
+   "trust everything" escape hatch is needed for the meta-muster path any more. ==== */
 function wp11Pending(){ return !!wp11Alloc; }
 function wp11AutoOn(){ const c=document.getElementById("wp11AutoCas"); return !!(c&&c.checked); }
 function wp11MaybeAlloc(tgtUk,atkUk,final,failed,mortals,dmgRolls){
@@ -4566,21 +4615,33 @@ function wp11SetPlan(p,src){
 }
 /* ---- meta muster: the verified importArmyList path, run as side 2 ---- */
 function wp11ParseList(text){ // header parsing the way importArmyList does it
-  const lines=String(text).split("\n").map(l=>l.replace(/[•●▪]/g,"").trim());
+  /* ==== WP-MODELFIX: preserve indent (see importArmyList) so model-vs-wargear counting agrees
+     with the import path exactly — same wp11CountUnitModels(), same DB (u.m/u.c) disambiguation. ==== */
+  const lines=String(text).split("\n").map(raw=>({indent:(raw.match(/^\s*/)||[""])[0].length,text:raw.replace(/[•●▪]/g,"").trim()}));
   let fid=null,disp="",det="",total=0;
-  for(const l of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
-  for(const l of lines.slice(0,8)){ const m=l.match(/^force dispositions?:\s*(.+)$/i); if(m){ disp=m[1].trim(); break; } }
+  for(const {text:l} of lines.slice(0,8)){ const f=DB.factions.find(([id,n])=>norm(n)===norm(l)); if(f){ fid=f[0]; break; } }
+  for(const {text:l} of lines.slice(0,8)){ const m=l.match(/^force dispositions?:\s*(.+)$/i); if(m){ disp=m[1].trim(); break; } }
   /* ==== WP-IMPORTFIX: detachment line, e.g. "Hammer of Avernii and Librarius Conclave (3 Detachment Points)" ==== */
-  for(const l of lines.slice(0,8)){ const m=l.match(/^(.+?)\s*\(\d+\s*detachment points?\)$/i); if(m){ det=m[1].trim(); break; } }
-  const m0=(lines[0]||"").match(/\((\d+)\s*points?\)/i); if(m0) total=+m0[1];
+  for(const {text:l} of lines.slice(0,8)){ const m=l.match(/^(.+?)\s*\(\d+\s*detachment points?\)$/i); if(m){ det=m[1].trim(); break; } }
+  const m0=((lines[0]||{}).text||"").match(/\((\d+)\s*points?\)/i); if(m0) total=+m0[1];
+  const unitsDb=fid?(DB.units[fid]||[]):[];
   const units=[]; let cur=null;
   const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
-  lines.forEach((l,li)=>{
+  const flush=()=>{ if(!cur) return;
+    const idx=matchUnit(unitsDb,cur.name);
+    if(idx>=0){ cur.models=wp11CountUnitModels(unitsDb[idx],cur.lines); }
+    else{ // fid/unit unresolved (shouldn't happen for the embedded lists) — indent-only fallback
+      let n=0; cur.lines.forEach(x=>{ if(x.indent<2){ const bm=x.text.match(/^(\d+)x\s+/i); if(bm) n+=+bm[1]; } });
+      cur.models=n||1;
+    }
+    delete cur.lines; };
+  lines.forEach(({indent,text:l},li)=>{
     if(!l) return;
     const um=l.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
-    if(um&&!sizeRx.test(l)&&li>0){ cur={name:um[1],pts:+um[2],models:0}; units.push(cur); return; }
-    if(cur){ const bm=l.match(/^(\d+)x\s+/i); if(bm) cur.models+=+bm[1]; }
+    if(um&&!sizeRx.test(l)&&li>0){ flush(); cur={name:um[1],pts:+um[2],lines:[]}; units.push(cur); return; }
+    if(cur) cur.lines.push({indent,text:l});
   });
+  flush();
   return {fid,disp,det,total,units};
 }
 function wp11PopulateMeta(){
@@ -4626,8 +4687,7 @@ function wp11MusterList(m,parsed,fid){
   let count=0, pts=0;
   try{
     g("listText").value=m.text; g("listFaction").value=fid; g("listDeploy").checked=true;
-    wp11LooseCount=true;                                       // embedded lists are known-clean: every "Nx" line is a model line
-    importArmyList();                                          // the verified import path
+    importArmyList();                                          // the verified import path (WP-MODELFIX: correct model counts, no loose-count hook needed)
     // Allied units the single-faction search misses (e.g. an Agents unit in a Custodes list): search the whole DB
     parsed.units.forEach(u=>{
       if(myArmy.some(c=>matchUnit([{n:c.name}],u.name)===0)) return;
@@ -4655,7 +4715,6 @@ function wp11MusterList(m,parsed,fid){
     aiAttachCharacters();
     aiHoldReserves(unitsToks);
   } finally {
-    wp11LooseCount=false;
     myArmy=prevArmy; mySide=prevSide; myName=prevName;
     myList.faction=prevListFaction; myList.det=prevListDet; myList.importedNote=prevListNote; bSave(); /* ==== WP-IMPORTFIX: undo the AI-muster's myList sync ==== */
     g("listText").value=prevText; g("listFaction").value=prevFac; g("listDeploy").checked=prevDep;
