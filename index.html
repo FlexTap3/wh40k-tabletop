@@ -358,6 +358,10 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <div class="row"><label><input type="checkbox" id="wp11AutoCas"> Auto-apply my casualties (solo mode)</label></div>
       <div class="small" style="margin-bottom:6px">Unticked, when the AI damages one of your units the game pauses and you allocate each damage packet by clicking your models (an already-wounded model must take them first — the real rule). <kbd>A</kbd> auto-assigns the rest. Tick this to go back to fully automatic casualties.</div>
       <!-- ==== end WP11 ==== -->
+      <!-- ==== WP-A: structured movement ==== -->
+      <div class="row"><label><input type="checkbox" id="structMove" checked> Structured movement (one move per model, then mark the unit done)</label></div>
+      <div class="small" style="margin-bottom:6px">Once a model has moved this phase it can't be re-dragged until the rest of its unit has also moved. Use "Movement complete" in a unit's inspector to lock it early, or "↩ Undo move" to snap it back to where the phase began. Untick this to drag freely like before.</div>
+      <!-- ==== end WP-A ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== --><button onclick="wp21Refit()" title="Recompute every one of your models' base/hull sizes from its army card using the current rules (oval bases, vehicle hull footprints). Fixes tokens deployed or saved before this update — leaves anything already correct alone.">♻ Fix base sizes</button><!-- ==== WP21 ==== -->
@@ -510,6 +514,17 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
     <button onclick="document.getElementById('listDlg').close()">Cancel</button>
     <button class="primary" onclick="importArmyList()">Import list</button>
   </div>
+  <!-- ==== WP-C: auto-import (embedded top-5 lists + optional web fetch) ==== -->
+  <div style="border-top:1px solid var(--edge);margin-top:10px;padding-top:8px">
+    <div class="row"><label>Auto-import</label>
+      <select id="metaListPick" style="flex:1" onchange="wpImportBlurb()"></select></div>
+    <div class="small" id="wpImportBlurbEl" style="margin:2px 0 6px"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button onclick="wpImportFetchWeb()" title="Pull the latest community/GT list pack from the web — the built-in top-5 always work offline regardless">⟳ Fetch latest lists</button>
+      <button class="primary" onclick="wpImportSelected()">Import selected list</button>
+    </div>
+  </div>
+  <!-- ==== end WP-C ==== -->
 </dialog>
 
 <!-- ==== WP10: ai ==== solo-mode setup dialog -->
@@ -579,6 +594,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
     </ul>
     <!-- ==== end WP10 ==== -->
     <p class="small">Rules note: you and your opponent apply the game rules — this table doesn't police them, it just does the rolling and bookkeeping. Points and datasheets: official app / Munitorum Field Manual.</p>
+    <p class="small"><a href="https://flextap3.github.io/metatracker-site/" target="_blank" rel="noopener">🏆 Meta dashboard</a> — tournament results and army win rates.</p>
   </div>
   <div class="row" style="justify-content:flex-end; margin-top:8px"><button class="primary" onclick="document.getElementById('helpDlg').close()">Close</button></div>
 </dialog>
@@ -684,7 +700,7 @@ function applyOp(o,mine){
     case "cardtext": if(mine!==true){ const cn=secStr(o.name,120); if(cn&&cn!=="__proto__"&&cn!=="constructor") cardText[cn]=secStr(o.text,4000); /* SEC */ localStorage.setItem("wh40k_cardtext",JSON.stringify(cardText)); renderCards(); } break;
     case "board": state.board=o.board; fitView(); break;
     case "name": state.names[o.side]=secStr(o.name,40)||"Player"; refreshTrackers(); break; /* SEC */
-    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ break;
+    case "clear": state.tokens=[]; state.terrain=[]; state.objectives=[]; state.dz=[]; state.sec=[]; state.cards={1:[],2:[]}; state.reserves={1:[],2:[]}; state.phase={side:1,ph:-1,cpDone:{}}; /* WP7 */ if(typeof wpResetMove==="function") wpResetMove(); /* ==== WP-A ==== */ break;
     case "dz": state.dz=o.dz; break;
     /* ==== WP0: foundations ==== */
     case "cards": if(!state.cards)state.cards={1:[],2:[]}; state.cards[o.owner]=o.cards||[]; break;
@@ -918,6 +934,7 @@ function addFromDb(fid,idx,forcedSize,quiet){
 function openListImport(){
   const sel=document.getElementById("listFaction");
   if(myList.faction) sel.value=myList.faction;
+  if(typeof wpImportPopulate==="function") wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== */
   document.getElementById("listDlg").showModal();
 }
 function importArmyList(){
@@ -1488,6 +1505,13 @@ function showTab(name){
 const cv=document.getElementById("board"), ctx=cv.getContext("2d");
 let view={x:0,y:0,s:14}; // s = px per inch
 let tool="select", sel=new Set(), drag=null, marquee=null, ruler=null, theirRuler=null, theirRulerTimer=null, rings=0;
+/* ==== WP-A: structured movement ==== client-local bookkeeping, NOT synced and NOT saved —
+   same philosophy as `sel`. Every peer/tab tracks its own view of "have I moved this yet". */
+const wpMoved=new Set();      // model ids that have completed their one move this Movement phase
+const wpMoveStart={};         // unit -> [{id,x,y,rot}] snapshot taken the first time any of its models is dragged this phase
+const wpDone=new Set();       // unit ids explicitly marked "Movement complete" — locked regardless of wpMoved state
+function wpResetMove(){ wpMoved.clear(); wpDone.clear(); for(const k in wpMoveStart) delete wpMoveStart[k]; }
+/* ==== end WP-A ==== */
 /* ---- unit coherency (2" of one squadmate, 9" of all squadmates) ---- */
 let incoherent=new Set();
 const tokRadius=t=>t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2;
@@ -1686,6 +1710,35 @@ function wp9Terrain(t,w,h){
 }
 const WP9_P1={hi:"#e07a6a",mid:"#b23a34",lo:"#5f1e1a"}, WP9_P2={hi:"#74aade",mid:"#3a72ae",lo:"#1c3d63"};
 /* ==== end WP9 ==== */
+/* ==== WP-B: vehicle rotate handle ==== geometry shared by hit-test (pointerdown/inches) and draw (screen px).
+   Local offset before rotation is (0,-(rad+gap)) — the same convention drawToken uses for shape "r"
+   (ctx.rotate(rot) about the centre), so the handle always sits at the model's "front". */
+function wpHandleOffset(t){
+  const rad=Math.max(t.wIn||0,t.hIn||0)/2+0.6; // inches beyond the longer side
+  const a=(t.rot||0)*Math.PI/180;
+  return [rad*Math.sin(a), -rad*Math.cos(a)];
+}
+function wpHandlePosIn(t){ // board inches — used by the (inch-space) pointerdown hit-test
+  const [dx,dy]=wpHandleOffset(t);
+  return [t.x+dx, t.y+dy];
+}
+function wpHandlePos(t){ // screen px — used by draw()
+  const [tx,ty]=px(t.x,t.y), [dx,dy]=wpHandleOffset(t);
+  return [tx+dx*view.s, ty+dy*view.s];
+}
+function wpDrawRotateHandle(){
+  const rsel=state.tokens.filter(t=>sel.has(t.id)&&t.shape==="r");
+  if(rsel.length!==1) return;
+  const t=rsel[0], [tx,ty]=px(t.x,t.y), [hx,hy]=wpHandlePos(t);
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(hx,hy); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx,hy,7,0,7);
+  ctx.fillStyle="#e8c34a"; ctx.fill();
+  ctx.strokeStyle="rgba(10,8,10,.9)"; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+}
+/* ==== end WP-B ==== */
 function draw(){
   wp8Coherency(); /* WP8: memoized — full O(n²) checkCoherency() only when tokens actually changed */
   const W=cv.width/devicePixelRatio,H=cv.height/devicePixelRatio;
@@ -1846,6 +1899,25 @@ function draw(){
     }
     if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
     if(t.lvl) drawLvlBadge(t); /* ==== WP5: floor badge ==== */
+    /* ==== WP-A: structured movement ==== a green ring/pip marks a model that's used its move this
+       phase; a solid ✓ pip (unit marked "Movement complete") is drawn on top and reads at a glance. */
+    if(wpMoved.has(t.id)||wpDone.has(t.unit)){
+      const rr=(t.shape==="c"?mmIn(t.dmm)/2:Math.hypot(t.wIn,t.hIn)/2)*view.s+1.5;
+      ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+      ctx.beginPath(); ctx.arc(0,0,rr,0,7);
+      ctx.strokeStyle=wpDone.has(t.unit)?"#5fbf6f":"rgba(95,191,111,.55)";
+      ctx.lineWidth=wpDone.has(t.unit)?2:1.5; ctx.stroke();
+      if(wpDone.has(t.unit)){
+        const br=Math.max(5,view.s*.32);
+        ctx.beginPath(); ctx.arc(rr*.72,rr*.1,br,0,7);
+        ctx.fillStyle="#5fbf6f"; ctx.fill();
+        ctx.strokeStyle="rgba(10,8,10,.85)"; ctx.lineWidth=1; ctx.stroke();
+        ctx.fillStyle="#0e0c0f"; ctx.font="bold "+Math.max(7,view.s*.4)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("✓",rr*.72,rr*.1+.5);
+      }
+      ctx.restore();
+    }
+    /* ==== end WP-A ==== */
     // wound badge
     if(t.maxW>1){
       const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
@@ -1857,6 +1929,7 @@ function draw(){
     }
     ctx.restore();
   });
+  wpDrawRotateHandle(); /* ==== WP-B: vehicle rotate handle ==== */
   wp6Overlay(); /* ==== WP6: objectives ==== control glow, OC tallies, battle-shock badges */
   if(typeof wp18Overlay==="function") wp18Overlay(); /* ==== WP18 ==== casualty-suggestion ring + numbered badges while allocation pends */
   // marquee
@@ -2295,6 +2368,7 @@ function wp3Inspect(){
   if(card&&card.kw&&card.kw.length) html+=`<div class="small" style="margin-top:4px">${card.kw.map(esc).join(" · ")}</div>`;
   if(card&&card.notes) html+=`<div class="small" style="margin-top:4px">${esc(card.notes)}</div>`;
   html+=wp7InspectorHtml(tok); /* ==== WP7: phases ==== "→ Reserves" / Attach / Detach actions */
+  html+=wpMoveInspectorHtml(tok); /* ==== WP-A: structured movement ==== "Movement complete" / "↩ Undo move" */
   inspEl.innerHTML=html; inspEl.style.display="block";
 }
 function wp3Aim(wi){
@@ -2439,13 +2513,37 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   if(tool==="objective"){ const ex=hitObjective(ix,iy); if(ex){op({k:"obj-",id:ex.id});} else op({k:"obj+",obj:{id:uid(),x:ix,y:iy}}); return; }
   if(tool==="los"){ losToolClick(ix,iy); return; } /* ==== WP4: 👁 tool ==== */
   if(tool==="attack"){ wp15ToolClick(ix,iy); return; } /* ==== WP15 ==== two-click attack quick-flow */
+  /* ==== WP-B: vehicle rotate handle ==== exactly one shape==="r" token selected: grabbing its
+     handle starts a free (or Shift-snapped) drag-to-rotate instead of a move. */
+  if(e.button===0){
+    const rsel=state.tokens.filter(t=>sel.has(t.id)&&t.shape==="r");
+    if(rsel.length===1){
+      const rt=rsel[0], [hx,hy]=wpHandlePosIn(rt); // inches — matches ix,iy (both board-space)
+      if(Math.hypot(ix-hx,iy-hy)<=10/view.s){ drag={mode:"rotate",id:rt.id}; draw(); return; }
+    }
+  }
+  /* ==== end WP-B ==== */
   // select tool
   const tk=hitToken(ix,iy);
   if(tk){
     if(!sel.has(tk.id)){ if(!e.shiftKey) sel.clear(); sel.add(tk.id); }
     else if(e.shiftKey){ sel.delete(tk.id); draw(); return; }
+    /* ==== WP-A: structured movement ==== move-once hard lock (opt-out via Setup checkbox) */
+    const structOn=!!(document.getElementById("structMove")&&document.getElementById("structMove").checked);
+    const unitMemberIds=state.tokens.filter(t=>t.unit===tk.unit).map(t=>t.id);
+    if(wpDone.has(tk.unit)){
+      logSys("This unit's movement is complete — use ↩ Undo move in its inspector to move it again.");
+      draw(); return;
+    }
+    if(structOn&&wpMoved.has(tk.id)&&unitMemberIds.some(id=>!wpMoved.has(id))){
+      logSys("Move the rest of this unit before re-moving a model.");
+      draw(); return;
+    }
+    /* ==== end WP-A ==== */
     checkCoherency();
     const units=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
+    /* ==== WP-A ==== lazily snapshot each involved unit's pre-move position, once per Movement phase */
+    units.forEach(uk=>{ if(!wpMoveStart[uk]) wpMoveStart[uk]=state.tokens.filter(t=>t.unit===uk).map(t=>({id:t.id,x:t.x,y:t.y,rot:t.rot||0})); });
     drag={mode:"tokens",lx:ix,ly:iy,moved:false,
       snap:state.tokens.filter(t=>units.has(t.unit)).map(t=>({id:t.id,x:t.x,y:t.y})),
       cohBefore:new Set([...units].filter(unitCoherent))};
@@ -2491,6 +2589,15 @@ window.addEventListener("pointermove",e=>{ /* WP8: was "mousemove" — handler l
   }
   else if(drag.mode==="terrain"){ drag.x1=ix; drag.y1=iy;
     marquee={x0:drag.x0,y0:drag.y0,x1:ix,y1:iy}; draw(); }
+  /* ==== WP-B: vehicle rotate handle ==== free (or Shift-snapped 5°) drag-to-rotate; live, uncommitted */
+  else if(drag.mode==="rotate"){
+    const t=state.tokens.find(x=>x.id===drag.id); if(!t) return;
+    let ang=Math.atan2(ix-t.x,-(iy-t.y))*180/Math.PI;
+    ang=(ang+360)%360;
+    if(e.shiftKey) ang=Math.round(ang/5)*5%360;
+    t.rot=ang; draw();
+  }
+  /* ==== end WP-B ==== */
 });
 window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic unchanged */
   if(wp8PointerUp(e)) return; /* WP8: pinch end / touch double-tap */
@@ -2522,6 +2629,9 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
     } else {
       op({k:"tok~",toks:state.tokens.filter(t=>sel.has(t.id)).map(t=>({id:t.id,x:t.x,y:t.y}))});
       wp2LogMove(); /* ==== WP2: move measure ==== */
+      /* ==== WP-A: structured movement ==== drop committed clean — every dragged model has now used its move */
+      [...sel].filter(id=>state.tokens.some(t=>t.id===id)).forEach(id=>wpMoved.add(id));
+      /* ==== end WP-A ==== */
     }
   }
   /* ==== WP3: inspector ==== click without movement opens the unit inspector */
@@ -2535,6 +2645,12 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
     if(w>.5&&h>.5) op({k:"ter+",ter:{id:drag.id,kind:document.getElementById("terrKind").value,x,y,w,h,rot:0}});
     marquee=null; setTool("select");
   }
+  /* ==== WP-B: vehicle rotate handle ==== commit the live rot via a normal, undoable/synced op */
+  else if(drag.mode==="rotate"){
+    const t=state.tokens.find(x=>x.id===drag.id);
+    if(t) op({k:"tok~",toks:[{id:t.id,rot:t.rot}]});
+  }
+  /* ==== end WP-B ==== */
   wp2DragEnd(); /* ==== WP2: move measure ==== */
   drag=null; draw();
 });
@@ -2974,7 +3090,12 @@ function wp7Step(dir){
 }
 function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both peers; idempotent
   wp7Compat(state);
+  const prevPh=state.phase.ph; /* ==== WP-A ==== */
   state.phase.ph=o.ph; state.phase.side=o.side===2?2:1;
+  /* ==== WP-A: structured movement ==== entering OR leaving the Movement phase clears the
+     move-once lock, done-flags and snap-back snapshots — a fresh phase, a fresh start. */
+  if(((o.ph===1&&prevPh!==1)||(prevPh===1&&o.ph!==1))&&typeof wpResetMove==="function") wpResetMove();
+  /* ==== end WP-A ==== */
   if(typeof o.round==="number"&&state.trackers&&o.round!==state.trackers.round)
     state.trackers.round=Math.max(1,o.round); // WP6's end-of-round log picks this up in draw() — exactly once
   if(o.ph===0){
@@ -3126,6 +3247,33 @@ function wp7InspectorHtml(tok){
   else if(selUnits.length===2) b+=` <button onclick="wp7Attach()" title="Attach the selected CHARACTER to the other selected unit (A)">Attach</button>`;
   return b+`</div>`;
 }
+/* ==== WP-A: structured movement ==== per-unit "Movement complete" / "↩ Undo move" inspector controls */
+function wpMoveInspectorHtml(tok){
+  if(tok.owner!==mySide) return "";
+  const uk=tok.unit, done=wpDone.has(uk), hasSnap=!!wpMoveStart[uk];
+  return `<div class="row" style="margin-top:4px;margin-bottom:0">`+
+    `<button onclick="wpMarkDone('${uk}')" title="Lock every model in this unit — no more moves this phase"${done?" disabled":""}>${done?"✓ Movement complete":"Movement complete"}</button> `+
+    `<button onclick="wpUndoMove('${uk}')" title="Snap this unit back to where it was when the Movement phase began"${hasSnap?"":" disabled"}>↩ Undo move</button>`+
+    `</div>`;
+}
+function wpMarkDone(unitId){
+  const toks=state.tokens.filter(t=>t.unit===unitId);
+  if(!toks.length) return;
+  toks.forEach(t=>wpMoved.add(t.id));
+  wpDone.add(unitId);
+  logSys(toks[0].name+": movement complete — locked for the rest of this phase.");
+  wp3Inspect(); draw();
+}
+function wpUndoMove(unitId){
+  const snap=wpMoveStart[unitId];
+  if(!snap||!snap.length){ logSys("No movement to undo for this unit yet this phase."); return; }
+  op({k:"tok~",toks:snap.map(s=>({id:s.id,x:s.x,y:s.y,rot:s.rot}))});
+  snap.forEach(s=>wpMoved.delete(s.id));
+  wpDone.delete(unitId);
+  logSys("Move undone — unit snapped back to the start of the Movement phase.");
+  wp3Inspect(); draw();
+}
+/* ==== end WP-A ==== */
 /* ---- board overlay + UI refresh (called from draw()) ---- */
 function wp7SyncUi(){ // phase label + tray, memoized so draw() stays cheap
   const R=state.reserves||{1:[],2:[]}, p=state.phase||{ph:-1,side:1};
@@ -4274,6 +4422,61 @@ function wp11MusterList(m,parsed,fid){
   }
   return {units:count,pts};
 }
+/* ==== WP-C: auto-import registry ==== embedded top-5 lists + optional web-fetched lists, feeding the
+   existing importArmyList() pipeline (same parser wp11ParseList/importArmyList already use — no
+   reimplementation). Web lists are cached in localStorage["wh40k_web_lists"] as [{name,faction,text}].
+   De-dupe by name: embedded always wins on collision. ==== */
+function wpImportRegistry(){
+  const reg=AI_META_LISTS.map(m=>({name:m.name,text:m.text,blurb:m.blurb||"",fid:m.fid||null}));
+  const seen=new Set(reg.map(r=>r.name));
+  let web=[];
+  try{ web=JSON.parse(localStorage.getItem("wh40k_web_lists")||"[]"); }catch(e){ web=[]; }
+  if(!Array.isArray(web)) web=[];
+  web.forEach(w=>{
+    if(!w||typeof w!=="object") return;                 // skip malformed entries
+    const name=String(w.name||"").trim();
+    const text=String(w.text||"");
+    if(!name||!text) return;
+    if(seen.has(name)) return;                           // embedded wins on name collision
+    seen.add(name);
+    reg.push({name,text,blurb:"",fid:w.faction?String(w.faction):null});
+  });
+  return reg;
+}
+function wpImportPopulate(){
+  const sel=document.getElementById("metaListPick"); if(!sel) return;
+  sel.innerHTML=wpImportRegistry().map((m,i)=>`<option value="${i}">${esc(m.name)}</option>`).join("");
+  wpImportBlurb();
+}
+function wpImportBlurb(){
+  const sel=document.getElementById("metaListPick"), el=document.getElementById("wpImportBlurbEl");
+  if(!sel||!el) return;
+  const m=wpImportRegistry()[parseInt(sel.value)];
+  el.textContent=(m&&m.blurb)||"";
+}
+function wpImportSelected(){
+  const sel=document.getElementById("metaListPick"); if(!sel) return;
+  const m=wpImportRegistry()[parseInt(sel.value)];
+  if(!m){ logSys("Pick a list from Auto-import first."); return; }
+  const g=id=>document.getElementById(id);
+  g("listText").value=m.text;                            // feed the EXISTING paste-box pipeline
+  let fid=m.fid; if(!fid){ try{ fid=wp11ParseList(m.text).fid; }catch(e){ fid=null; } }
+  if(fid) g("listFaction").value=fid;
+  importArmyList();                                       // dropdown path == paste path
+}
+function wpImportFetchWeb(){
+  try{
+    fetch("https://flextap3.github.io/wh40k-tabletop/lists.json").then(r=>r.json()).then(data=>{
+      if(!Array.isArray(data)) throw new Error("lists.json: not an array");
+      const clean=data.filter(x=>x&&typeof x==="object"&&x.name&&x.text).map(x=>(
+        {name:String(x.name),faction:x.faction?String(x.faction):"",text:String(x.text)}));
+      localStorage.setItem("wh40k_web_lists",JSON.stringify(clean));
+      wpImportPopulate();
+      logSys("Fetched "+clean.length+" web lists.");
+    }).catch(()=>{ logSys("Couldn't fetch web lists — using built-in lists."); });
+  }catch(e){ logSys("Couldn't fetch web lists — using built-in lists."); }
+}
+/* ==== end WP-C ==== */
 /* ---- plan application + once-per-round strategic brief ---- */
 let wp11ShotMark=0, wp11BriefRound=0, wp11MoveCache={key:""};
 function wp11TurnStart(round){ // aiPlanPhase case 0 hook — start of every AI turn
@@ -4664,7 +4867,12 @@ function wp13MenuRender(){
   h+=row("wp13Hidden()","🙈",(t.hid?"Unmark":"Mark")+" Hidden");
   h+=row("wp13Floor()","▲","Floor level: "+(t.lvl||0)+" (cycle)");
   h+=row("wp13Shock()","💀",(t.bs?"Rally":"Battle-shock")+" unit");
-  if(anyRect) h+=row("wp13Rotate()","↻","Rotate 15°");
+  if(anyRect){
+    h+=row("wp13Rotate()","↻","Rotate 15°");
+    /* ==== WP-B: fine rotate ==== ±5° nudge, same selected-rect-tokens contract as wp13Rotate */
+    h+=`<div class="w13row"><span class="w13ic">↻</span><button onclick="wp13RotateBy(-5)" title="Rotate -5°">−5°</button><button onclick="wp13RotateBy(5)" title="Rotate +5°">+5°</button><span style="color:var(--dim)">fine rotate</span></div>`;
+    /* ==== end WP-B ==== */
+  }
   if(mine&&attached) h+=row("wp13Detach()","⇤","Detach character");
   else if(mine&&selUnits.length===2) h+=row("wp13Attach()","⇥","Attach to unit");
   if(mine) h+=row("wp13Reserves()","🛸","Into Reserves");
@@ -4683,6 +4891,12 @@ function wp13Rotate(){
   state.tokens.filter(x=>sel.has(x.id)&&x.shape==="r").forEach(x=>op({k:"tok~",toks:[{id:x.id,rot:((x.rot||0)+15)%360}]}));
   draw();
 }
+/* ==== WP-B: fine rotate ==== ±5° nudge buttons next to the 15° menu rotate */
+function wp13RotateBy(delta){
+  state.tokens.filter(x=>sel.has(x.id)&&x.shape==="r").forEach(x=>op({k:"tok~",toks:[{id:x.id,rot:((x.rot||0)+delta+360)%360}]}));
+  wp13MenuRender(); draw();
+}
+/* ==== end WP-B ==== */
 function wp13Attach(){ if(!wp13Tok) return; wp7Attach(); wp13Close(); draw(); }
 function wp13Detach(){ const t=wp13Tok; if(!t) return; wp7Detach(t.unit); wp13Close(); draw(); }
 function wp13Reserves(){ const t=wp13Tok; if(!t) return; wp7ToReserves(t.unit); wp13Close(); draw(); }
@@ -5458,6 +5672,7 @@ function wp22RectRect(A,B){
 
 /* ============ init ============ */
 populateFactions(); populateLayouts(); bInit(); renderArmy(); renderCards(); refreshTrackers(); wp12Init(); /* ==== WP12: phone ==== apply layout before the first draw */ resize(); fitView();
+wpImportPopulate(); /* ==== WP-C: auto-import dropdown ==== populate on load; wpImportFetchWeb() re-populates after a web fetch */
 logSys("Welcome, commander. Click ? for how to play online. Pick your faction in the Army tab, import your army list, load a terrain layout, and may your dice roll hot.");
 wp1MaybeResume(); /* ==== WP1: resilience ==== offer to restore the autosaved game */
 </script>
