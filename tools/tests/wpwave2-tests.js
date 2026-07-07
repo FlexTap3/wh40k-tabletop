@@ -12,8 +12,13 @@
   const parsedIH=wp11ParseList(ironHands.text);
   assert(parsedIH.det==="Hammer of Avernii and Librarius Conclave",
     "wp11ParseList captures the detachment line ('"+parsedIH.det+"')");
-  const tauM=AI_META_LISTS.find(m=>/Mont'ka/.test(m.name));
-  assert(wp11ParseList(tauM.text).det==="Mont'ka","wp11ParseList captures a single-word detachment line too");
+  // (WP-META-REFRESH: none of the current 5 embedded lists happens to use a single-word
+  // detachment name — they're all "X and Y"/"X / Y" combined detachments — so this specific
+  // regex case (a short, single-word detachment line) is tested against a synthetic header
+  // instead of embedded content. The real assertion — wp11ParseList's detachment regex works
+  // on short names, not just long combined ones — is unchanged.)
+  assert(wp11ParseList("Test List (500 points)\nSpace Marines\nMont'ka (3 Detachment Points)\nForce Dispositions: Priority Assets").det==="Mont'ka",
+    "wp11ParseList captures a single-word detachment line too");
   assert(wp11ParseList("Just some prose\nwith no header lines at all").det==="",
     "wp11ParseList.det is blank when no detachment line is present");
 
@@ -21,9 +26,7 @@
   clearTable(); myArmy=[];
   myList.faction="XX_BUILDER_DEFAULT"; myList.det="XX_BUILDER_DEFAULT_DET"; myList.importedNote=false; bSave();
   g("listText").value=ironHands.text; g("listFaction").value="XX_BUILDER_DEFAULT"; g("listDeploy").checked=true;
-  wp11LooseCount=true;
-  importArmyList();
-  wp11LooseCount=false;
+  importArmyList(); // ==== WP-MODELFIX: wp11LooseCount retired, no hook needed around this call any more ====
   assert(myList.faction==="SM","importArmyList() syncs myList.faction to the auto-detected fid ('"+myList.faction+"')");
   assert(myList.det==="Hammer of Avernii and Librarius Conclave",
     "importArmyList() syncs myList.det from the list's own detachment line");
@@ -50,9 +53,11 @@
   myList.faction="SM"; myList.det="Gladius Task Force"; myList.importedNote=false; bSave();
   const layoutKey=Object.keys(LAYOUTS).find(k=>k.startsWith("Official 1A"));
   g("terrLayout").value=layoutKey; loadLayout();
-  const tauIdx=AI_META_LISTS.findIndex(m=>/Mont'ka/.test(m.name));
-  wp11StartMeta(tauIdx); // mustered fid should be TAU, side 2 — must not touch the human's myList (SM)
-  assert(myList.faction==="SM","AI muster (T'au) does not overwrite the human's myList.faction ('"+myList.faction+"')");
+  // (WP-META-REFRESH: pick any embedded list whose faction differs from the human's (SM) — the
+  // point of this check is cross-faction isolation, not this specific faction.)
+  const otherFidIdx=AI_META_LISTS.findIndex(m=>m.fid!=="SM");
+  wp11StartMeta(otherFidIdx); // mustered fid differs from SM, side 2 — must not touch the human's myList (SM)
+  assert(myList.faction==="SM","AI muster (other faction) does not overwrite the human's myList.faction ('"+myList.faction+"')");
   assert(myList.det==="Gladius Task Force","AI muster does not overwrite the human's myList.det");
   assert(myList.importedNote===false,"AI muster does not flip the human's importedNote flag");
 
@@ -63,7 +68,9 @@
 
   // (a) ?list=<name> — case/whitespace-insensitive match against the registry, feeds the existing import pipeline
   clearTable(); myArmy=[];
-  setSearch({list:"  IRON hands — Hammer OF avernii (gt WINNER archetype)  "});
+  // case-mangled + padded variant of the real name (content-agnostic — survives list renames)
+  const mangledName="  "+ironHands.name.split("").map((c,i)=>i%2?c.toUpperCase():c.toLowerCase()).join("")+"  ";
+  setSearch({list:mangledName});
   wpDeepLinkInit();
   assert(myArmy.length>0,"?list= deep-link matched the registry entry and imported it ("+myArmy.length+" cards)");
   assert(myList.faction==="SM","?list= deep-link import synced myList.faction via the same importArmyList() path");
