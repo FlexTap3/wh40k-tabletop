@@ -23,7 +23,7 @@ Screens reviewed: deployment, Solo dialog, Attack tab, phase transitions, after-
 | # | Sev | Area | Finding | Status |
 |---|-----|------|---------|--------|
 | 1 | major | balance/onboarding | Solo dialog defaulted the AI to **1000 pts** regardless of the player's army → a new player gets a lopsided half-strength opponent (a typical list is ~1875–2000). | **FIXED** — defaults to standard **2000** (Strike Force), and on open auto-matches the player's loaded army to the nearest bracket (`aiSoloToggle`). |
-| 2 | minor | UI | Per-phase reminder banner (e.g. "End of turn — Rapid Ingress may be used") renders over the top-right of the board. Useful coaching, dismissable, but overlaps tokens. | open (low) |
+| 2 | minor | UI | Per-phase reminder banner (e.g. "End of turn — Rapid Ingress may be used") renders over the top-right of the board. Useful coaching, dismissable, but overlaps tokens. | **FIXED in Pass 2** (see below) |
 | 3 | minor | fidelity/import | Imported meta armies show "**base datasheet pts**" (e.g. Sororitas 1875, not 2000) — enhancements/proper costs aren't applied on import, so a player's list undercosts vs a legal 2000. Pre-existing (noted in handoff). | open (needs import-pipeline work) |
 
 ### Verified good (no action)
@@ -34,5 +34,54 @@ Screens reviewed: deployment, Solo dialog, Attack tab, phase transitions, after-
   rule + auto-assign) is presented cleanly on a 390px viewport.
 - Solo dialog copy clearly explains sides, turn order, and to load a layout first.
 
-**Next real-UI passes (per schedule):** Gen 5 — Fight phase (overwatch, pile-in/consolidate,
-fall-back); Gen 8 — Cards/secondaries + CP/VP scoreboard + end-game. Consider fixing #2 then.
+**Next real-UI passes (per schedule):** Gen 8 — Cards/secondaries + CP/VP scoreboard + end-game.
+
+## Pass 2 — Fight phase through the real UI (Gen 4, Lane B, 2026-07-08)
+
+Instrument: **`tools/shots/fight-ui.js`** — a new sibling harness (Playwright/Chromium, Brave-wedge
+immune) that sets up an engagement (a friendly melee unit ~1.5" from an enemy) and drives the whole
+Fight cluster through the REAL UI: the ⚔ attack tool (melee engagement check), **Fire Overwatch**
+(reactive, 6s-to-hit), a **2D6 charge** (ruler + dice roller), **Pile in / Consolidate** (3" caps,
+via real `page.mouse` drags with snap-back), and **Fall Back** (`t.fellBack`). It captures
+console/page errors + a screenshot at each step (reviewed visually). Buttons are driven by real DOM
+`.click()` on the inspector/token-menu; drags by real mouse events through the app's own pointer
+handlers. **Result: 11/11 steps ok, 0 console/page errors** before and after the fixes below.
+
+**Headline:** the Fight-phase UX — never previously exercised on a live render — **works end-to-end
+with 0 console errors**. Fall Back stamps `t.fellBack` (auto-clears next Movement phase); Fire
+Overwatch routes through the real roller and forces Hit-on 6+; Pile in / Consolidate arm a hard 3"
+cap that commits a ≤3" drag and **snaps a >3" drag back**; a phase change drops the armed cap. But
+driving it surfaced one **rules-gate fidelity violation** (now fixed) plus assist-tool gaps.
+
+### Findings (severity-ranked)
+
+| # | Sev | Area | Finding | Status |
+|---|-----|------|---------|--------|
+| P2-1 | **MAJOR (fidelity gate)** | rules/fight | **Melee engagement range was 1" (10th ed), not 2" (11th ed).** The ⚔ attack tool (`wp3Stage`) and the two-click default-weapon picker (`wp15DefaultWi`) both used a `≤1.02"` threshold, so units **1.0–2.0" apart were flagged red "NOT within 1" / out of engagement** and the melee read as illegal — blocking a *legal* 11th-ed fight. Cites `../Notes/11th Edition Core Rules - Study Notes.md` line 8: "Engagement range is now 2" horizontally (5" vertically)." Internal inconsistency: the AI's own fight code already used `2.02"`. | **FIXED** |
+| P2-2 | minor | UI | Per-phase reminder banner floated over the board's top-center, obscuring tokens **and blocking clicks** to them (Pass-1 open #2). | **FIXED** |
+| P2-3 | minor | fidelity | A unit that **Fell Back** can still stage a shooting attack / charge — the app logs "no shooting or charging this turn" but (assist-only) does **not** block it. 11th ed forbids both. | open (needs enforcement gating) |
+| P2-4 | minor | fidelity | **Fire Overwatch can be staged with a melee weapon** when the selected shooter has no ranged weapon (routes through the default-weapon picker, which falls back to melee). 11th Overwatch is a ranged snap-shot; a melee-only unit can't Overwatch. | open (guard shooter to ranged) |
+| P2-5 | info | fidelity | **No dedicated "declare charge" action.** A charge is a composite of ruler-measure + the 2D6 dice roller + a manual move. So: no enforcement that the move ends within 2" engagement, a natural **2 isn't auto-failed**, no **Fights-First** / charged-this-turn tracking for fight ordering, and 11th's Overrun + three Consolidation modes aren't modeled. Consistent with the app's "assist, don't adjudicate" stance. | open (deferred; larger feature) |
+| P2-6 | info | fidelity (AI lane) | **Out of my edit scope — flag for Paul.** The AI movement code (`aiTryTranslate`) keeps non-charging units only **1" from enemies** (`edgeDist<=1.05`), treating engagement as 1" not 11th's 2". A non-charge move that stops 1–2" from an enemy is *inside* engagement range = illegal in 11th. Lives in Lane A's region (`aiMoveUnit`); I did not touch it. Needs Lane A / your judgment. | open (Lane A) |
+
+### Fixes (each verified in-UI: 0→0 console errors, screenshot reviewed)
+
+- **P2-1 (melee engagement 1"→2"):** `wp3Stage` and `wp15DefaultWi` now use `≤2.02"`; the hint text
+  reads "NOT within 2\"". Regression tests: `wp3-tests.js` gains a **positive** assertion (melee at
+  ~1.5" reads "in engagement range") alongside the existing out-of-range one, and both wp3/wp15
+  engagement messages updated. **Before:** `fight-04` banner red "melee — closest models 1.5" (NOT
+  within 1")". **After:** green "melee — closest models 1.5" (in engagement range)". `run_all.sh`
+  green. *RULES-CRITICAL — flagged for your blessing per §9 integration gate.*
+- **P2-2 (reminder banner):** CSS-only — banner is now `pointer-events:none` (clicks pass through to
+  tokens; the ✕ button keeps `pointer-events:auto`), translucent (bg .94→.82), slimmer padding, and
+  narrower (max-width 74%→60%). **Before/after screenshots:** `fight-09-banner.png` / the strip in
+  `fight-03`/`fight-04` — tokens beneath stay visible and selectable; the coaching is retained.
+
+### Verified good (no action)
+- Pile in / Consolidate: real mouse drag ≤3" commits, >3" snaps back to start (hard cap, no advance
+  leeway), logged; arming shown in the inspector and the ⋯ token menu. (`fight-05`, `fight-06`, `fight-07`)
+- Fall Back button + ⋯-menu action stamp `t.fellBack` on every model; flag auto-clears when a fresh
+  Movement phase begins. (`fight-02`)
+- Fire Overwatch: reactive-only (non-active side, Movement/Charge phase), needs your unit + the enemy
+  unit selected, forces Hit-on **6+**, routes through the normal attack roller. (`fight-03`)
+- 2D6 charge roll via the dice roller logs to both peers; ruler tape measures the gap. (`fight-08`)

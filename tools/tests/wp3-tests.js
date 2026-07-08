@@ -134,7 +134,13 @@
   const mi=wp3Ctx.weapons.findIndex(x=>x.melee);
   assert(mi>=0,"melee weapon present on card");
   wp3Aim(mi); wp3PickTarget(tgtToks[0].x,tgtToks[0].y);
-  assert(g("akStage").innerHTML.includes("NOT within 1")," melee out of engagement range flagged");
+  assert(g("akStage").innerHTML.includes("NOT within 2")," melee out of engagement range flagged (11th-ed 2\")");
+  // 11th-ed engagement range is 2" (was 1" in 10th): a melee attack at ~1.5" must read as IN engagement.
+  const savedTY=tgtToks[0].y, savedTX=tgtToks[0].x;
+  tgtToks[0].x=atkToks[0].x; tgtToks[0].y=atkToks[0].y+2.7; // ~1.5" edge gap for 32mm bases
+  wp3Aim(mi); wp3PickTarget(tgtToks[0].x,tgtToks[0].y);
+  assert(g("akStage").innerHTML.includes("in engagement range")&&!g("akStage").innerHTML.includes("NOT within"),"melee at ~1.5\" is IN engagement range (11th-ed 2\")");
+  tgtToks[0].x=savedTX; tgtToks[0].y=savedTY;
 
   // ---- inspecting the opponent's unit uses the synced card ----
   sel.clear(); sel.add(tgtToks[0].id); wp3Inspect();
