@@ -252,4 +252,26 @@ md5-deterministic, 0 rules findings). Ran Control C at Tier S and applied the to
   in `aiShooting` (#2), fix chronic under-shooting / over-cautious staging (#3), threat-aversion
   ceding objectives (#4), Kroot/melee screening (#5), reserve timing (#6). Real-UI generation
   next per schedule — watch the Brave-wedge; use `tools/shots` Playwright harness.
+
+**Gen 2 — army-level focus fire (#2), and a process leap to multi-seed selection (2026-07-08).**
+Paul chose to keep mining headless AI gains rather than start the real-UI passes yet.
+- **Key process win — measurement was too noisy to trust.** A single deterministic seed nearly
+  made me *keep a regression*: crude focus fire looked ~flat on seed 42 (0.835→0.826) but the
+  real question is the average. Built `control.js` (Control C over 5 seeds: 42,7,99,123,2024) +
+  `fitness.js` (AIStrength blend factored out, shared by scoreboard + control). **Mutations are
+  now accepted/rejected on the 5-seed MEAN**, not one game.
+- **Genetic selection in action on focus fire (#2):**
+  - *Crude version* (4× "finish it" multiplier, applied from the first shooter): mean AIStrength
+    **0.791 vs 0.803 baseline → REJECTED** (it dumped good guns into cheap chaff to "finish" it).
+  - *Refined version* (first shooter picks by pure value; only follow-up shooters get a gentle
+    1.4×/≤1.3× nudge to finish an in-progress kill): mean **0.824 vs 0.803 → KEPT.** Mean
+    points-traded also rose +259→+343. AI now 5W-0D-0L across the seed set.
+- **Mechanism:** module-level `aiFocus` ledger (expected damage committed per enemy unit this
+  Shooting phase), reset each phase; a legal player choice (firing order), 0 rules findings.
+- **Fitness (canonical = 5-seed mean AIStrength 0.824):** ~0.92, holding; the gain shows in
+  trades and margin (mean +11→+12) more than the scalar. Suite green, deterministic.
+- **Note:** SCOREBOARD.md single-game rows (seed 42) are a quick view; the **5-seed mean from
+  `control.js` is now the authoritative selection metric.** Gen 0/1 rows predate it.
+- **Carry forward to Gen 3:** lever #3 (chronic under-shooting / over-cautious round-1 staging) —
+  idle guns are pure lost output, likely the next net-positive lever. Measure on the 5-seed mean.
 ```

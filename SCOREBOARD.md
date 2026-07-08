@@ -6,6 +6,7 @@
 |-----|-----------------------|-------------------|----|-------------|---------------------------|---------|-------------|------------|---------|
 | 0 | Adepta Sororitas vs T’au Empire | 40–40 (draw) | ✓ | 0 | 0/0/1 | 0.998 | 0.98 | 0.5 | 0.792 |
 | 1 | Adepta Sororitas vs T’au Empire | 35–45 (S2) | ✓ | 0 | 1970p · OC 2-1 · +520 | 0.988 | 0.98 | 0.835 | 0.924 |
+| 2 | Adepta Sororitas vs T’au Empire | 35–45 (S2) | ✓ | 0 | 1970p · OC 2-1 · +520 | 0.988 | 0.98 | 0.835 | 0.924 |
 
 ## Fitness definitions (first-pass baselines)
 - **Process** = 0.4·(artifacts complete) + 0.3·(reached round 5) + 0.3·(runtime, full credit under a few s).

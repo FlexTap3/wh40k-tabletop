@@ -42,17 +42,12 @@ if (f.rulesViolations > 0) playability = 0;                          // hard gat
 else if (f.critical > 0) playability = 0.2;                          // softlock / liveness etc.
 else playability = +clamp(1 - (f.major * 0.05 + f.minor * 0.02), 0, 1).toFixed(3);
 
-// ---- AIStrength (AI = side 2): a blended skill signal, not just W/L+margin. The scalar was
-//      saturating at 0.5 on draws while the AI was visibly out-trading / being out-traded — the
-//      loop couldn't "see" improvements. Blend the signals a strong player actually drives. ----
-const oc1 = (s.finalOc && s.finalOc.held1) || 0, oc2 = (s.finalOc && s.finalOc.held2) || 0;
-const attrDiff = (s.attrition && typeof s.attrition.diff === "number") ? s.attrition.diff : 0;
-const listPct = s.pointsCap ? clamp((s.sideB.pts || 0) / s.pointsCap, 0, 1) : clamp((s.sideB.pts || 0) / 2000, 0, 1);
-const outcomeC = s.winner === 2 ? 1 : s.winner === 0 ? 0.5 : 0;
-const marginC = clamp(((s.marginToAi || 0) + 30) / 60, 0, 1);        // ±30 VP → 1.0 / 0
-const ocC = clamp(0.5 + (oc2 - oc1) / 10, 0, 1);                      // objective-control edge (±5 objs)
-const attrC = clamp(0.5 + attrDiff / 1000, 0, 1);                    // points-weighted trade edge (±1000 pts)
-const aiStrength = +(0.30 * outcomeC + 0.25 * marginC + 0.20 * ocC + 0.15 * attrC + 0.10 * listPct).toFixed(3);
+const { aiStrengthOf } = require("./fitness");
+// AIStrength (AI = side 2): a blended skill signal (see fitness.js). The scalar was saturating at
+// 0.5 on draws while the AI was visibly out-trading / being out-traded — the loop couldn't "see"
+// improvements. Blend the signals a strong player actually drives.
+const F = aiStrengthOf(s);
+const { oc1, oc2, attrDiff, aiStrength } = F;
 
 const fitness = +(0.2 * process_ + 0.4 * playability + 0.4 * aiStrength).toFixed(3);
 
