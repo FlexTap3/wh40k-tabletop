@@ -223,3 +223,65 @@ me close the last open fidelity-gate item from Pass 2 (**P2-3**).
 - The harness's `setPhase` shortcut (used by every real-UI harness) sets `state.phase` directly and
   skips `wp7ApplyPhase`; the lifecycle-clear step therefore drives the **real** `phase` op so the
   actual clear code under test runs (not a harness stub).
+
+## Pass 5 — full-game capstone: one complete 5-round solo game through the real UI (Gen 7, Lane B, 2026-07-08)
+
+Instrument: **`tools/shots/fullgame-ui.js`** — a new sibling harness (Playwright/Chromium, Brave-wedge
+immune). Where Passes 1–4 drove individual phase clusters, this drives **ONE COMPLETE game start→finish**:
+load Official 1A, import + deploy my army (78 models), start Solo (T'au, 2000 pts, `aiSeed(1337)`), then
+play **all five battle rounds** — each round my Command→End via the real phase stepper (`wp7Step`, what
+the › button calls), score primary in rounds 2–5 via the real VP stepper, hand to the AI and let it play
+its **whole** turn (`aiFinishTurn`, what ⏭ calls), and **resolve every casualty-allocation prompt through
+the real UI** (a real board click + `A` key for the first, auto-assign after) — through to the explicit
+**Game over** state. Console/page errors + a screenshot per round captured and reviewed.
+**Result: 20/20 steps ok, 0 console/page errors** across the whole game.
+
+**Headline:** a full **5-round solo game plays end-to-end through the actual UI with 0 console errors** —
+the AI played all five of its turns, ~30–40 casualty-allocation prompts were resolved through the real
+banner, state integrity held (no NaN/Infinity positions or wounds after 5 rounds), scoring added up (CP
+**10/10**, no phantom round-6 grant even with the AI's own Command phases granting CP), and the end-game
+cue fired correctly (phase label "🏁 Game over", round badge "**5 ✓**", scoreboard "Player 1 wins 20–0").
+This is the first time the whole game — not a single cluster — has been verified on a live render.
+Final scoreboard: **P1 20 VP / 10 CP · AI 0 VP / 10 CP** (AI VP is 0 because the app ships no auto primary
+scoring — VP is manual via the steppers, the known P3-5 stance; the harness only scored side 1).
+
+### Findings (severity-ranked)
+
+| # | Sev | Area | Finding | Status |
+|---|-----|------|---------|--------|
+| P5-1 | **MAJOR (playability)** | UI/casualty allocation | **The casualty-allocation banner `#wp11Banner` ate clicks to models beneath it.** During solo allocation you must **click your models on the board** to assign each damage packet, but the top-centre banner was pointer-events-opaque — a target unit positioned under it was **un-clickable**, so allocation was impossible for that unit (auto-assign `A` was the only escape). Only surfaces across a whole game, when the AI damages units all over the board. The sibling coaching banner `#wpRulesReminder` already got this exact fix in Pass 2 (P2-2); `#wp11Banner` was missed. | **FIXED** |
+| P5-2 | minor | AI turn-loop (NOT Lane B / out of scope) | **The AI's shooting resolves one phase late — its shooting casualty-allocation prompts fire while the phase label already reads "Charge".** 38/39 shooting prompts in a measured game showed phase "Charge". Root cause (AI code): `aiShootUnit` enqueues each weapon's `aiFireWeapon` to the **tail** of the action queue, but `aiPlanPhase` enqueues the Shooting→Charge `wp7Step` **before** those fire actions run, so the shots (and their prompts) execute after the phase advanced. Player-facing symptom: the banner shows an AI *shooting* attack during "AI · Charge". No damage is lost and no rules are broken (shoot-then-charge is legal), but it is confusing and the phase state is momentarily wrong during the AI turn. **Owned by the AI lane** (`aiShootUnit`/`aiShooting`/`aiPlanPhase`), so left unfixed by Lane B per the disjoint-edit-region rule — **handed to the coordinator / AI lane.** | open (AI lane) |
+| P5-3 | info | playability/onboarding | **Casualty-allocation volume:** a solo player faces ~30–40 manual allocation prompts over a full game. This is design-intended (11th ed: you allocate your own casualties) and the **Setup → "Auto-apply my casualties"** toggle already exists as the escape hatch. Noted, not changed — like P3-4, the default (manual = faithful) is a design call for Paul. | open (by design) |
+| P5-4 | info | fidelity/info | The **opponent's Strategic Reserves are listed in my Setup reserve tray** ("AI (T'au Empire) (opponent) · Stealth Battlesuits ×5"). Not a fidelity violation — matched-play army lists are open, so reserve contents are public — but noted for completeness. | open (acceptable) |
+
+### Fix (verified in-UI: 0→0 console errors, before/after evidence)
+
+- **P5-1 (`#wp11Banner` click-through):** CSS-only, one line — `#wp11Banner` gains `pointer-events:none`
+  and `#wp11Banner button` gains `pointer-events:auto` (the Auto-assign button stays clickable), the
+  identical pattern as the P2-2 fix on `#wpRulesReminder`. **Before:** with the banner opaque, a real
+  mouse click on a model positioned under the banner centre hit a banner `<span>` (`document.elementFromPoint`
+  = SPAN) and the packet stayed **pending (0 applied)** — allocation impossible. **After:** the same click
+  reaches the canvas (`elementFromPoint` = `board`) and the packet **applies (allocation cleared)**. The
+  fullgame harness now carries a permanent regression guard ("P5-1 FIX: casualty-allocation click passes
+  THROUGH the banner…", 20/20). `run_all.sh` green.
+
+### Verified good across a WHOLE game (no action)
+- **Phase stepper** drives all 6 phases every round for 5 rounds with no dead-end; hand-off to the AI and
+  back is clean each round (`aiFinishTurn` chains its own `wp7Step`s and returns control to side 1).
+- **Casualty allocation** (P4/P5): the real board-click + `A`-key + Auto-assign button all work over the
+  whole game; the banner is faithful (attacker → target · weapon, packet count/dmg, wounded-first hint,
+  gold suggestion ring).
+- **Scoring integrity:** exactly one +1 CP per Command phase per side = 10/10 after 5 rounds; the phantom
+  round-6 CP grant never fires (P3-1 holds all the way to the end, incl. the AI's Command phases).
+- **End-game cue** (P3-1): phase label "🏁 Game over", round badge "5 ✓" (never a bare 6), scoreboard
+  banner with the final verdict, shared-log summary — all fire correctly at the true end of round 5.
+- **State integrity:** no NaN/Infinity token positions or wounds after 5 rounds; reserves arrive over the
+  game (AI 39 deployed → 44 on board as Strategic Reserves land).
+
+### Could not drive / honestly out of reach
+- **AI decision quality / list tactics** — the harness drives the AI's turns but does not grade them; the
+  AI-strength curve is Lane A's `control.js`/`matrix.js`, not this pass.
+- **AI shooting-order fix (P5-2)** — the real fix is in AI turn-loop code (`aiShootUnit`/`aiPlanPhase`),
+  outside Lane B's edit region, so it is documented and handed off rather than patched here.
+- **Automatic primary scoring** — still manual (P3-5); the harness scores side 1 by hand, so the final
+  AI VP reads 0. Unchanged, intentional.
