@@ -1,0 +1,62 @@
+{
+  "gen": 719,
+  "seed": 7,
+  "tier": "S",
+  "layout": "Official 1A · T&H vs T&H",
+  "mission": "Battlefield Dominance / Battlefield Dominance",
+  "sideA": {
+    "fid": "TAU",
+    "name": "T’au Empire",
+    "pts": 1985,
+    "units": 19,
+    "models": 175,
+    "reserves": 1
+  },
+  "sideB": {
+    "fid": "DRU",
+    "name": "Drukhari",
+    "pts": 2000,
+    "units": 17,
+    "models": 104,
+    "reserves": 1
+  },
+  "finalVp": {
+    "side1": 30,
+    "side2": 50
+  },
+  "finalCp": {
+    "side1": 11,
+    "side2": 11
+  },
+  "winner": 2,
+  "marginToAi": 20,
+  "reachedRound5": true,
+  "finalOc": {
+    "held1": 2,
+    "held2": 2,
+    "contested": 0
+  },
+  "runtimeMs": 3023,
+  "findings": {
+    "total": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "rulesViolations": 0
+  },
+  "aiTotalShots": 91,
+  "pointsCap": 2000,
+  "attrition": {
+    "killedByAi": 1327,
+    "lostByAi": 1096,
+    "diff": 231,
+    "s1Models": [
+      175,
+      58
+    ],
+    "s2Models": [
+      104,
+      47
+    ]
+  }
+}
