@@ -248,6 +248,24 @@ deviation zeroes Playability and blocks the merge until fixed.
 
 Remaining budget: Gens 4–9 (6 generations) to reach the 10-run total, each running both lanes.
 
+### 9.1 Autonomous run (Paul: "keep iterating, deploy multiple agents, don't ask")
+
+From Gen 5 on I run the loop **without checking in**. Each generation deploys **3 parallel agents**
+in isolated worktrees (disjoint regions → clean merges):
+- **Lane A — AI strength** (edits AI logic only): next ranked lever, self-measured on the 5-seed
+  control; kept only if mean AIStrength beats the current legal best (**0.764** post-Gen-4).
+- **Lane B — playability/fidelity** (edits UI/HTML only): next phase cluster through the real UI,
+  fix clear issues, verify 0 console errors.
+- **Lane C — diagnostics** (edits `tools/` only, never the app): runs the AI across *varied*
+  matchups (not just Control C) to surface weaknesses the single control misses; emits a fresh
+  ranked lever list to feed later generations.
+
+Coordinator integrates each generation through the full gate (suite + 5-seed control + UI
+walkthrough), keeps winners, reverts regressions, commits, updates SCOREBOARD/FINDINGS/§8.
+**Fidelity stays absolute** (a rules violation zeroes Playability and blocks merge). After Gen 9,
+merge `playtest`→`main`; the live Pages push is surfaced for Paul (needs GitHub re-auth, and the
+Pages queue can stick — per ops notes) but everything is verified-playable on `playtest` throughout.
+
 ## 8. Generational log (append one block per generation)
 
 **Gen 4 — first PARALLEL two-lane generation; big fidelity correction (2026-07-08).** Ran both
