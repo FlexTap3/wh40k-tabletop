@@ -153,6 +153,42 @@
   assert(/Fire Overwatch/.test(logHtml()),"Fire Overwatch is logged (shared)");
   assert(g("akStage").style.display==="block","the attack stage banner is shown, ready to roll like any other attack");
 
+  /* ================= P2-3 fidelity gate: a Fell-Back / Advanced unit can't shoot; Fell Back can't charge/fight ================= */
+  // Reuse the Intercessors (mine, ranged+melee) vs Boyz (enemy) from the Overwatch setup, 10" apart.
+  const auk=atkToks[0].unit, euk=tgtToks[0].unit;
+  assert(typeof wpMoveActionBlock==="function","wpMoveActionBlock gate helper exists");
+  // baseline: no flag -> not blocked, and a real shot stages
+  state.tokens.filter(t=>t.unit===auk).forEach(t=>{ t.advanced=false; t.fellBack=false; });
+  assert(wpMoveActionBlock(auk,false)===""&&wpMoveActionBlock(auk,true)==="","a normal unit is not gated (shoot or melee)");
+  op({k:"phase",ph:2,side:1,round:1}); // my Shooting phase
+  sel.clear(); wp15Atk={unit:auk,owner:1}; wp3Label="";
+  wp15Go(tgtToks[0]);
+  assert(!!wp3Label,"control: a normal unit still stages a shot (legal action preserved)");
+
+  // Advanced: shooting blocked, melee (fight) still allowed
+  state.tokens.filter(t=>t.unit===auk).forEach(t=>{ t.advanced=true; });
+  assert(/Advanced/.test(wpMoveActionBlock(auk,false)),"Advanced unit: ranged is gated with an 'Advanced' reason");
+  assert(wpMoveActionBlock(auk,true)==="","Advanced unit: melee (fight) is NOT gated");
+  wp15Atk={unit:auk,owner:1}; wp3Label="";
+  const rBlocked=wp15Go(tgtToks[0]);
+  assert(rBlocked===undefined||!wp3Label,"Advanced unit: wp15Go stages nothing (wp3Label stays empty)");
+  assert(!wp3Label,"Advanced unit: no shot staged");
+  assert(/Advanced/.test(g("akStage").innerHTML)&&/Blocked/.test(g("akStage").innerHTML),"Advanced block shows a clear ⛔ reason banner");
+
+  // Fell Back: both shooting AND charge/fight blocked
+  state.tokens.filter(t=>t.unit===auk).forEach(t=>{ t.advanced=false; t.fellBack=true; });
+  assert(/Fell Back/.test(wpMoveActionBlock(auk,false)),"Fell-Back unit: ranged is gated");
+  assert(/charge or fight/.test(wpMoveActionBlock(auk,true)),"Fell-Back unit: melee (charge/fight) is gated too");
+  // integration: the inspector melee ⚔ aim path (wp3Aim/wp3PickTarget) also refuses to stage
+  sel.clear(); state.tokens.filter(t=>t.unit===auk).forEach(t=>sel.add(t.id)); wp3Inspect();
+  const mi=wp3Ctx?wp3Ctx.weapons.findIndex(w=>w.melee):-1;
+  if(mi>=0){ wp3Label=""; wp3Aim(mi); wp3PickTarget(tgtToks[0].x,tgtToks[0].y);
+    assert(!wp3Label,"Fell-Back unit: melee ⚔ aim stages nothing"); }
+  else assert(true,"(no melee profile on the test unit — melee-aim assertion skipped)");
+  // clear the flag: unit acts normally again
+  state.tokens.filter(t=>t.unit===auk).forEach(t=>{ t.fellBack=false; });
+  assert(wpMoveActionBlock(auk,false)===""&&wpMoveActionBlock(auk,true)==="","clearing the flags un-gates the unit");
+
   console.log(fails?("WPFIGHT TESTS: "+fails+" FAILURES"):"WPFIGHT TESTS: ALL PASSED");
   process.exitCode=fails?1:0;
 })();
