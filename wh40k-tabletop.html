@@ -551,7 +551,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
   <div class="small" id="aiMetaBlurbEl" style="max-width:360px;margin:2px 0 6px"></div>
   <!-- ==== end WP11 ==== -->
   <div class="row"><label>AI faction</label><select id="aiFactionSel" style="min-width:220px"></select></div>
-  <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option selected>1000</option><option>1500</option><option>2000</option></select></div>
+  <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option>1000</option><option>1500</option><option selected>2000</option></select></div>
   <div class="small" style="max-width:360px;margin-top:6px">The AI builds a list, deploys into the Blue (side 2) deployment zone and plays its own turns through the phase stepper. You play Red (side 1) and take the first turn. Load a terrain layout first so it has a deployment zone and objectives. See ? → Solo mode for what it does (and approximates).</div>
   <div class="row" style="justify-content:flex-end; margin-top:8px">
     <button onclick="document.getElementById('aiDlg').close()">Cancel</button>
@@ -3689,6 +3689,15 @@ function aiSoloToggle(){
   const sel=document.getElementById("aiFactionSel");
   sel.innerHTML=DB.factions.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join("");
   if(typeof wp11PopulateMeta==="function") wp11PopulateMeta(); /* ==== WP11: meta-opponent picker ==== */
+  // Default the AI's points to a standard 2000 (Strike Force), or match the player's loaded army to
+  // the nearest bracket — a 1000pt default gave a new solo player a lopsided half-strength opponent.
+  const ptsSel=document.getElementById("aiPtsSel");
+  if(ptsSel){
+    const mine=((state.cards&&state.cards[1])||[]).reduce((s,c)=>s+(parseInt(c.pts)||0),0)
+             ||(myArmy||[]).reduce((s,c)=>s+(parseInt(c.pts)||0),0);
+    const brackets=[...ptsSel.options].map(o=>parseInt(o.value)).sort((a,b)=>a-b);
+    ptsSel.value=String(mine>0?(brackets.filter(b=>b>=mine)[0]||brackets[brackets.length-1]):2000);
+  }
   document.getElementById("aiDlg").showModal();
 }
 function aiStartFromDlg(){

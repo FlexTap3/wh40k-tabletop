@@ -274,4 +274,21 @@ Paul chose to keep mining headless AI gains rather than start the real-UI passes
   `control.js` is now the authoritative selection metric.** Gen 0/1 rows predate it.
 - **Carry forward to Gen 3:** lever #3 (chronic under-shooting / over-cautious round-1 staging) —
   idle guns are pure lost output, likely the next net-positive lever. Measure on the 5-seed mean.
+
+**Gen 3 — first real-UI playability pass (Goal 1) (2026-07-08).** Paul asked to fold in a
+playability pass rather than keep stacking AI-only generations. Drove a **solo game through the
+actual UI** (`tools/shots/playtest-ui.js` + `discover.js`, Playwright/Chromium, Brave-wedge-immune):
+real button clicks, phase stepper, the ⚔ attack-tool click-flow; captured console errors +
+per-phase screenshots and reviewed them visually.
+- **Result:** full solo game flows end-to-end with **0 console errors** (mission → deploy 78 →
+  Solo/AI 39 → all 6 phases → attack tab → AI turn → casualty allocation → phone). **Closes the
+  handoff's never-verified live-playthrough gap** for solo mode. Findings in `PLAYTEST-FINDINGS.md`.
+- **Mutation kept (app / Goal 1):** Solo dialog defaulted the AI to **1000 pts** (lopsided vs a
+  ~2000 player list) → now defaults to standard **2000** and auto-matches the player's loaded army
+  to the nearest bracket (`aiSoloToggle`). Verified in-UI (dialog now reads 2000 for an 1875 list).
+- Suite green; app node-check clean; headless control unaffected (UI-only change, sim uses `aiStart`
+  directly). Open minor findings: reminder banner overlaps board (#2); imported lists undercost via
+  "base datasheet pts" (#3, pre-existing import-pipeline gap).
+- **Carry forward:** resume headless AI mining (lever #3 under-shooting) unless Paul redirects;
+  real-UI Gen 5 (Fight phase) and Gen 8 (cards/scoreboard) still owed per schedule.
 ```
