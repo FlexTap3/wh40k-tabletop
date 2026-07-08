@@ -85,3 +85,69 @@ driving it surfaced one **rules-gate fidelity violation** (now fixed) plus assis
 - Fire Overwatch: reactive-only (non-active side, Movement/Charge phase), needs your unit + the enemy
   unit selected, forces Hit-on **6+**, routes through the normal attack roller. (`fight-03`)
 - 2D6 charge roll via the dice roller logs to both peers; ruler tape measures the gap. (`fight-08`)
+
+## Pass 3 — Cards / secondaries + CP/VP scoreboard + end-game through the real UI (Gen 5, Lane B, 2026-07-08)
+
+Instrument: **`tools/shots/cards-ui.js`** — a new sibling harness (Playwright/Chromium, Brave-wedge
+immune) driving the whole scoring cluster through the REAL UI: the Cards tab (🎴 draw secondaries,
+the shared two-hand view, the editable 📖 card reader + Edit-deck dialog), the VP/CP scoreboard
+steppers (real button clicks in `#scoreboard`), scoring across battle rounds, stepping the game to
+its end (round 5 → over), and the ranged-only Fire Overwatch guard. Buttons are driven by real DOM
+`.click()`; console/page errors + a screenshot captured at every step and reviewed visually.
+**Result: 15/15 steps ok, 0 console/page errors** after the fixes below.
+
+**Headline:** the scoring/cards UX — never previously exercised on a live render — **works
+end-to-end with 0 console errors**. Secondaries draw into distinct hands, both hands render with
+headers, the 📖 reader edits/persists/broadcasts card text, the deck editor rewrites the deck, and
+the VP/CP steppers mutate the tracked score. Driving it confirmed the two prior-run facts and let me
+fix both the phantom-CP end-game gap and P2-4 in the UI layer.
+
+### Findings (severity-ranked)
+
+| # | Sev | Area | Finding | Status |
+|---|-----|------|---------|--------|
+| P3-1 | **MAJOR (fidelity gate)** | rules/end-game | **No end-of-game handling** — stepping `›` past P2's End of round 5 rolled into a phantom round 6 whose Command phase auto-granted **+1 CP to both sides** (illegal: 11th ed is 5 battle rounds — Study Notes L28; CP is only gained in the Command phases of rounds 1–5). No end-of-game cue at all. | **FIXED** |
+| P3-2 | minor | fidelity | **Fire Overwatch could be staged with a melee weapon** for a melee-only shooter (the `wp15` default-weapon picker fell back to melee). 11th Overwatch is a ranged snap-shot. (Pass-2 open **P2-4**.) | **FIXED** |
+| P3-3 | minor | fidelity/UX | **No primary-scoring cue.** Primaries score progressively in the Command phase from round 2 (Study Notes L28), but nothing prompted it. | **FIXED** (reminder nudge) |
+| P3-4 | **needs your judgment** | fidelity | **Secondary hands are SHARED** — each player sees the other's drawn Tactical cards (the Cards-tab copy even says so). 11th-ed matched-play Tactical secondaries are a **hidden** hand; the opponent shouldn't see them. A deliberate shared-table-aid choice, but a strict fidelity deviation. | open (design call — see below) |
+| P3-5 | info | fidelity | **No automatic primary scoring.** VP is manual via the steppers; the app ships no VP rules (the paid Mission Deck has them). Consistent with the "assist, don't adjudicate" stance; P3-3 adds the coaching nudge. | open (intentional non-fix) |
+
+### Fixes (each verified in-UI: 0→0 console errors, screenshot reviewed)
+
+- **P3-1 (end-of-game / phantom round-6 CP):** the phase stepper still lets the round counter tick
+  past 5 (headless drivers loop until `round>5`), but the app now (a) **guards the auto Command-phase
+  +1 CP so it never fires once the game is over** (`round>WP7_LAST_ROUND`), and (b) shows an explicit
+  **"🏁 Game over"** cue: the phase label, a scoreboard banner with the final VP + winner/draw, a
+  reminder-banner line, a one-shot shared log summary, and the Round badge reads **"5 ✓"** (never a
+  bare "6"). New `WP7_LAST_ROUND=5` + derived `wpGameOver()`; no new synced state (both peers derive
+  it from `round`), fully back-compatible. Verified: driving the real stepper from Deploy through a
+  full game ended at **10 CP each (was 11 with the phantom grant)**, label "🏁 Game over", scoreboard
+  "Player 1 wins 20–0", and stepping again added **no** further CP. **Before:** round 5 → silent
+  round 6, +1 CP/side. **After:** `cards-11-game-over.png` — Game-over banner + "5 ✓" + 10/10 CP.
+  *RULES-CRITICAL — flagged for your blessing per §9.*
+- **P3-2 (P2-4 ranged-only Overwatch):** `wp15DefaultWi` gained a `rangedOnly` flag (skips the melee
+  auto-pick, returns −1 when the unit has no ranged weapon); `wp15Go` threads it and logs a clear
+  reason; `wpFightOverwatch` calls `wp15Go(target,true)`. A melee-only shooter is now **blocked** with
+  "…has no ranged weapon — Fire Overwatch is a ranged snap-shot…"; a ranged unit still stages at 6+.
+  **Before:** melee weapon staged. **After:** `cards-09-overwatch-melee-blocked.png` (blocked) +
+  `cards-08-overwatch-ranged-ok.png` (ranged still works).
+- **P3-3 (primary-scoring cue):** the Command-phase reminder now appends **"· score your primary (use
+  the VP steppers)"** in rounds 2–5 — a neutral coaching nudge, no rules prose, no auto-scoring.
+
+### Needs your judgment (fidelity)
+- **P3-4 shared vs hidden secondary hands.** Strict 11th-ed matched play keeps each player's Tactical
+  hand secret. The app deliberately shares both hands (it's often a single-screen table aid, and the
+  copy states it). Making hands hidden would be a real feature (per-side reveal/secrecy, network hand
+  hiding) — I did **not** change it. Your call whether shared-hand is acceptable for this tool or
+  worth a hidden-hand mode.
+
+### Verified good (no action)
+- 🎴 Draw a card adds **distinct** secondaries (dedupes against the current hand); both "Your hand"
+  and the opponent's hand render with counts. (`cards-02`, `cards-03`)
+- 📖 card reader: edits persist to `localStorage` + `cardText`, broadcast via a `cardtext` op, and
+  re-render in the hand. Edit-deck dialog rewrites `secDeck`. (`cards-04`, `cards-05`, `cards-06`)
+- VP/CP steppers (both the Cards-tab scoreboard and the top bar) mutate the tracked score and log
+  manual CP changes; round 1–5 Command phases grant exactly one +1 CP each (10/10 over a full game).
+  (`cards-07`)
+- Primary-mission card shows the mission, objective count, editable primary summary, and the
+  "Open in Event Companion (p.N)" deep-link. (`cards-01`)

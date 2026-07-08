@@ -1496,7 +1496,11 @@ function bulkImportCards(){
 function renderScore(){
   const el=document.getElementById("scoreboard"); if(!el) return;
   const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}; /* WP8: spectator/legacy-safe */
-  el.innerHTML=[1,2].map(s=>{
+  const over=wpGameOver(); /* ==== WP-END ==== */
+  const overBanner=over?(()=>{ const v1=t.vp1||0,v2=t.vp2||0,nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+    const verdict=v1===v2?`Draw — ${v1}–${v2}`:(v1>v2?`<b style="color:var(--p1)">${nm(1)}</b> wins ${v1}–${v2}`:`<b style="color:var(--p2)">${nm(2)}</b> wins ${v2}–${v1}`);
+    return `<div class="card" style="padding:8px;margin-bottom:6px;border-left:3px solid var(--accent);background:rgba(212,175,55,.12)"><b>🏁 Game over</b> <span class="small">— battle round ${WP7_LAST_ROUND} complete.</span><div style="margin-top:3px">${verdict}</div><div class="small">Add any end-of-game secondaries, then tweak VP with the steppers if the tally differs.</div></div>`; })():"";
+  el.innerHTML=overBanner+[1,2].map(s=>{
     const nm=esc(state.names[s]||("Player "+s)), col=s===1?"var(--p1)":"var(--p2)";
     return `<div class="card" style="padding:8px;margin-bottom:6px;border-left:3px solid ${col}">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1505,7 +1509,7 @@ function renderScore(){
         <span>VP <button onclick="stepTracker('vp${s}',-1)">−</button> <b style="font-size:17px">${t['vp'+s]}</b> <button onclick="stepTracker('vp${s}',1)">+</button></span>
         <span>CP <button onclick="stepTracker('cp${s}',-1)">−</button> <b style="font-size:17px">${t['cp'+s]}</b> <button onclick="stepTracker('cp${s}',1)">+</button></span>
       </div></div>`;
-  }).join("")+`<div class="small" style="margin-bottom:6px">Battle round <button onclick="stepTracker('round',-1)">−</button> <b>${t.round}</b> <button onclick="stepTracker('round',1)">+</button> · synced with the top bar</div>`;
+  }).join("")+`<div class="small" style="margin-bottom:6px">Battle round <button onclick="stepTracker('round',-1)">−</button> <b>${over?(WP7_LAST_ROUND+" ✓"):t.round}</b> <button onclick="stepTracker('round',1)">+</button> · synced with the top bar</div>`;
 }
 function renderCards(){
   renderScore();
@@ -1567,7 +1571,8 @@ function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(st
 }
 function refreshTrackers(){
   const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}, g=id=>document.getElementById(id); /* WP8: spectator/legacy-safe */
-  g("tRound").textContent=t.round; g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
+  g("tRound").textContent=wpGameOver()?(WP7_LAST_ROUND+" ✓"):t.round; /* WP-END: never show a bogus round 6 — the game ends at round 5 */
+  g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
   g("n1").textContent=(state.names&&state.names[1])||"Player 1"; g("n2").textContent=(state.names&&state.names[2])||"Player 2"; /* WP8: spectator/legacy-safe */
   renderScore();
 }
@@ -3169,6 +3174,14 @@ function wp8Coherency(){
 
 /* ==== WP7: phases — turn/phase engine, reserves tray, attached units ==== */
 const WP7_PHASES=["Command","Movement","Shooting","Charge","Fight","End"];
+/* ==== WP-END: end of the game ==== 11th ed is played over five battle rounds ("Usually 5 battle
+   rounds" — ../Notes/11th Edition Core Rules - Study Notes.md L28). The phase stepper still lets the
+   round counter tick past 5 (headless drivers loop until round>5), but the app now (a) refuses to
+   grant the automatic Command-phase +1 CP once the game is over — killing the old phantom round-6
+   CP artifact — and (b) shows an explicit "Game over" cue instead of a bogus round-6 Command. */
+const WP7_LAST_ROUND=5;
+const wpGameOver=()=>(((state.trackers&&state.trackers.round)||1)>WP7_LAST_ROUND);
+let wp7OverLogged=false;      // client-local one-shot for the end-of-game summary (mirrors wp6LastRound)
 let wp7Placing=null;          // {id} of the reserves entry being placed (click the board to arrive)
 let wp7TrayOpen=true, wp7UiSig=null;
 
@@ -3230,12 +3243,16 @@ function wpRulesSideIsSM(side){ // best-effort: any card/token on this side carr
 }
 function wpRulesReminderText(ph,side){
   let t=WP_RULES_REMINDERS[ph]||"";
+  // WP-END: most primaries score in the Command phase from battle round 2 (progressive scoring —
+  // the mission deck has the exact VP). A neutral coaching nudge, no rules prose.
+  if(ph===0){ const rd=(state.trackers&&state.trackers.round)||1; if(rd>=2&&rd<=WP7_LAST_ROUND) t+=" · score your primary (use the VP steppers)"; }
   if(ph===0&&wpRulesSideIsSM(side)) t+=" · Oath of Moment: pick a target (Space Marines)";
   return t;
 }
 function wpRulesShowReminder(){
   const el=document.getElementById("wpRulesReminder"); if(!el) return;
   const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(wpGameOver()){ el.innerHTML=`<span>🏁 The game has ended — battle round ${WP7_LAST_ROUND} complete. Tally the final scores in the Cards tab.</span> <button onclick="document.getElementById('wpRulesReminder').style.display='none'">✕</button>`; el.style.display="block"; return; } /* WP-END */
   if(typeof p.ph!=="number"||p.ph<0){ el.style.display="none"; return; }
   el.innerHTML=`<span>${esc(WP7_PHASES[p.ph]||"")}: ${esc(wpRulesReminderText(p.ph,p.side))}</span> <button onclick="document.getElementById('wpRulesReminder').style.display='none'">✕</button>`;
   el.style.display="block";
@@ -3282,7 +3299,10 @@ function wp7Step(dir){
   }
   op({k:"phase",ph,side,round});
   const nm=s=>esc((state.names&&state.names[s])||("Player "+s));
-  if(ph>=0) logShared(`⏵ Round ${round} · <b style="color:${side===1?"var(--p1)":"var(--p2)"}">${nm(side)}</b> — <b>${WP7_PHASES[ph]} phase</b>`,"sys");
+  // WP-END: past round 5 the game is over — wp7ApplyPhase logs the end-of-game summary instead of
+  // a bogus "Round 6 · Command phase" transition line.
+  if(round>WP7_LAST_ROUND){ /* game over — no phase-transition line */ }
+  else if(ph>=0) logShared(`⏵ Round ${round} · <b style="color:${side===1?"var(--p1)":"var(--p2)"}">${nm(side)}</b> — <b>${WP7_PHASES[ph]} phase</b>`,"sys");
   else logShared("⏵ Back to Deploy (pre-game)","sys");
 }
 function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both peers; idempotent
@@ -3302,8 +3322,9 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
   /* ==== end WP-FIGHT ==== */
   if(typeof o.round==="number"&&state.trackers&&o.round!==state.trackers.round)
     state.trackers.round=Math.max(1,o.round); // WP6's end-of-round log picks this up in draw() — exactly once
-  if(o.ph===0){
-    // auto +1 CP to both on entering a Command phase — exactly once per (round, side), ever
+  if(o.ph===0&&!wpGameOver()){
+    // auto +1 CP to both on entering a Command phase — exactly once per (round, side), ever.
+    // WP-END: never past round 5 — that used to grant a phantom round-6 CP to both sides.
     const key=(((state.trackers&&state.trackers.round)||1)+":"+state.phase.side);
     if(!state.phase.cpDone[key]){
       state.phase.cpDone[key]=1;
@@ -3313,6 +3334,16 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
       wp7ShockReminder();
     }
   }
+  /* ==== WP-END ==== once the game is over, announce it once (each peer logs locally, like the
+     WP6 end-of-round summary); reset the one-shot if the round is stepped back into play. */
+  if(wpGameOver()){
+    if(!wp7OverLogged){
+      wp7OverLogged=true;
+      const tr=state.trackers||{}, v1=tr.vp1||0, v2=tr.vp2||0, nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+      const verdict=v1===v2?`a draw, ${v1}–${v2}`:(v1>v2?`${nm(1)} ${v1}–${v2}`:`${nm(2)} ${v2}–${v1}`);
+      logShared(`🏁 <b>The game is over</b> — battle round ${WP7_LAST_ROUND} complete. Final VP: <b>${verdict}</b>. Tally any end-of-game secondaries, then adjust VP with the steppers if needed.`,"sys");
+    }
+  } else wp7OverLogged=false;
   refreshTrackers();
   if(typeof wpRulesRenderStrats==="function") wpRulesRenderStrats(); /* ==== WP-RULES ==== */
   if(typeof wpRulesShowReminder==="function") wpRulesShowReminder(); /* ==== WP-RULES ==== */
@@ -3339,6 +3370,7 @@ function wp7ShockReminder(){ // logged locally on each peer, so each player sees
 function wp7RenderPhase(){
   const el=document.getElementById("wp7PhaseLabel"); if(!el) return;
   const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(wpGameOver()){ el.innerHTML='<span style="color:var(--accent)">🏁 Game over</span>'; return; } /* WP-END */
   if(typeof p.ph!=="number"||p.ph<0){ el.innerHTML='<span class="small">Deploy</span>'; return; }
   const col=p.side===1?"var(--p1)":"var(--p2)";
   el.innerHTML=`<span style="color:${col}">${esc((state.names&&state.names[p.side])||("Player "+p.side))}</span> · ${WP7_PHASES[p.ph]||"?"}`;
@@ -3548,8 +3580,8 @@ function wpFightOverwatch(){
   const shooter=groups[mineIdx][0], target=groups[1-mineIdx][0];
   wp3Label="";
   wp15Atk={unit:shooter.unit,owner:shooter.owner};
-  wp15Go(target);
-  if(!wp3Label) return; // wp15Go bailed (no card/weapons for the shooter) — nothing staged, nothing to log
+  wp15Go(target,true); // P2-4: Overwatch is a ranged attack — never auto-stage a melee weapon (blocks melee-only shooters)
+  if(!wp3Label) return; // wp15Go bailed (no card/weapons, or a melee-only shooter) — nothing staged, nothing to log
   const bsEl=document.getElementById("akBS"); if(bsEl) bsEl.value="6+"; // Overwatch: hits only on an unmodified 6
   logShared(`🔥 <b>${esc(myName)}</b> fires Overwatch: <b>${esc(shooter.name)}</b> → <b>${esc(target.name)}</b>`,"sys");
 }
@@ -5457,10 +5489,10 @@ function wp15CarrierCount(atkToks,w){
 // Deterministic default weapon: melee when engaged; otherwise the in-range gun with
 // the biggest carriers×average-attacks output (ties → first); otherwise the ranged
 // weapon with the smallest range shortfall (i.e. the longest gun).
-function wp15DefaultWi(weapons,dist,atkToks){
-  if(dist<=2.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; } /* 11th-ed engagement range 2" */
+function wp15DefaultWi(weapons,dist,atkToks,rangedOnly){
+  if(!rangedOnly&&dist<=2.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; } /* 11th-ed engagement range 2" */
   const ranged=weapons.map((w,i)=>({w,i})).filter(x=>!x.w.melee);
-  if(!ranged.length) return weapons.findIndex(w=>w.melee); // melee-only unit out of engagement: stage the melee anyway
+  if(!ranged.length) return rangedOnly?-1:weapons.findIndex(w=>w.melee); // rangedOnly (e.g. Overwatch): a melee-only unit can't; else stage melee anyway
   const inR=ranged.filter(x=>dist<=x.w.rng+0.02);
   if(inR.length){
     let best=inR[0],bestV=-1;
@@ -5472,7 +5504,7 @@ function wp15DefaultWi(weapons,dist,atkToks){
   return best.i;
 }
 // Second click: build ctx0 from the armed unit and stage the default weapon.
-function wp15Go(tgtTok){
+function wp15Go(tgtTok,rangedOnly){
   const armed=wp15Atk; wp15Disarm(); // the next two clicks are a fresh attack; tool stays active
   if(!armed) return;
   const atkToks=state.tokens.filter(t=>t.unit===armed.unit);
@@ -5486,8 +5518,8 @@ function wp15Go(tgtTok){
     logSys(`No weapon profiles for ${atk.name} — add or import the unit card (Army tab) to quick-stage attacks.`);
     return;
   }
-  const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks);
-  if(wi<0) return;
+  const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks,rangedOnly);
+  if(wi<0){ if(rangedOnly) logSys(`${atk.name} has no ranged weapon — Fire Overwatch is a ranged snap-shot, so a melee-only unit can't make it.`); return; }
   const ctx0={tok:atk,card,weapons};
   wp3Stage(ctx0,wi,tgtTok);
   wp15AfterStage(ctx0,wi,tgtTok);
