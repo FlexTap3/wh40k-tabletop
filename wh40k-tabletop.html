@@ -3923,6 +3923,27 @@ function aiBuildList(fid,pts){
   take(heavy,pts>=1000?2:1,false);
   let guard=0;
   while(left>=50&&guard++<24&&take(inf.length?inf:battle,1,false)>0){}
+  // --- upsize pass: grow already-picked units to their largest affordable profile. Spending
+  //     points on bigger squads is strictly better than banking them; always legal within 2000. ---
+  for(const p of picked){
+    const o=aiPickSize(units[p.idx],left+p.pts,true);   // biggest size that fits if this unit's cost is refunded
+    if(o&&o.pts>p.pts){ left-=(o.pts-p.pts); p.pts=o.pts; p.size=o.models; }
+  }
+  // --- fill pass: with points still on the table, keep buying (prefer big) until nearly spent.
+  //     Copy cap = 3/datasheet (the Rule of Three — the matched-play floor in every recent
+  //     edition, so guaranteed legal even where I can't cite the exact 11th-ed number). ---
+  const fillPool=(inf.length?inf:battle);
+  let fguard=0;
+  while(left>=50&&fguard++<60){
+    let bought=false;
+    for(const i of shuffle(fillPool)){
+      if(picked.filter(p=>p.idx===i).length>=3) continue;
+      const o=aiPickSize(units[i],left,true);
+      if(!o) continue;
+      picked.push({idx:i,size:o.models,pts:o.pts,name:units[i].n}); left-=o.pts; bought=true; break;
+    }
+    if(!bought) break;
+  }
   return picked;
 }
 

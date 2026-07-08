@@ -1,4 +1,4 @@
-# Battle Report — Game 0
+# Battle Report — Game 2
 
 **Layout:** Official 1A · T&H vs T&H  |  **Mission:** Battlefield Dominance / Battlefield Dominance  |  **Seed:** 42
 
@@ -9,7 +9,7 @@
 - **Final VP:** Adepta Sororitas 40 — 40 T’au Empire
 - **Winner:** Draw
 - **Final CP:** 11 / 11   |   **Objectives held at end:** 2 / 3
-- **Reached round 5:** yes   |   **Runtime:** 676 ms
+- **Reached round 5:** yes   |   **Runtime:** 686 ms
 
 ## Per-round summary
 

@@ -1,6 +1,7 @@
 {
   "gen": 0,
   "seed": 42,
+  "tier": "N",
   "layout": "Official 1A · T&H vs T&H",
   "mission": "Battlefield Dominance / Battlefield Dominance",
   "sideA": {
@@ -35,7 +36,7 @@
     "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 688,
+  "runtimeMs": 676,
   "findings": {
     "total": 1,
     "critical": 0,

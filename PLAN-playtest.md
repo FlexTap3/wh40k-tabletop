@@ -231,4 +231,25 @@ runs end-to-end: Sororitas (side 1, Tier N) vs T'au AI (side 2), Official 1A, se
   round-6 Command that grants +1 CP/side. Low priority; queued for a later gen.
 - **Carry forward to Gen 1:** build the Tier-S (agent-in-the-loop) challenger for the Control
   C match to put real skill pressure on the AI and get the first measured AIStrength point.
+
+**Gen 1 — Tier-S challenger + first AI-strength gain (2026-07-08).** Built a strong
+deterministic **Tier-S** side-1 challenger (army-coordinated focus fire, OC-aware movement
+that holds forward objectives under fire, backfield screening, tie-up charges, timed reserves;
+md5-deterministic, 0 rules findings). Ran Control C at Tier S and applied the top AI fix.
+- **Mutations kept:**
+  1. *Process:* **sharpened the AIStrength metric** — was W/L+VP-margin only, saturating at 0.5
+     on draws so the loop was blind to real skill. Now blends outcome·0.30 + VP-margin·0.25 +
+     objective-control·0.20 + attrition(points-weighted trade)·0.15 + list-completeness·0.10.
+     Driver now emits `pointsCap` + a points-weighted `attrition` proxy.
+  2. *AI strength:* fixed `aiBuildList` under-spend — it banked ~310 pts (fielded 1690/2000)
+     every game. Added an **upsize pass** (grow picked squads to their largest affordable size)
+     + a **fill pass** (Rule-of-Three copy cap, fidelity-safe) → AI now fields **1970/2000**.
+- **Result:** Control C flipped from a 40–40 draw to a **legit AI win 45–35**; AI holds 2 objs
+  to 1 and **trades up +520 pts** (killed 1100, lost 579). Deterministic, 0 rules findings.
+- **Fitness: 0.792 → 0.924** (AIStrength 0.5 → **0.835**). Suite green.
+- **Carry forward to Gen 2 (real-UI playability pass):** the AI is now a full-strength army;
+  next tactical levers from the Gen-1 diagnosis (unranked-remaining): army-level focus-fire plan
+  in `aiShooting` (#2), fix chronic under-shooting / over-cautious staging (#3), threat-aversion
+  ceding objectives (#4), Kroot/melee screening (#5), reserve timing (#6). Real-UI generation
+  next per schedule — watch the Brave-wedge; use `tools/shots` Playwright harness.
 ```

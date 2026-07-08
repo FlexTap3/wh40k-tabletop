@@ -163,6 +163,17 @@ function simRun() {
     finalOc: ocLine(), runtimeMs,
     findings: { total: findings.length, critical: findings.filter(f => f.severity === "critical").length, major: findings.filter(f => f.severity === "major").length, minor: findings.filter(f => f.severity === "minor").length, rulesViolations: rulesViolations.length },
     aiTotalShots: aiShotLog.length,
+    pointsCap: CFG.pts,
+    attrition: (() => {
+      // Points-weighted trade proxy (AI = side 2). Per-token points aren't tracked, so approximate
+      // each army's destroyed value as (fraction of models removed) × (army points). Positive diff = AI trades up.
+      const s1s = report.deploy.sideA.models || 1, s2s = report.deploy.sideB.models || 1;
+      const s1e = census(1).models, s2e = census(2).models;
+      const killedByAi = (1 - s1e / s1s) * report.deploy.sideA.pts;
+      const lostByAi = (1 - s2e / s2s) * report.deploy.sideB.pts;
+      return { killedByAi: Math.round(killedByAi), lostByAi: Math.round(lostByAi), diff: Math.round(killedByAi - lostByAi),
+        s1Models: [s1s, s1e], s2Models: [s2s, s2e] };
+    })(),
   };
 
   // ---- write artifacts ----
