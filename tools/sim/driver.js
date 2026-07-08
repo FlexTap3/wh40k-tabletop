@@ -105,7 +105,15 @@ function simRun() {
       const snap2 = snapshotPositions(2);
       const shotBefore = aiShotLog.length;
       const s1Before = census(1).models;
+      const nameOf = uk => { const t = state.tokens.find(x => x.unit === uk); return t ? t.name : uk; };  // resolve before casualties remove targets
+      const preNames = {}; state.tokens.forEach(t => { if (!(t.unit in preNames)) preNames[t.unit] = t.name; });
       aiFinishTurn();
+      // Per-shot AI telemetry: grounds focus-fire / target-selection diagnosis (atk→tgt spread).
+      for (let i = shotBefore; i < aiShotLog.length; i++) {
+        const s = aiShotLog[i];
+        emit({ round, phase: s.melee ? 4 : 2, phaseName: s.melee ? "AI-fight" : "AI-shoot", side: 2, type: "ai-shot",
+          atk: preNames[s.atk] || s.atk, tgt: preNames[s.tgt] || s.tgt, weapon: s.weapon, dist: +(+s.dist).toFixed(1), rng: s.rng, melee: !!s.melee });
+      }
       // AI shooting/fight legality from its own shot log
       for (let i = shotBefore; i < aiShotLog.length; i++) {
         const s = aiShotLog[i];
@@ -148,7 +156,7 @@ function simRun() {
   const final = trackerSnap();
   const winner = final.vp1 > final.vp2 ? 1 : final.vp2 > final.vp1 ? 2 : 0;
   const summary = {
-    gen: CFG.game, seed: CFG.seed, layout: key, mission: missionName,
+    gen: CFG.game, seed: CFG.seed, tier: CFG.tier, layout: key, mission: missionName,
     sideA: report.deploy.sideA, sideB: report.deploy.sideB,
     finalVp: { side1: final.vp1, side2: final.vp2 }, finalCp: { side1: final.cp1, side2: final.cp2 },
     winner, marginToAi: final.vp2 - final.vp1, reachedRound5: reachedR5,
@@ -174,7 +182,7 @@ function buildReport(s, report, findings) {
   L.push("");
   L.push(`**Layout:** ${s.layout}  |  **Mission:** ${s.mission || "—"}  |  **Seed:** ${s.seed}`);
   L.push("");
-  L.push(`**Side 1 (Challenger, Tier N):** ${s.sideA.name} — ${s.sideA.units} units / ${s.sideA.models} models / ~${s.sideA.pts} pts (${s.sideA.reserves} in reserve)`);
+  L.push(`**Side 1 (Challenger, Tier ${s.tier || "N"}):** ${s.sideA.name} — ${s.sideA.units} units / ${s.sideA.models} models / ~${s.sideA.pts} pts (${s.sideA.reserves} in reserve)`);
   L.push(`**Side 2 (Built-in AI):** ${s.sideB.name} — ${s.sideB.units} units / ${s.sideB.models} models / ~${s.sideB.pts} pts (${s.sideB.reserves} in reserve)`);
   L.push("");
   L.push(`## Result`);
@@ -221,7 +229,7 @@ function buildReport(s, report, findings) {
   }
   L.push("");
   L.push(`## Notes`);
-  L.push(`- Side 2 is the shipping built-in AI (only it can play side 2). Side 1 is the Tier-N deterministic challenger in tools/sim/challenger.js.`);
+  L.push(`- Side 2 is the shipping built-in AI (only it can play side 2). Side 1 is the Tier-${s.tier || "N"} deterministic challenger in tools/sim/challenger.js.`);
   L.push(`- Primary VP is scored by the sim (Take & Hold: 5 VP per controlled objective, max 15/turn, rounds 2-5); the app itself leaves VP as manual entry.`);
   return L.join("\n");
 }
