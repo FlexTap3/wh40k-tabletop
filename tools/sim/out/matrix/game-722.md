@@ -1,0 +1,44 @@
+# Battle Report — Game 722
+
+**Layout:** Official 1A · T&H vs T&H  |  **Mission:** Battlefield Dominance / Battlefield Dominance  |  **Seed:** 7
+
+**Side 1 (Challenger, Tier S):** Space Marines — 13 units / 77 models / ~1990 pts (1 in reserve)
+**Side 2 (Built-in AI):** Drukhari — 18 units / 109 models / ~1985 pts (1 in reserve)
+
+## Result
+- **Final VP:** Space Marines 40 — 40 Drukhari
+- **Winner:** Draw
+- **Final CP:** 11 / 11   |   **Objectives held at end:** 2 / 2
+- **Reached round 5:** yes   |   **Runtime:** 2571 ms
+
+## Per-round summary
+
+| Rd | S1 moves | S1 shoot-kills | S1 charges | S1 fight-kills | S1 primary | AI shots | S1 losses to AI | AI primary | OC (S1–S2) | VP (S1–S2) |
+|----|----------|----------------|------------|----------------|-----------|----------|-----------------|-----------|-----------|-----------|
+| 1 | 12 | 15 | 0 | 0 | 0 | 9 | 6 | 0 | 2–2 | 0–0 |
+| 2 | 12 | 9 | 1 | 0 | 10 | 18 | 3 | 10 | 2–2 | 10–10 |
+| 3 | 12 | 31 | 0 | 0 | 10 | 19 | 9 | 10 | 2–3 | 20–20 |
+| 4 | 8 | 25 | 0 | 0 | 10 | 13 | 1 | 15 | 2–2 | 30–35 |
+| 5 | 11 | 14 | 0 | 0 | 10 | 3 | 3 | 5 | 2–2 | 40–40 |
+
+## Turning points
+- Round 1: AI shooting/fighting removes 6 challenger models.
+- Round 1: challenger removes 15 AI models.
+- Round 2: challenger removes 9 AI models.
+- Round 3: AI shooting/fighting removes 9 challenger models.
+- Round 3: challenger removes 31 AI models.
+- Round 4: lead swings to Drukhari (30–35).
+- Round 4: challenger removes 25 AI models.
+- Round 5: challenger removes 14 AI models.
+
+## Auditor findings (1)
+Rules violations: **0**  |  critical 0 · major 0 · minor 1
+
+- minor/cp-boundary: 1
+
+First 10:
+- [minor] cp-boundary (r5 Command): final CP includes an extra +1/side from the round-6 Command entry when stepping past round 5 (true end-of-R5 CP is 10/10)
+
+## Notes
+- Side 2 is the shipping built-in AI (only it can play side 2). Side 1 is the Tier-S deterministic challenger in tools/sim/challenger.js.
+- Primary VP is scored by the sim (Take & Hold: 5 VP per controlled objective, max 15/turn, rounds 2-5); the app itself leaves VP as manual entry.
