@@ -1990,6 +1990,7 @@ function draw(){
     if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
     if(t.lvl) drawLvlBadge(t); /* ==== WP5: floor badge ==== */
     if(t.fellBack) drawFallBackBadge(t); /* ==== WP-FIGHT: Fell back badge ==== */
+    else if(t.advanced) drawAdvancedBadge(t); /* ==== WP-FIGHT (P2-3): Advanced badge (no shooting/charging) ==== */
     /* ==== WP-A: structured movement ==== a green ring/pip marks a model that's used its move this
        phase; a solid ✓ pip (unit marked "Movement complete") is drawn on top and reads at a glance. */
     if(wpMoved.has(t.id)||wpDone.has(t.unit)){
@@ -2200,6 +2201,17 @@ function drawFallBackBadge(t){
   ctx.fillText("F",r*.75,-r*.75+.5);
   ctx.restore();
 }
+/* ==== WP-FIGHT (P2-3): Advanced badge — a blue "A" pip; the unit can't shoot or charge this turn */
+function drawAdvancedBadge(t){
+  const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+  ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+  const br=Math.max(5,view.s*.35);
+  ctx.beginPath(); ctx.arc(r*.75,-r*.75,br,0,7); ctx.fillStyle="#1a4a85"; ctx.fill();
+  ctx.strokeStyle="#7ec8ff"; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle="#e6f2ff"; ctx.font="bold "+Math.max(7,view.s*.45)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("A",r*.75,-r*.75+.5);
+  ctx.restore();
+}
 function drawLos(){
   if(tool!=="los"||!losSrc) return;
   const src=state.tokens.filter(t=>t.unit===losSrc);
@@ -2370,6 +2382,14 @@ function wp2LogMove(){
     if(d>WP2_JITTER) logShared(`· <b>${esc(myName)}</b> ${wpCapMode&&wpCapMode.mode==="consolidate"?"consolidated":"piled in"} ${d.toFixed(1)}" (cap 3")`,"sys");
     return;
   }
+  /* ==== WP-FIGHT fidelity (P2-3) ==== a move past M (into M+D6 advance territory) is an Advance —
+     stamp t.advanced on every model of the moved unit(s) so the shooting/charge gate can enforce
+     "no shooting or charging this turn"; a fresh move within M clears a stale flag. Synced via tok~;
+     auto-cleared when a fresh Movement phase begins (wp7ApplyPhase), same lifecycle as t.fellBack. */
+  const adv=d>cap+WP2_JITTER;
+  const movedUnits=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
+  const advChg=state.tokens.filter(t=>movedUnits.has(t.unit)&&(!!t.advanced)!==adv).map(t=>({id:t.id,advanced:adv}));
+  if(advChg.length) op({k:"tok~",toks:advChg});
   if(d<=cap+WP2_JITTER) return;
   if(d<=cap+6+WP2_JITTER) logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" (M ${cap}") — advance? (M+D6", no shooting or charging)`,"sys");
   else logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" — beyond M+6" (M ${cap}")`,"sys");
@@ -2509,13 +2529,42 @@ function wp3PickTarget(ix,iy){
   const aim=wp3Aiming; wp3Aiming=null; setTool(tool);
   const tk=hitToken(ix,iy);
   if(!tk||!wp3Ctx||tk.owner===wp3Ctx.tok.owner){ logSys("Targeting cancelled."); return; }
-  wp3Stage(wp3Ctx,aim.wi,tk);
+  if(wp3Stage(wp3Ctx,aim.wi,tk)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked (Fell Back / Advanced) — nothing staged */
   wp15AfterStage(wp3Ctx,aim.wi,tk,false); /* ==== WP15 ==== weapon selector for the inspector ⚔ flow (single-weapon aim: no carrier multiply) */
 }
+/* ==== WP-FIGHT fidelity gate (P2-3) ==== a unit that Fell Back this turn may neither shoot nor
+   charge/fight; a unit that Advanced this turn may not shoot (it may still fight). 11th ed — Core
+   Rules Study Notes (Fall Back / Advance). Returns a reason string when the staged attack is
+   illegal, else "". Owner-agnostic: only the human's own units ever carry these transient flags
+   (the AI tracks its own advance/charge state separately), so this never blocks a legal AI action. */
+function wpMoveActionBlock(uk,isMelee){
+  const toks=state.tokens.filter(t=>t.unit===uk);
+  if(!toks.length) return "";
+  const nm=toks[0].name;
+  if(toks.some(t=>t.fellBack)) return isMelee
+    ? `${nm} Fell Back this turn — it can't charge or fight (11th ed).`
+    : `${nm} Fell Back this turn — it can't shoot (11th ed).`;
+  if(!isMelee&&toks.some(t=>t.advanced)) return `${nm} Advanced this turn — it can't shoot (11th ed).`;
+  return "";
+}
+/* ==== end WP-FIGHT fidelity gate ==== */
 // Pre-fill the Attack tab from a weapon + target token, then switch to it.
+// Returns false if the attack is blocked by the fidelity gate (nothing staged), else undefined.
 function wp3Stage(ctx0,wi,tgtTok){
   const w=ctx0.weapons[wi], ab=wp3ParseAbilities(w.ab), g=id=>document.getElementById(id);
   const atkToks=state.tokens.filter(t=>t.unit===ctx0.tok.unit);
+  /* ==== WP-FIGHT fidelity gate (P2-3) ==== block a shot/charge from a Fell-Back/Advanced unit */
+  const block=wpMoveActionBlock(ctx0.tok.unit,!!w.melee);
+  if(block){
+    wp3Label=""; wp16Staged=null; if(typeof wp16Hide==="function")wp16Hide();
+    const st=g("akStage");
+    if(st){ st.style.display="block";
+      st.innerHTML=`<div class="card" style="padding:6px 8px;margin-bottom:0;border-left:3px solid var(--bad)"><b style="color:var(--bad)">⛔ Blocked</b> — ${esc(block)}</div>`; }
+    logSys("⛔ "+block);
+    showTab("attack");
+    return false;
+  }
+  /* ==== end WP-FIGHT fidelity gate ==== */
   const tgtToks=state.tokens.filter(t=>t.unit===tgtTok.unit);
   const tgtCard=wp3CardFor(tgtTok);
   const atkName=ctx0.card?ctx0.card.name:ctx0.tok.name, tgtName=tgtCard?tgtCard.name:tgtTok.name;
@@ -3316,7 +3365,7 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
   /* ==== WP-FIGHT: a fresh Movement phase (new turn) clears every unit's Fall Back flag — direct
      mutation, not a nested op, because this function already runs identically on both peers from
      the synced "phase" op (same pattern as the CP auto-grant a few lines down). */
-  if(o.ph===1&&prevPh!==1) state.tokens.forEach(t=>{ if(t.fellBack) t.fellBack=false; });
+  if(o.ph===1&&prevPh!==1) state.tokens.forEach(t=>{ if(t.fellBack) t.fellBack=false; if(t.advanced) t.advanced=false; /* ==== WP-FIGHT (P2-3): Advance flag shares Fall Back's fresh-Movement-phase reset ==== */ });
   // any phase change drops an armed pile-in/consolidate — client-local UI state, not synced
   if(o.ph!==prevPh) wpCapMode=null;
   /* ==== end WP-FIGHT ==== */
@@ -3489,7 +3538,12 @@ function wp7InspectorHtml(tok){
 function wpMoveInspectorHtml(tok){
   if(tok.owner!==mySide) return "";
   const uk=tok.unit, done=wpDone.has(uk), hasSnap=!!wpMoveStart[uk];
-  return `<div class="row" style="margin-top:4px;margin-bottom:0">`+
+  /* ==== WP-FIGHT (P2-3): surface the Advance/Fall Back lock so the shooting/charge block isn't a surprise */
+  const mates=state.tokens.filter(t=>t.unit===uk);
+  const lock=mates.some(t=>t.fellBack)?`⛔ Fell Back — no shooting or charging this turn`
+           :mates.some(t=>t.advanced)?`⛔ Advanced — no shooting or charging this turn`:"";
+  const lockHtml=lock?`<div class="small" style="color:var(--bad);margin-top:4px">${lock}</div>`:"";
+  return lockHtml+`<div class="row" style="margin-top:4px;margin-bottom:0">`+
     `<button onclick="wpMarkDone('${uk}')" title="Lock every model in this unit — no more moves this phase"${done?" disabled":""}>${done?"✓ Movement complete":"Movement complete"}</button> `+
     `<button onclick="wpUndoMove('${uk}')" title="Snap this unit back to where it was when the Movement phase began"${hasSnap?"":" disabled"}>↩ Undo move</button>`+
     `</div>`;
@@ -3505,7 +3559,7 @@ function wpMarkDone(unitId){
 function wpUndoMove(unitId){
   const snap=wpMoveStart[unitId];
   if(!snap||!snap.length){ logSys("No movement to undo for this unit yet this phase."); return; }
-  op({k:"tok~",toks:snap.map(s=>({id:s.id,x:s.x,y:s.y,rot:s.rot}))});
+  op({k:"tok~",toks:snap.map(s=>({id:s.id,x:s.x,y:s.y,rot:s.rot,advanced:false}))}); /* ==== WP-FIGHT: undo also clears the Advance flag ==== */
   snap.forEach(s=>wpMoved.delete(s.id));
   wpDone.delete(unitId);
   logSys("Move undone — unit snapped back to the start of the Movement phase.");
@@ -5523,7 +5577,7 @@ function wp15Go(tgtTok,rangedOnly){
   const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks,rangedOnly);
   if(wi<0){ if(rangedOnly) logSys(`${atk.name} has no ranged weapon — Fire Overwatch is a ranged snap-shot, so a melee-only unit can't make it.`); return; }
   const ctx0={tok:atk,card,weapons};
-  wp3Stage(ctx0,wi,tgtTok);
+  if(wp3Stage(ctx0,wi,tgtTok)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked — don't show the weapon selector */
   wp15AfterStage(ctx0,wi,tgtTok);
 }
 // After wp3Stage (both the ⚔ tool AND the inspector flow): remember the pair for
@@ -5543,7 +5597,7 @@ function wp15WepChange(v){
   if(!wp15Ctx) return;
   const c=wp15Ctx, wi=Math.max(0,parseInt(v)||0);
   if(!c.ctx0.weapons[wi]) return;
-  wp3Stage(c.ctx0,wi,c.tgtTok);
+  if(wp3Stage(c.ctx0,wi,c.tgtTok)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked — keep prior selector state */
   wp15AfterStage(c.ctx0,wi,c.tgtTok,c.mul);
 }
 // Manual edit anywhere in the Attack tab: staging is the player's now — hide the selector.
