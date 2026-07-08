@@ -7,56 +7,56 @@
   "sideA": {
     "fid": "DRU",
     "name": "Drukhari",
-    "pts": 2000,
-    "units": 21,
-    "models": 125,
+    "pts": 1980,
+    "units": 14,
+    "models": 65,
     "reserves": 1
   },
   "sideB": {
     "fid": "SM",
     "name": "Space Marines",
-    "pts": 1980,
-    "units": 9,
-    "models": 54,
-    "reserves": 1
+    "pts": 2000,
+    "units": 11,
+    "models": 41,
+    "reserves": 0
   },
   "finalVp": {
     "side1": 30,
-    "side2": 40
+    "side2": 30
   },
   "finalCp": {
-    "side1": 11,
-    "side2": 11
+    "side1": 10,
+    "side2": 10
   },
-  "winner": 2,
-  "marginToAi": 10,
+  "winner": 0,
+  "marginToAi": 0,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 1,
+    "held1": 0,
     "held2": 2,
     "contested": 0
   },
-  "runtimeMs": 1187,
+  "runtimeMs": 616,
   "findings": {
-    "total": 1,
+    "total": 0,
     "critical": 0,
     "major": 0,
-    "minor": 1,
+    "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 127,
+  "aiTotalShots": 82,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 1632,
-    "lostByAi": 733,
-    "diff": 899,
+    "killedByAi": 1828,
+    "lostByAi": 1317,
+    "diff": 511,
     "s1Models": [
-      125,
-      23
+      65,
+      5
     ],
     "s2Models": [
-      54,
-      34
+      41,
+      14
     ]
   }
 }

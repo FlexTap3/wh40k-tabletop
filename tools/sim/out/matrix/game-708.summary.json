@@ -7,56 +7,56 @@
   "sideA": {
     "fid": "AS",
     "name": "Adepta Sororitas",
-    "pts": 1995,
-    "units": 19,
-    "models": 116,
+    "pts": 1990,
+    "units": 15,
+    "models": 42,
     "reserves": 1
   },
   "sideB": {
     "fid": "SM",
     "name": "Space Marines",
-    "pts": 1955,
-    "units": 12,
-    "models": 47,
+    "pts": 1985,
+    "units": 9,
+    "models": 39,
     "reserves": 1
   },
   "finalVp": {
     "side1": 25,
-    "side2": 35
+    "side2": 45
   },
   "finalCp": {
-    "side1": 11,
-    "side2": 11
+    "side1": 10,
+    "side2": 10
   },
   "winner": 2,
-  "marginToAi": 10,
+  "marginToAi": 20,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 2,
-    "held2": 2,
+    "held1": 0,
+    "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 1392,
+  "runtimeMs": 496,
   "findings": {
-    "total": 1,
+    "total": 0,
     "critical": 0,
     "major": 0,
-    "minor": 1,
+    "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 106,
+  "aiTotalShots": 104,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 980,
-    "lostByAi": 499,
-    "diff": 481,
+    "killedByAi": 1516,
+    "lostByAi": 407,
+    "diff": 1109,
     "s1Models": [
-      116,
-      59
+      42,
+      10
     ],
     "s2Models": [
-      47,
-      35
+      39,
+      31
     ]
   }
 }

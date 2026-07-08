@@ -7,56 +7,56 @@
   "sideA": {
     "fid": "TAU",
     "name": "T’au Empire",
-    "pts": 1955,
-    "units": 18,
-    "models": 163,
+    "pts": 1995,
+    "units": 17,
+    "models": 37,
     "reserves": 1
   },
   "sideB": {
     "fid": "AS",
     "name": "Adepta Sororitas",
-    "pts": 1990,
-    "units": 18,
-    "models": 105,
+    "pts": 1980,
+    "units": 13,
+    "models": 40,
     "reserves": 1
   },
   "finalVp": {
-    "side1": 35,
-    "side2": 45
+    "side1": 20,
+    "side2": 35
   },
   "finalCp": {
-    "side1": 11,
-    "side2": 11
+    "side1": 10,
+    "side2": 10
   },
   "winner": 2,
-  "marginToAi": 10,
+  "marginToAi": 15,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 2,
-    "held2": 1,
+    "held1": 1,
+    "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 3278,
+  "runtimeMs": 448,
   "findings": {
-    "total": 1,
+    "total": 0,
     "critical": 0,
     "major": 0,
-    "minor": 1,
+    "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 83,
+  "aiTotalShots": 59,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 744,
-    "lostByAi": 834,
-    "diff": -90,
+    "killedByAi": 755,
+    "lostByAi": 545,
+    "diff": 210,
     "s1Models": [
-      163,
-      101
+      37,
+      23
     ],
     "s2Models": [
-      105,
-      61
+      40,
+      29
     ]
   }
 }

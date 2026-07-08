@@ -24,7 +24,21 @@ reviews the batch. Decisions locked with Paul (2026-07-08):
 - **Matchups:** mostly varied faction/mission for coverage, plus one fixed **control**
   replayed every generation to measure AI improvement objectively.
 
-### The fitness function (evaluated every generation, logged to `SCOREBOARD.md`)
+### Canonical AIStrength metric changed at Gen 6 — cross-faction matrix (not single Control C)
+
+Through Gen 5, AIStrength was measured on **Control C** (one matchup: AS challenger vs T'au AI).
+Gen 6 proved this metric is **gameable / misleading**: a genuinely better, more rules-faithful list
+builder (de-hordes T'au 154→48 models, raises the cross-faction matrix +0.028, keeps Control C's
+win record identical 4W-1D-0L) *"regressed"* Control C's fitness sub-score — only because Control C
+**is** the T'au matchup and its attrition/OC sub-scores reward the very body-count horde being
+removed. Lane C's Gen-5 diagnosis already flagged Control C as "flattering."
+
+**Decision (coordinator, Gen 6): the canonical AIStrength for genetic selection is now the
+`tools/sim/matrix.js` cross-faction grand mean** (AI played across all 5 meta factions vs Tier-S),
+which can't be gamed by one faction's body-count. **Control C is retained as a win-record guardrail
++ human-readable reference** (its win-record must not regress). Baseline (honest 5-seed, matrix):
+**0.717**. Prior single-Control numbers (…0.776) are kept in the log as reference, not compared
+across the metric change.
 
 ```
 FITNESS = w1·Process + w2·Playability + w3·AIStrength      (start 0.2 / 0.4 / 0.4)
@@ -267,6 +281,31 @@ merge `playtest`→`main`; the live Pages push is surfaced for Paul (needs GitHu
 Pages queue can stick — per ops notes) but everything is verified-playable on `playtest` throughout.
 
 ## 8. Generational log (append one block per generation)
+
+**Gen 6 — quality lists + deploy-coherency + the metric pivot (2026-07-08).** 3 lanes + a fix lane,
+merged clean. A quality/fidelity/measurement win more than an AIStrength-number win.
+- **Lane A (AI):** rebuilt `aiBuildList` into a quality-list builder (chaff-share cap, quality-weighted
+  fill, per-datasheet share cap, Rule-of-Three). **De-hordes every faction** — T'au 154→37 models (a
+  real elite battlesuit gunline; its own matrix score rose). Adopted after the metric pivot (below).
+- **Lane B (UI):** enforce **P2-3** (Fell-Back blocks shoot+fight; Advanced blocks shoot, may still
+  fight) at the `wp3Stage` chokepoint; movement-phase UI harness (14/14, 0 errors); +regression tests.
+- **Lane D (fidelity):** fixed AI **deploy-coherency** — root cause was `aiAttachCharacters` leaving a
+  solo character stranded at its deploy spot when the snuggle failed; repair pass consumes no `aiRng`
+  (determinism preserved). +`deploy-coherency-test.js` (fails pre-fix, passes post-fix), in the suite.
+- **Metric pivot (coordinator):** canonical AIStrength is now the **cross-faction matrix grand mean**,
+  not single Control C — Control C rewarded the T'au horde Lane A correctly removed. Control C kept as
+  a **win-record guardrail** (held 4W-1D-0L). See §fitness note.
+- **Gate:** suite green (incl. new coherency test) · matrix grand mean **0.722** (baseline 0.717;
+  ~flat number but far healthier distribution + trustworthy metric) · Control C win-record unchanged ·
+  UI verified · deterministic.
+- **NEW fidelity debt surfaced by the better lists + matrix (MUST fix before `main`):**
+  1. **Movement coherency after casualties** — `aiMoveUnit` rigid-translates a unit but doesn't
+     re-form coherency after it loses models; a depleted unit (e.g. SM Execrator) ends Movement
+     incoherent (rounds 4–5). Pre-existing in the AI move code; Control C never exposed it.
+  2. **Base overlap in `aiAttachCharacters`** snuggle (~−0.9" edge) — pre-existing, flagged by Lane D.
+- **→ Gen 7 = fidelity cleanup** (clear both above) before chasing more AI strength.
+
+
 
 **Gen 5 — first 3-lane parallel generation (2026-07-08).** All three lanes ran concurrently in
 worktrees (two dropped on transient connection errors mid-run and were **resumed from context**;

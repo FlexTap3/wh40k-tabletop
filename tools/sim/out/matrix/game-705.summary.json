@@ -7,56 +7,56 @@
   "sideA": {
     "fid": "DRU",
     "name": "Drukhari",
-    "pts": 2000,
-    "units": 21,
-    "models": 125,
+    "pts": 1980,
+    "units": 14,
+    "models": 65,
     "reserves": 1
   },
   "sideB": {
     "fid": "TAU",
     "name": "T’au Empire",
     "pts": 1975,
-    "units": 15,
-    "models": 148,
+    "units": 13,
+    "models": 29,
     "reserves": 1
   },
   "finalVp": {
-    "side1": 50,
-    "side2": 35
+    "side1": 25,
+    "side2": 30
   },
   "finalCp": {
-    "side1": 11,
-    "side2": 11
+    "side1": 10,
+    "side2": 10
   },
-  "winner": 1,
-  "marginToAi": -15,
+  "winner": 2,
+  "marginToAi": 5,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 2,
+    "held1": 1,
     "held2": 1,
     "contested": 0
   },
-  "runtimeMs": 3094,
+  "runtimeMs": 682,
   "findings": {
-    "total": 1,
+    "total": 0,
     "critical": 0,
     "major": 0,
-    "minor": 1,
+    "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 90,
+  "aiTotalShots": 74,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 976,
-    "lostByAi": 1334,
-    "diff": -358,
+    "killedByAi": 1310,
+    "lostByAi": 885,
+    "diff": 425,
     "s1Models": [
-      125,
-      64
+      65,
+      22
     ],
     "s2Models": [
-      148,
-      48
+      29,
+      16
     ]
   }
 }

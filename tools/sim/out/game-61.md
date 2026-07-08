@@ -1,4 +1,4 @@
-# Battle Report — Game 706
+# Battle Report — Game 61
 
 **Layout:** Official 1A · T&H vs T&H  |  **Mission:** Battlefield Dominance / Battlefield Dominance  |  **Seed:** 42
 
@@ -9,7 +9,7 @@
 - **Final VP:** Adepta Sororitas 20 — 30 Space Marines
 - **Winner:** Space Marines (AI)
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 3
-- **Reached round 5:** yes   |   **Runtime:** 539 ms
+- **Reached round 5:** yes   |   **Runtime:** 538 ms
 
 ## Per-round summary
 
