@@ -268,6 +268,35 @@ Pages queue can stick — per ops notes) but everything is verified-playable on 
 
 ## 8. Generational log (append one block per generation)
 
+**Gen 5 — first 3-lane parallel generation (2026-07-08).** All three lanes ran concurrently in
+worktrees (two dropped on transient connection errors mid-run and were **resumed from context**;
+one was relaunched clean — no work lost to the loop). Merged clean.
+- **Lane A (AI):** #4 threat-aversion — added `AI_TUNE.holdThreat=0.55` so the AI holds/takes a
+  forward objective under fire instead of retreating. **5-seed mean 0.764 → 0.776** (+0.012), mean
+  trade +279→+337. Kept.
+- **Lane B (playability):** drove Cards/secondaries/scoreboard/end-game through the real UI
+  (`cards-ui.js`, 15/15, 0 errors). Fixed a **MAJOR** end-game fidelity gap — the app entered a
+  phantom round-6 Command and auto-granted +1 CP/side; now suppressed past R5 with an explicit
+  "Game over" cue (final CP correctly 10/10). Also: ranged-only Fire Overwatch (P2-4), a rounds-2–5
+  "score primary" reminder. Flagged **shared-vs-hidden secondary hands** for Paul (deliberately left
+  shared — a single-screen table aid; strict matched play hides hands).
+- **Lane C (diagnostics):** `matrix.js` + `DIAGNOSIS-gen5.md` — AI across all 5 meta factions vs
+  Tier-S. **Grand mean 0.702** (per-faction: SM 0.80 · DRU 0.71 · AS 0.66 · T'au 0.64). Structural
+  finding: **`aiBuildList` pads most factions into fill-hordes** (T'au 154 models — anti-thematic,
+  weak) — the #1 lever for Gen 6. Also caught the deploy-coherency fidelity bug (below).
+- **Coordinator (integration gate caught a cross-lane interaction):** Lane B's end-game fix made the
+  auditor's `cp-boundary` finding a false positive (it still subtracted the now-suppressed phantom
+  CP). Corrected `driver.js` → **Control C is now a fully clean game: 0 findings, 0 rules.**
+- **Gate PASSED:** suite green · 5-seed mean **0.776** · 0 findings / 0 rules · UI 9/9 0 errors ·
+  deterministic. AIStrength curve (legal floor): 0.764 → **0.776**.
+- **Queued for Gen 6:** (1) **fill-horde list builder** — highest lever (Lane C, +0.05–0.10 est.);
+  (2) **deploy-coherency fidelity fix** — `aiPlaceUnit` sizes its grid gap from only `toks[0]`'s base
+  and `aiDeployAll`'s fit-failure fallback leaves units at drop positions, so large/mixed-base units
+  (e.g. Sororitas Hospitallers) can deploy out of coherency. Not Control-C-blocking (T'au is the
+  control AI) but a real 11th-ed violation — fix before the final `main` merge.
+
+
+
 **Gen 4 — first PARALLEL two-lane generation; big fidelity correction (2026-07-08).** Ran both
 lanes concurrently in isolated worktrees; merged cleanly (disjoint regions held, no conflicts).
 - **Lane A (AI, headless):** fixed chronic under-shooting — one gate in `wp11ScoreAdjust` so a

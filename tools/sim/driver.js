@@ -140,11 +140,9 @@ function simRun() {
 
   // ---- liveness ----
   const reachedR5 = state.trackers.round > 5;
-  // Boundary artifact (not a violation): stepping past round 5 enters a round-6 Command, and the
-  // app auto-grants +1 CP there. The game legitimately ends at the end of round 5, so the true
-  // end-state CP is one lower per side than state.trackers shows. Logged for transparency.
-  if (reachedR5 && state.phase.ph === 0 && state.phase.side === 1)
-    pushFinding("minor", "cp-boundary", 5, 0, `final CP includes an extra +1/side from the round-6 Command entry when stepping past round 5 (true end-of-R5 CP is ${state.trackers.cp1 - 1}/${state.trackers.cp2 - 1})`, false);
+  // (Gen-5) The old round-6 phantom-CP artifact is fixed app-side: the app now suppresses the
+  // Command-phase +1 CP past round 5, so state.trackers.cp is already the correct end-of-R5 value
+  // (10/10) — no cp-boundary correction needed here anymore.
   if (!reachedR5) pushFinding("critical", "liveness", state.trackers.round, -1, `game did not reach the end of round 5 (stopped at round ${state.trackers.round}, guard ${guard})`, false);
   if (guard >= 400) pushFinding("critical", "softlock", state.trackers.round, -1, `phase loop hit its guard (${guard}) — possible softlock`, false);
 
