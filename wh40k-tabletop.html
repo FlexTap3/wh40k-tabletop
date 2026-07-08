@@ -4119,7 +4119,7 @@ function aiPlaceUnit(toks,poly,placed){
   if(!toks.length) return false;
   const xs=poly.map(p=>p[0]), ys=poly.map(p=>p[1]);
   const x0=Math.min.apply(null,xs), x1=Math.max.apply(null,xs), y0=Math.min.apply(null,ys), y1=Math.max.apply(null,ys);
-  const gap=Math.max(1.3,2*tokRadius(toks[0])+0.25);
+  const gap=Math.max(1.3,2*Math.max.apply(null,toks.map(tokRadius))+0.25); // size the grid from the unit's LARGEST base, not toks[0] — mixed/large-base units stay non-overlapping & in coherency
   const cands=[];
   for(let y=y0+1;y<=y1-1;y+=1.5) for(let x=x0+1;x<=x1-1;x+=1.5) if(wp7PtInPoly(x,y,poly)) cands.push([x,y]);
   for(let i=cands.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); const t=cands[i]; cands[i]=cands[j]; cands[j]=t; }
@@ -4142,6 +4142,54 @@ function aiDeployAll(unitsToks){
   unitsToks.slice().sort((a,b)=>b.length-a.length).forEach(toks=>{ // biggest units grab space first
     if(!aiPlaceUnit(toks,poly,placed))
       logSys("🤖 Couldn't fit "+((toks[0]&&toks[0].name)||"a unit")+" in the DZ — left where it dropped; drag it if needed.");
+  });
+  /* ---- deploy-time coherency repair (11th-ed: every unit is SET UP in coherency) ----
+     Runs AFTER grid placement and consumes NO aiRng, so it is a strict no-op — and can
+     never perturb the shared aiRng game stream — unless a model is genuinely out of
+     coherency (edge > 2.02" from EVERY squadmate, matching checkCoherency's 1-neighbour
+     rule). Two latent sources of incoherence are healed:
+       (a) A solo/2-model INFANTRY character that aiAttachCharacters will merge into a
+           squad: its 8-offset "snuggle" can fail against a tightly-packed squad and leave
+           the character 2"+ from every squadmate. We pre-seat the character adjacent to
+           the squad it WILL join (mirroring that pairing) so a later snuggle failing is
+           harmless. This is the real cross-faction repro (Hospitaller/Cadre Fireblade/
+           Death Jester at 2.1"-4.1").
+       (b) Any multi-model unit with a stray model (e.g. a mixed/large-base squad, or a
+           unit left on its base-unaware fallback drop grid): nudge it back toward its
+           nearest squadmate. */
+  const findAdj=(chr,hostToks)=>{ // deterministic legal spot within coherency of a host model — no aiRng
+    const others=state.tokens.filter(t=>t.id!==chr.id);
+    const hs=hostToks.slice().sort((a,b)=>edgeDist(chr,a)-edgeDist(chr,b));
+    for(const h of hs){ const need=tokRadius(chr)+tokRadius(h);
+      for(let g=0.3;g<=1.6;g+=0.3){ const d=need+g;
+        for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+          if(!wp7PtInPoly(x,y,poly)) continue;
+          if(!aiSpotOk(chr,x,y,others)) continue;
+          return [x,y]; } } }
+    return null;
+  };
+  const units=aiUnits(2);
+  const squads=units.filter(u=>u.toks.length>=3&&unitHasKw(u.toks,["INFANTRY"])&&!u.toks.some(t=>tokKw(t).includes("CHARACTER")));
+  const used=new Set();
+  units.forEach(u=>{ // (a) pre-seat attaching characters next to their host squad (mirrors aiAttachCharacters pairing)
+    if(!u.toks.every(t=>tokKw(t).includes("CHARACTER"))||u.toks.length>2) return;
+    if(!unitHasKw(u.toks,["INFANTRY"])) return;
+    const host=squads.filter(s=>!used.has(s.uk)).sort((a,b)=>edgeDist(u.toks[0],a.toks[0])-edgeDist(u.toks[0],b.toks[0]))[0];
+    if(!host) return;
+    used.add(host.uk);
+    u.toks.forEach(chr=>{
+      if(host.toks.some(m=>edgeDist(chr,m)<=2.02)) return; // already in coherency with host — leave EXACTLY as placed
+      const spot=findAdj(chr,host.toks);
+      if(spot) op({k:"tok~",toks:[{id:chr.id,x:spot[0],y:spot[1]}]});
+    });
+  });
+  aiUnits(2).forEach(u=>{ const ms=u.toks; if(ms.length<2) return; // (b) nudge any stray model back into coherency
+    ms.forEach(m=>{
+      let nn=Infinity,near=null; ms.forEach(o=>{ if(o!==m){ const d=edgeDist(m,o); if(d<nn){nn=d;near=o;} } });
+      if(!near||nn<=2.02) return; // in coherency — untouched
+      const spot=findAdj(m,[near]);
+      if(spot) op({k:"tok~",toks:[{id:m.id,x:spot[0],y:spot[1]}]});
+    });
   });
 }
 function aiAttachCharacters(){ // leaders join squads at deployment (as the rules have it)
