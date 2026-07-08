@@ -5011,7 +5011,11 @@ function wp11ScoreAdjust(c,ctx){ // aiMoveUnit hook: doctrine scoring terms, ret
   //    over open lanes when expected return fire exceeds their own output
   if(ctx.ranged.length&&!ctx.adv&&info.gt.total>info.own
      &&(round===1||(round===2&&info.gt.total>info.own*AI_TUNE.outgunnedRatio))){
-    if(ctx.sh>0&&!inDense) d-=AI_TUNE.stageW;
+    // Don't hide a gunline that can actually shoot: only penalize an open lane when the shot from
+    // here is too weak to earn the exposure (return fire outweighs it). A worthwhile shot cancels
+    // the stage-back pressure — idle guns are pure lost output.
+    const shootVal=(ctx.sh||0)*AI_TUNE.shootW;
+    if(ctx.sh>0&&!inDense&&shootVal<info.gt.worst*AI_TUNE.tradeW) d-=AI_TUNE.stageW;
     if(inDense) d+=AI_TUNE.stageW*0.6;
   }
   // 5: trade math — a move into the open must earn its exposure (objective swing + damage dealt
