@@ -3695,6 +3695,11 @@ const AI_TUNE={
   tgtOnObj:1.5,      // target priority: unit parked on an objective the AI doesn't hold
   minShootExp:0.25,  // don't fire below this expected damage
   reserveMax:1,      // units held in Strategic Reserves
+  // ---- list-build quality knobs (Gen-6: stop padding elite/gunline armies into fill-hordes) ----
+  chaffPpm:13,       // a unit costing ≤ this many points-per-model is "cheap chaff" (a body, not a threat)
+  chaffShare:0.35,   // cap: at most this fraction of the list's points may be spent on cheap chaff
+  elitePpm:18,       // a non-character costing ≥ this points-per-model counts as a quality/"hammer" pick
+  maxUnitShare:0.33, // skip any single datasheet costing > this fraction of the list (no Lord-of-War hogging)
 };
 
 /* ---- solo flag + seedable RNG (mulberry32; aiSeed(n) reproduces a whole game) ---- */
@@ -3943,51 +3948,77 @@ function aiPickSize(u,budget,preferBig){
   return opts[0]||null;
 }
 function aiBuildList(fid,pts){
+  // Gen-6 quality lists: a strong player builds to faction strength (T'au fields battlesuits, not a
+  // Fire-Warrior swarm) and wins attrition on firepower/durability EFFICIENCY, not raw model count.
+  // So we cap the share of points spent on cheap chaff, bias fill toward points-dense quality picks,
+  // and only pad with chaff up to its cap — keeping the Rule-of-Three cap and the ~2000-pt fill
+  // target (with a floor so we never regress the earlier under-spend fix).
   const units=DB.units[fid]||[], picked=[]; let left=pts;
   const kOf=u=>(u.k||[]).map(s=>String(s).toUpperCase());
   const cost0=u=>(u.p&&u.p[0]&&+u.p[0][1])||0;
+  const models0=u=>{ const m=u.p&&u.p[0]&&String(u.p[0][0]).match(/(\d+)/); return m?+m[1]:1; };
+  const ppm0=u=>cost0(u)/Math.max(1,models0(u));    // base points-per-model — the cheapness signal
   const shuffle=a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
-  const pool=f=>units.map((u,i)=>[u,i]).filter(([u])=>f(u)&&cost0(u)>0
-    &&!kOf(u).includes("FORTIFICATION")&&!kOf(u).includes("AIRCRAFT")&&u.r!=="Fortifications").map(([,i])=>i);
-  const take=(idxs,n,preferBig)=>{ let got=0;
-    for(const i of shuffle(idxs)){
-      if(got>=n) break;
-      const u=units[i], o=aiPickSize(u,left,preferBig);
-      if(!o) continue;
-      if(picked.filter(p=>p.idx===i).length>=2) continue; // max 2 copies of anything
-      picked.push({idx:i,size:o.models,pts:o.pts,name:u.n}); left-=o.pts; got++;
-    }
+  const legalU=u=>cost0(u)>0&&!kOf(u).includes("FORTIFICATION")&&!kOf(u).includes("AIRCRAFT")
+    &&u.r!=="Fortifications"&&cost0(u)<=AI_TUNE.maxUnitShare*pts;   // no single datasheet hogs the list
+  const pool=f=>units.map((u,i)=>[u,i]).filter(([u])=>f(u)&&legalU(u)).map(([,i])=>i);
+  const chaffCap=AI_TUNE.chaffShare*pts;             // cap on points spent on cheap bodies
+  const isChaff=u=>ppm0(u)<=AI_TUNE.chaffPpm;
+  let chaffPts=0;                                    // running points spent on cheap chaff
+  const copies=i=>picked.filter(p=>p.idx===i).length;
+  // add one pick honoring the Rule-of-Three copy cap AND the chaff-points cap; returns pts spent.
+  // Pass capChaff=false only in the last-resort floor pass, so a chaff-poor faction can still fill.
+  const add=(i,preferBig,maxCopies,capChaff)=>{
+    if(copies(i)>=(maxCopies||3)) return 0;
+    const u=units[i];
+    let budget=left;
+    if(isChaff(u)&&capChaff!==false) budget=Math.min(budget,chaffCap-chaffPts); // cheap bodies can't blow their share
+    const o=aiPickSize(u,budget,preferBig);
+    if(!o) return 0;
+    picked.push({idx:i,size:o.models,pts:o.pts,name:u.n});
+    left-=o.pts; if(isChaff(u)) chaffPts+=o.pts;
+    return o.pts;
+  };
+  const take=(idxs,n,preferBig,maxCopies)=>{ let got=0;
+    for(const i of shuffle(idxs)){ if(got>=n) break; if(add(i,preferBig,maxCopies||2)>0) got++; }
     return got; };
   const chars=pool(u=>kOf(u).includes("CHARACTER")&&!kOf(u).includes("EPIC HERO"));
   const battle=pool(u=>kOf(u).includes("BATTLELINE"));
   const heavy=pool(u=>(kOf(u).includes("VEHICLE")||kOf(u).includes("MONSTER"))
     &&!kOf(u).includes("CHARACTER")&&!kOf(u).includes("DEDICATED TRANSPORT")&&cost0(u)>=100);
   const inf=pool(u=>kOf(u).includes("INFANTRY")&&!kOf(u).includes("CHARACTER"));
+  // quality bodies: points-dense non-characters + every vehicle/monster (battlesuits, tanks, hammers)
+  const elite=pool(u=>!kOf(u).includes("CHARACTER")
+    &&(ppm0(u)>=AI_TUNE.elitePpm||kOf(u).includes("VEHICLE")||kOf(u).includes("MONSTER")));
+  const quality=[...new Set([...heavy,...elite])];
+  const chaffPool=(inf.length?inf:battle).filter(i=>isChaff(units[i]));
+  const nonChaffInf=inf.filter(i=>!isChaff(units[i]));
+  // --- spine: leaders, a battleline core, anti-tank/durable heavies, and an elite hammer ---
   take(chars,pts>=1000?2:1,false);
   take(battle,pts>=1500?3:2,pts>=1000);
   take(heavy,pts>=1000?2:1,false);
-  let guard=0;
-  while(left>=50&&guard++<24&&take(inf.length?inf:battle,1,false)>0){}
-  // --- upsize pass: grow already-picked units to their largest affordable profile. Spending
-  //     points on bigger squads is strictly better than banking them; always legal within 2000. ---
+  take(elite,pts>=1500?3:2,false);
+  // --- upsize pass: grow already-picked NON-chaff units to their largest affordable profile (a
+  //     denser quality squad, not more cheap bodies). Chaff is deliberately left small. ---
   for(const p of picked){
+    if(isChaff(units[p.idx])) continue;
     const o=aiPickSize(units[p.idx],left+p.pts,true);   // biggest size that fits if this unit's cost is refunded
     if(o&&o.pts>p.pts){ left-=(o.pts-p.pts); p.pts=o.pts; p.size=o.models; }
   }
-  // --- fill pass: with points still on the table, keep buying (prefer big) until nearly spent.
-  //     Copy cap = 3/datasheet (the Rule of Three — the matched-play floor in every recent
-  //     edition, so guaranteed legal even where I can't cite the exact 11th-ed number). ---
-  const fillPool=(inf.length?inf:battle);
-  let fguard=0;
-  while(left>=50&&fguard++<60){
-    let bought=false;
-    for(const i of shuffle(fillPool)){
-      if(picked.filter(p=>p.idx===i).length>=3) continue;
-      const o=aiPickSize(units[i],left,true);
-      if(!o) continue;
-      picked.push({idx:i,size:o.models,pts:o.pts,name:units[i].n}); left-=o.pts; bought=true; break;
-    }
-    if(!bought) break;
+  // Buy from the first of `pools` that yields an affordable pick this round (prefer big), RoT=3.
+  const fillRound=(pools,capChaff)=>{
+    for(const P of pools){ for(const i of shuffle(P)){ if(add(i,true,3,capChaff)>0) return true; } }
+    return false;
+  };
+  // --- quality fill: spend leftover points on points-dense units (and quality infantry) FIRST —
+  //     this is what stops elite/gunline armies becoming Fire-Warrior swarms. ---
+  let g1=0; while(left>=50&&g1++<80&&fillRound([quality,nonChaffInf])){}
+  // --- chaff fill: only now top up with cheap bodies, and only up to the chaff-share cap. ---
+  let g2=0; while(left>=50&&g2++<80&&fillRound([chaffPool.length?chaffPool:battle])){}
+  // --- floor safety net: if still short of the ~1950 floor (chaff-poor faction, cap reached),
+  //     drop the chaff cap and buy anything affordable (RoT=3) so we always spend ≥~1950. ---
+  if(left>=50){ const anyPool=[...quality,...inf,...battle,...chars]; let g3=0;
+    while(left>=50&&g3++<80&&fillRound([anyPool],false)){}
   }
   return picked;
 }
