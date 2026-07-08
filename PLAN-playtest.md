@@ -212,6 +212,42 @@ should shrink in severity over the batch.
 - **Every fix ships a regression test** and must keep `run_all.sh` + the control match
   green. Mutations that regress fitness are reverted (genetic selection).
 
+## 9. Parallel multi-agent workflow (both streams at once)
+
+From Gen 4 on, each generation runs **two lanes concurrently**, then a serialized integration gate.
+Both lanes edit the same single-file app, so lanes are **isolated in git worktrees** off `playtest`
+and the **coordinator (me) is the sole merge point + fidelity gatekeeper** — no two agents ever
+write the app at the same time in the same tree.
+
+**Lane A — AI strength (headless).** A worktree agent picks the next ranked lever from the Gen-1
+diagnosis (e.g. #3 under-shooting), implements it in the AI functions, and **measures it itself on
+the 5-seed `control.js` mean**. It keeps the change only if mean AIStrength beats the current best
+(0.824) with 0 rules findings and `run_all.sh` green; commits to branch `playtest-ai-genN`.
+
+**Lane B — playability / fidelity (real UI).** A worktree agent extends `tools/shots/playtest-ui.js`
+to drive the target phase cluster (Gen 4→Fight phase: overwatch, pile-in/consolidate, fall-back),
+hunts UX/flow/mechanics/fidelity bugs, fixes the clear ones in the UI layer, and **verifies via the
+UI walkthrough** (0 console errors + screenshots reviewed). Files findings in `PLAYTEST-FINDINGS.md`;
+commits to branch `playtest-ux-genN`.
+
+**Disjoint edit regions** (keeps merges clean): Lane A touches AI logic (`aiShootUnit`, `aiMoveUnit`,
+`aiChargeUnit`, `AI_TUNE`, `wp11*`); Lane B touches UI/HTML/dialog/flow. Agents are told to stay in
+their region and never edit the other's.
+
+**Integration gate (coordinator, serialized):**
+1. Review each branch's diff for fidelity (rules-critical changes are mine to bless).
+2. Merge Lane A, then Lane B, into `playtest`; resolve any overlap.
+3. Re-run the **full gate on the merged result** to catch cross-lane interactions:
+   `run_all.sh` (green) + `control.js` 5-seed mean (AIStrength ≥ prior best, 0 rules) +
+   `playtest-ui.js` (0 console errors). Revert whichever lane regresses the merged whole.
+4. Commit the integrated generation; update `SCOREBOARD.md`, `PLAYTEST-FINDINGS.md`, §8 log.
+
+**Selection rule (genetic):** a lane's change survives only if it raises its own fitness dimension
+*and* the merged result passes the full gate. Fidelity is absolute — any confirmed 11th-ed rules
+deviation zeroes Playability and blocks the merge until fixed.
+
+Remaining budget: Gens 4–9 (6 generations) to reach the 10-run total, each running both lanes.
+
 ## 8. Generational log (append one block per generation)
 
 **Gen 0 — bring-up + first fitness gate (2026-07-08).** `tools/sim/` built (runner,
