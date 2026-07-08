@@ -4123,7 +4123,7 @@ function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
       if(c.x<r||c.y<r||c.x>state.board.w-r||c.y>state.board.h-r) return false;
       if(wp5Illegal(c)) return false;
       for(const e of enemyToks){
-        if(!allowEngage&&edgeDist(c,e)<=1.05) return false;   // may not end within 1" unless charging
+        if(!allowEngage&&edgeDist(c,e)<=2.05) return false;   // 11th-ed: may not end within 2" engagement range unless charging
         if(allowEngage&&edgeDist(c,e)<-0.05) return false;    // …but never overlapping bases
       }
       for(const o of state.tokens) if(o.owner===c.owner&&o.unit!==c.unit&&edgeDist(c,o)<0.02) return false;
@@ -4389,7 +4389,7 @@ function aiChargeUnit(uk){
   aiUnits(1).forEach(e=>{
     if(!e.toks.length) return;
     const d=wp3UnitDist(ms,e.toks);
-    if(d>12.02||d<=1.02) return;
+    if(d>12.02||d<=2.02) return;   // 11th-ed: skip enemies already within 2" engagement range
     const los=losCheckUnits(uk,e.uk);
     if(!los||!los.vis) return;
     const exp=Math.max(...W.melee.map(w=>aiExpDamage(w,ms.length,e.toks,0,false)));
@@ -4398,12 +4398,13 @@ function aiChargeUnit(uk){
   });
   if(!best) return;
   const a=aiD6(),b=aiD6(),roll=a+b;                          // real charge roll (AI dice)
-  if(roll+1.02<best.d){
+  if(roll+2.02<best.d){                                       // 11th-ed: charge succeeds if it can END within 2" engagement range
     logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> needs ${best.d.toFixed(1)}", rolled ${a}+${b}=${roll} — <b>failed</b>`,"dice");
     return;
   }
   const [am,bm]=aiClosestPair(ms,best.e.toks);
-  const need=Math.max(0,edgeDist(am,bm)-0.15), dd=Math.hypot(bm.x-am.x,bm.y-am.y)||1;
+  // move toward contact, but never further than the charge roll (each model moves up to `roll`")
+  const need=Math.min(roll,Math.max(0,edgeDist(am,bm)-0.15)), dd=Math.hypot(bm.x-am.x,bm.y-am.y)||1;
   if(aiTryTranslate(ms,(bm.x-am.x)/dd*need,(bm.y-am.y)/dd*need,state.tokens.filter(t=>t.owner===1),true)){
     aiMoved[uk]=Object.assign(aiMoved[uk]||{},{charged:true});
     logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> rolled ${a}+${b}=${roll} vs ${best.d.toFixed(1)}" — <b>made it</b> (base contact approximation)`,"dice");
@@ -4417,7 +4418,7 @@ function aiFightUnit(uk){
   const W=aiWeapons(ms); if(!W.melee.length) return;
   let best=null;
   aiUnits(1).forEach(e=>{
-    if(!e.toks.length||wp3UnitDist(ms,e.toks)>1.02) return;
+    if(!e.toks.length||wp3UnitDist(ms,e.toks)>2.02) return;   // 11th-ed: can fight anything within 2" engagement range
     const w=W.melee.reduce((a2,b2)=>aiExpDamage(b2,ms.length,e.toks,0,false)>aiExpDamage(a2,ms.length,e.toks,0,false)?b2:a2);
     const sc=aiTargetScore(e,aiExpDamage(w,ms.length,e.toks,0,false));
     if(!best||sc>best.sc) best={e,w,sc};

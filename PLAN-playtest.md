@@ -250,6 +250,37 @@ Remaining budget: Gens 4–9 (6 generations) to reach the 10-run total, each run
 
 ## 8. Generational log (append one block per generation)
 
+**Gen 4 — first PARALLEL two-lane generation; big fidelity correction (2026-07-08).** Ran both
+lanes concurrently in isolated worktrees; merged cleanly (disjoint regions held, no conflicts).
+- **Lane A (AI, headless):** fixed chronic under-shooting — one gate in `wp11ScoreAdjust` so a
+  gunline no longer hides out of LoS when it has a worthwhile shot. Agent measured it itself and
+  **reverted two sub-levers that overfit** (lane-chasing → 0.78; `minShootExp` tuning → chaotic).
+  Net +0.008 in isolation (0.824→0.832). Kept.
+- **Lane B (playability, real UI):** drove the **Fight phase** end-to-end for the first time
+  (`tools/shots/fight-ui.js`: overwatch, 2D6 charge, pile-in/consolidate 3" caps, fall-back) —
+  **11/11 steps, 0 console errors.** Fixed the reminder-banner overlap (now click-through) and, most
+  importantly, caught a **rules-gate violation: melee engagement range was 1" (10th ed), not 2"
+  (11th ed)** in the UI (`wp3Stage`/`wp15DefaultWi`) — verified against Core Rules Study Notes L8.
+- **Coordinator fidelity sweep (the headline):** the same 10th-vs-11th engagement bug lived in the
+  **AI** too (Lane B flagged it as P2-6, out of its scope). Fixed all four AI sites (`aiTryTranslate`
+  non-charge avoidance, `aiChargeUnit` skip + success threshold, `aiFightUnit` eligibility) to 2",
+  and capped the AI charge move to the 2D6 roll (it was reaching base contact regardless of the roll).
+- **Honest cost — a re-baseline, not a regression:** the 5-seed mean AIStrength **dropped 0.832 →
+  0.764** because the AI had been *illegally* ending 1" from enemies and charging on 1" engagement.
+  Removing that 10th-ed cheat is mandatory (fidelity is the hard gate) and legitimately weakens the
+  AI — exactly like Gen 0. **The whole prior AIStrength curve was inflated by this; 0.764 is the true
+  legal floor.** Future AI gains build from here.
+- **Full integration gate PASSED:** `run_all.sh` green · 5-seed control 0 rules / all reach R5 ·
+  UI walkthrough 9/9, 0 errors · deterministic. Playability up (Fight phase verified + 2 fixes),
+  fidelity up (engagement range correct app-wide), AI honestly re-baselined.
+- **Open (from Lane B):** P2-3 fell-back-can-still-act, P2-4 melee-weapon Overwatch, P2-5 no formal
+  charge adjudication — all "assist vs adjudicate" calls, deferred.
+- **Carry forward Gen 5:** now that engagement is 2" everywhere, re-mine AI strength on the honest
+  0.764 floor (charge/positioning levers reopened by the 2" change), and continue playability
+  (cards/scoreboard/end-game). Both lanes again.
+
+
+
 **Gen 0 — bring-up + first fitness gate (2026-07-08).** `tools/sim/` built (runner,
 Tier-N challenger, auditor, scoreboard). First full 2000-pt, 5-round, deterministic game
 runs end-to-end: Sororitas (side 1, Tier N) vs T'au AI (side 2), Official 1A, seed 42.
