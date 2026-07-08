@@ -112,8 +112,10 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #wp11Banner button{margin-left:10px; vertical-align:middle}
 /* ==== end WP11 ==== */
 /* ==== WP-RULES: per-phase reminder banner ==== */
-#wpRulesReminder{position:absolute; left:50%; transform:translateX(-50%); top:54px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:7px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:12; font-size:12px; text-align:center; line-height:1.4}
-#wpRulesReminder button{margin-left:10px; vertical-align:middle}
+/* Coaching strip: pinned flush to the board's top edge and made click-through (pointer-events:none)
+   so it never blocks selecting/dragging tokens beneath it; only the ✕ button stays clickable. */
+#wpRulesReminder{position:absolute; left:50%; transform:translateX(-50%); top:46px; max-width:60%; background:rgba(24,20,25,.82); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:8px; padding:5px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:12; font-size:12px; text-align:center; line-height:1.35; pointer-events:none}
+#wpRulesReminder button{margin-left:10px; vertical-align:middle; pointer-events:auto}
 html.phone #wpRulesReminder{top:auto; bottom:50px; left:8px; right:8px; transform:none; max-width:none}
 /* ==== end WP-RULES ==== */
 /* ==== WP12: phone ==== board-first command deck. Every rule is gated on html.phone
@@ -2513,7 +2515,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   const tgtCard=wp3CardFor(tgtTok);
   const atkName=ctx0.card?ctx0.card.name:ctx0.tok.name, tgtName=tgtCard?tgtCard.name:tgtTok.name;
   const dist=wp3UnitDist(atkToks,tgtToks);
-  const inRange=w.melee?dist<=1.02:dist<=w.rng+0.02;
+  const inRange=w.melee?dist<=2.02:dist<=w.rng+0.02; /* 11th-ed engagement range is 2" horizontally (was 1" in 10th) */
   const notes=[];
   /* ==== WP4/WP5 wiring: LoS, cover and Plunging Fire feed the staged attack ==== */
   const los=losCheckUnits(ctx0.tok.unit,tgtTok.unit);
@@ -2557,7 +2559,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   // staging banner + attack-log label
   wp3Label=`⚔ ${atkName} → ${tgtName} · ${w.n}`;
   wp16Staged={tgtUk:tgtTok.unit,atkUk:ctx0.tok.unit}; /* ==== WP16 ==== remember the staged pair for the apply-damage button ==== end WP16 ==== */
-  const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 1\")"}`
+  const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 2\")"}`
                      :`range ${w.rng}" — closest models ${dist.toFixed(1)}" ${inRange?"(in range)":"(OUT OF RANGE)"}`;
   const stage=g("akStage");
   stage.style.display="block";
@@ -5451,7 +5453,7 @@ function wp15CarrierCount(atkToks,w){
 // the biggest carriers×average-attacks output (ties → first); otherwise the ranged
 // weapon with the smallest range shortfall (i.e. the longest gun).
 function wp15DefaultWi(weapons,dist,atkToks){
-  if(dist<=1.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; }
+  if(dist<=2.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; } /* 11th-ed engagement range 2" */
   const ranged=weapons.map((w,i)=>({w,i})).filter(x=>!x.w.melee);
   if(!ranged.length) return weapons.findIndex(w=>w.melee); // melee-only unit out of engagement: stage the melee anyway
   const inR=ranged.filter(x=>dist<=x.w.rng+0.02);
