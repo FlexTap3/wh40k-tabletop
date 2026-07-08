@@ -9,7 +9,7 @@
 - **Final VP:** Space Marines 25 — 25 Adepta Sororitas
 - **Winner:** Draw
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 0
-- **Reached round 5:** yes   |   **Runtime:** 417 ms
+- **Reached round 5:** yes   |   **Runtime:** 405 ms
 
 ## Per-round summary
 

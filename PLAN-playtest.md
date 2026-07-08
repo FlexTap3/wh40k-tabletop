@@ -282,6 +282,27 @@ Pages queue can stick — per ops notes) but everything is verified-playable on 
 
 ## 8. Generational log (append one block per generation)
 
+**Gen 7 — fidelity cleanup + full-game capstone (2026-07-08).** Cleared the Gen-6 fidelity debt and
+validated a whole game on a live render. Both lanes merged clean.
+- **Lane A (AI fidelity):** `aiReformUnit` re-forms unit coherency after casualties in all move exit
+  paths (shortest straggler pull, respects move cap, no base overlap, non-charge 2.05" enemy gap,
+  **consumes no `aiRng`**); hardened attach seating (`aiSeatAdjacent`, primary offsets byte-identical
+  + guaranteed-gap fallback). **Matrix rules 1 → 0**, grand mean **0.722 unchanged** (fidelity at zero
+  strength cost), Control 4W-1D-0L. +`ai-move-coherency-test.js` (fails pre-fix, passes post).
+- **Lane B (playability):** capstone `fullgame-ui.js` — **a full 5-round solo game completes through
+  the real UI, 20/20 steps, 0 console errors, deterministic**, correct "Game over" (10/10 CP). Fixed
+  **P5-1** (casualty-allocation banner blocked clicks to units beneath it — pointer-events, same as
+  P2-2). Found **P5-2** (AI shooting resolves one phase late — `aiShootUnit`/`aiPlanPhase` enqueue
+  order; not a rules break, no damage lost) → handed to the AI lane.
+- **Gate PASSED:** suite green (incl. 2 new tests) · **matrix 0 rules / grand mean 0.722** · Control
+  win-record unchanged · full-game UI 0 errors · deterministic.
+- **Milestone:** the app is now rules-clean across all 5 AI factions AND verified playable end-to-end.
+- **→ Gen 8:** back to AI strength (melee aggression, diagnosis lever #2 — DRU/AS assault engines sit
+  idle) + fix P5-2 turn-loop ordering; playability lane attempts the never-tested **two-window P2P**
+  path (the original goal).
+
+
+
 **Gen 6 — quality lists + deploy-coherency + the metric pivot (2026-07-08).** 3 lanes + a fix lane,
 merged clean. A quality/fidelity/measurement win more than an AIStrength-number win.
 - **Lane A (AI):** rebuilt `aiBuildList` into a quality-list builder (chaff-share cap, quality-weighted

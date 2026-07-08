@@ -9,7 +9,7 @@
 - **Final VP:** Adepta Sororitas 20 — 30 Space Marines
 - **Winner:** Space Marines (AI)
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 3
-- **Reached round 5:** yes   |   **Runtime:** 539 ms
+- **Reached round 5:** yes   |   **Runtime:** 534 ms
 
 ## Per-round summary
 
@@ -26,14 +26,8 @@
 - Round 4: AI shooting/fighting removes 4 challenger models.
 - Round 5: AI shooting/fighting removes 8 challenger models.
 
-## Auditor findings (2)
-Rules violations: **2**  |  critical 0 · major 2 · minor 0
-
-- major/coherency: 2
-
-First 10:
-- [major] coherency (r4 End): Execrator (owner 2) is out of unit coherency after its Movement phase (8 models)
-- [major] coherency (r5 End): Execrator (owner 2) is out of unit coherency after its Movement phase (6 models)
+## Auditor findings (0)
+None.
 
 ## Notes
 - Side 2 is the shipping built-in AI (only it can play side 2). Side 1 is the Tier-S deterministic challenger in tools/sim/challenger.js.

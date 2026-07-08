@@ -1,0 +1,246 @@
+{"gen":8063,"round":0,"phase":-1,"phaseName":"Deploy","side":0,"type":"deploy","layout":"Official 1A · T&H vs T&H","mission":"Battlefield Dominance / Battlefield Dominance","sideA":{"fid":"DRU","name":"Drukhari","pts":2000,"units":13,"models":70,"reserves":1},"sideB":{"fid":"SM","name":"Space Marines","pts":1995,"units":10,"models":57,"reserves":1}}
+{"gen":8063,"round":1,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":0,"cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"doa27zk","unit":"Haemonculus","moved":7,"cap":7,"why":"→ Obj 5","fromX":51.5,"fromY":31,"toX":44.6,"toY":30.1}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"BEASTMASTER","moved":12,"cap":12,"why":"→ Obj 5","fromX":46.7,"fromY":15.5,"toX":35.1,"toY":18.6}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qs3a6cu","unit":"Corsair Voidreavers","moved":1.75,"cap":7,"why":"→ Obj 3","fromX":48.2,"fromY":5.2,"toX":46.9,"toY":6.4}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"bgn31v6","unit":"Wracks","moved":7,"cap":7,"why":"→ Obj 4","fromX":54.2,"fromY":39.7,"toX":48.7,"toY":35.5}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h6vgbjg","unit":"Wyches","moved":8,"cap":8,"why":"→ Obj 1 (OC 20 v 0)","fromX":52.7,"fromY":8.2,"toX":49.6,"toY":15.6}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"lkmtjd8","unit":"Tantalus","moved":16,"cap":16,"why":"→ Obj 4","fromX":56,"fromY":14.5,"toX":40.1,"toY":12.9}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cjyt62f","unit":"Voidweaver","moved":1.4,"cap":14,"why":"→ Obj 4","fromX":44,"fromY":23.5,"toX":42.7,"toY":22.9}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3y15mpy","unit":"Venom","moved":9.8,"cap":14,"why":"→ Obj 4","fromX":57.5,"fromY":11.5,"toX":47.7,"toY":11.3}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Corsair Reaver Band","moved":1.75,"cap":7,"why":"→ Obj 5","fromX":54.3,"fromY":3.9,"toX":52.7,"toY":4.6}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"rhuwjaf","unit":"Skyweavers","moved":5.6,"cap":14,"why":"→ Obj 3","fromX":54.5,"fromY":22,"toX":48.9,"toY":22}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h291zgg","unit":"Starfangs","moved":0,"why":"holds position"}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"03dppzv","unit":"Corsair Reaver Band","moved":2.8,"cap":7,"why":"→ Obj 2","fromX":52.8,"fromY":26.4,"toX":50.4,"toY":27.8}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"y7w4gnn","unit":"Starfangs","moved":14,"cap":14,"why":"→ Obj 5","fromX":41,"fromY":8.5,"toX":28.6,"toY":15.1}
+{"gen":8063,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":3,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tantalus","target":"Attack Bike Squad","weapon":"Pulse disintegrators","shooters":1,"dist":24.6,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":5}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Deathwatch Veterans","weapon":"Disintegrator cannon","shooters":2,"dist":28.2,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Deathwatch Veterans","weapon":"Starfang grenade launcher","shooters":1,"dist":29.7,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Techmarine","weapon":"Starfang grenade launcher","shooters":1,"dist":16,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Techmarine","weapon":"Disintegrator cannon","shooters":1,"dist":16,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Deathwatch Veterans","weapon":"Aeldari missile launcher – sunburst","shooters":1,"dist":36.8,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":1}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Deathwatch Veterans","weapon":"Hexrifle","shooters":1,"dist":36,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Deathwatch Veterans","weapon":"Aeldari missile launcher – starshot","shooters":1,"dist":36.8,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":3,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":3,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":3,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":3,"held2":1,"contested":0}}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Haemonculus","weapon":"Cyclone missile launcher – frag","dist":31.4,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wracks","weapon":"Cyclone missile launcher – krak","dist":34.9,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"BEASTMASTER","weapon":"Boltgun","dist":18.1,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"BEASTMASTER","weapon":"Deathwatch shotgun","dist":18.1,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"BEASTMASTER","weapon":"Infernus heavy bolter – heavy bolter","dist":18.1,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"BEASTMASTER","weapon":"Stalker-pattern boltgun","dist":19.3,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Grey Hunters","tgt":"BEASTMASTER","weapon":"Bolt carbine","dist":17.1,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Grey Hunters","tgt":"Starfangs","weapon":"Plasma pistol – standard","dist":11,"rng":12,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Grey Hunters","tgt":"Starfangs","weapon":"Plasma pistol – supercharge","dist":11,"rng":12,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Wracks","weapon":"Heavy bolter","dist":19.6,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Wracks","weapon":"Laser destroyer","dist":19.6,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Wracks","weapon":"Quad lascannon","dist":19.6,"rng":48,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Wracks","weapon":"Storm bolter","dist":19.6,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Wracks","weapon":"Twin heavy bolter","dist":19.6,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Starfangs","weapon":"Blood Lance – witchfire","dist":17.9,"rng":18,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Starfangs","weapon":"Blood Lance – focused witchfire","dist":17.9,"rng":18,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Corsair Reaver Band","weapon":"Hunter-killer missile","dist":35.2,"rng":48,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Corsair Reaver Band","weapon":"Twin heavy bolter","dist":35.2,"rng":36,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Corsair Reaver Band","weapon":"Twin lascannon","dist":35.2,"rng":48,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"BEASTMASTER","weapon":"Plasma gun – standard","dist":22.7,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Starfangs","weapon":"Plasma gun – supercharge","dist":15.1,"rng":24,"melee":false}
+{"gen":8063,"round":1,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Grey Hunters","tgt":"Starfangs","weapon":"Power fist","dist":0,"rng":1,"melee":true}
+{"gen":8063,"round":1,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":0,"aiShots":22,"s1LostToAi":7,"cp1":3,"cp2":3,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":10,"cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"arrive","unit":"Court Of The Archon","n":4,"toX":57,"toY":15,"why":"arrives from Strategic Reserves"}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"CLAWED FIEND","moved":7.39,"cap":12,"why":"→ Obj 3 (OC 4 v 0)","fromX":36.3,"fromY":18.2,"toX":30,"toY":22}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qs3a6cu","unit":"Corsair Voidreavers","moved":0.7,"cap":7,"why":"→ Obj 1","fromX":46.9,"fromY":6.4,"toX":47.1,"toY":7.1}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"bgn31v6","unit":"Wracks","moved":6.14,"cap":7,"why":"screens Obj 2","fromX":48.9,"fromY":35.6,"toX":43.1,"toY":33.4}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h6vgbjg","unit":"Wyches","moved":6.8,"cap":8,"why":"→ Obj 5","fromX":49.6,"fromY":15.6,"toX":43,"toY":17.2}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"lkmtjd8","unit":"Tantalus","moved":4,"cap":16,"why":"→ Obj 4","fromX":40.1,"fromY":12.9,"toX":36.1,"toY":12.5}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cjyt62f","unit":"Voidweaver","moved":7.7,"cap":14,"why":"→ Obj 4","fromX":42.7,"fromY":22.9,"toX":35.7,"toY":19.7}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3y15mpy","unit":"Venom","moved":0.49,"cap":14,"why":"screens the backfield","fromX":47.7,"fromY":11.3,"toX":47.5,"toY":10.8}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Corsair Reaver Band","moved":0.7,"cap":7,"why":"→ Obj 3","fromX":52.7,"fromY":4.6,"toX":52.2,"toY":5.1}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"rhuwjaf","unit":"Skyweavers","moved":5.6,"cap":14,"why":"→ Obj 3","fromX":48.9,"fromY":22,"toX":43.3,"toY":22}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h291zgg","unit":"Starfangs","moved":1.15,"cap":14,"why":"→ Obj 1 (OC 4 v 0)","fromX":44,"fromY":28,"toX":44.5,"toY":27}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"03dppzv","unit":"Corsair Reaver Band","moved":0,"why":"holds position"}
+{"gen":8063,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Deathwatch Veterans","weapon":"Disintegrator cannon","shooters":2,"dist":26.7,"rng":36,"vis":true,"cover":true,"slain":5,"woundsDealt":9}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tantalus","target":"Grey Hunters","weapon":"Pulse disintegrators","shooters":1,"dist":9.1,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"CLAWED FIEND","target":"Deathwatch Veterans","weapon":"Splinter pods","shooters":4,"dist":16.4,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Ravenwing Darkshroud","weapon":"Corsair firearm","shooters":10,"dist":19.4,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":6}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Ravenwing Darkshroud","weapon":"Dark lance","shooters":1,"dist":19.4,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":4}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Aeldari missile launcher – starshot","shooters":1,"dist":35.3,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Techmarine","weapon":"Hexrifle","shooters":1,"dist":29.2,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Relic Razorback","weapon":"Starfang grenade launcher","shooters":1,"dist":28.8,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Splinter cannon","shooters":1,"dist":35.3,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Spartan","weapon":"Ossefactor","shooters":1,"dist":13.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Aeldari missile launcher – sunburst","shooters":1,"dist":35.3,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wracks","weapon":"Cyclone missile launcher – frag","dist":29.2,"rng":36,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wracks","weapon":"Cyclone missile launcher – krak","dist":31.3,"rng":36,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"CLAWED FIEND","weapon":"Boltgun","dist":16.8,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"CLAWED FIEND","weapon":"Deathwatch shotgun","dist":16.8,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"CLAWED FIEND","weapon":"Frag cannon","dist":16.8,"rng":18,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"Wracks","weapon":"Infernus heavy bolter – heavy bolter","dist":32.5,"rng":36,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Deathwatch Veterans","tgt":"CLAWED FIEND","weapon":"Stalker-pattern boltgun","dist":16.8,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wracks","weapon":"Hunter-killer missile","dist":26.1,"rng":48,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"CLAWED FIEND","weapon":"Multi-melta","dist":10.7,"rng":18,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"CLAWED FIEND","weapon":"Storm bolter","dist":10.7,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"CLAWED FIEND","weapon":"Twin assault cannon","dist":10.7,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"CLAWED FIEND","weapon":"Twin heavy bolter","dist":10.7,"rng":36,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"CLAWED FIEND","weapon":"Twin lascannon","dist":12.5,"rng":48,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"CLAWED FIEND","weapon":"Plasma gun – standard","dist":18,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"CLAWED FIEND","weapon":"Plasma gun – supercharge","dist":18,"rng":24,"melee":false}
+{"gen":8063,"round":2,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":15,"s1LostToAi":9,"cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"KHYMERAE","dice":[6,1],"ld":8,"pass":false}
+{"gen":8063,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Wracks","dice":[4,3],"ld":7,"pass":true}
+{"gen":8063,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"KHYMERAE","moved":1.2,"cap":12,"why":"→ Obj 1","fromX":30.9,"fromY":21.1,"toX":32.1,"toY":20.8}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qs3a6cu","unit":"Corsair Voidreavers","moved":7,"cap":7,"why":"→ Obj 1","fromX":47.1,"fromY":7.1,"toX":48.8,"toY":13.9}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"bgn31v6","unit":"Wracks","moved":2.98,"cap":7,"why":"holds Obj 2","fromX":44.7,"fromY":33.1,"toX":41.8,"toY":33.5}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h6vgbjg","unit":"Wyches","moved":2,"cap":8,"why":"screens the backfield","fromX":43,"fromY":17.2,"toX":43.6,"toY":15.3}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"lkmtjd8","unit":"Tantalus","moved":4.03,"cap":16,"why":"→ Obj 3 (OC 5 v 0)","fromX":36.1,"fromY":12.5,"toX":33.9,"toY":15.9}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cjyt62f","unit":"Voidweaver","moved":3.38,"cap":14,"why":"screens Obj 2","fromX":35.7,"fromY":19.7,"toX":37.2,"toY":22.7}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3y15mpy","unit":"Venom","moved":11.9,"cap":14,"why":"→ Obj 4","fromX":47.5,"fromY":10.8,"toX":35.6,"toY":10.7}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Corsair Reaver Band","moved":5.95,"cap":7,"why":"→ Obj 5","fromX":52.2,"fromY":5.1,"toX":46.8,"toY":7.6}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"rhuwjaf","unit":"Skyweavers","moved":0.71,"cap":14,"why":"screens Obj 1","fromX":43.3,"fromY":22,"toX":43.8,"toY":21.5}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h291zgg","unit":"Starfangs","moved":2.14,"cap":14,"why":"screens Obj 2","fromX":44.5,"fromY":27,"toX":43.7,"toY":28.9}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"03dppzv","unit":"Corsair Reaver Band","moved":0.7,"cap":7,"why":"→ Obj 2","fromX":50.6,"fromY":27.7,"toX":50,"toY":28.1}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"npbuh1s","unit":"Court Of The Archon","moved":3.85,"cap":7,"why":"screens the backfield","fromX":57,"fromY":15,"toX":53.3,"toY":14}
+{"gen":8063,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tantalus","target":"Assault Squad","weapon":"Pulse disintegrators","shooters":1,"dist":18.6,"rng":36,"vis":true,"cover":true,"slain":5,"woundsDealt":10}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Deathwatch Veterans","weapon":"Disintegrator cannon","shooters":2,"dist":29.3,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Corsair firearm","shooters":10,"dist":15.8,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Grey Hunters","weapon":"Starfang grenade launcher","shooters":1,"dist":16.7,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Voidweaver","target":"Grey Hunters","weapon":"Prismatic cannon – focused lances","shooters":1,"dist":9.4,"rng":24,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Voidreavers","target":"Grey Hunters","weapon":"Shuriken cannon","shooters":1,"dist":18.7,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Voidweaver","target":"Grey Hunters","weapon":"Shuriken cannon","shooters":1,"dist":10.1,"rng":24,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Voidweaver","target":"Grey Hunters","weapon":"Voidweaver haywire cannon","shooters":1,"dist":10.7,"rng":24,"vis":true,"cover":true,"slain":1,"woundsDealt":3}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Dark lance","shooters":1,"dist":29.4,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Aeldari missile launcher – starshot","shooters":1,"dist":29.4,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Blaster","shooters":1,"dist":15.8,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Spartan","weapon":"Liquifier gun","shooters":3,"dist":9.9,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"KHYMERAE","target":"Grey Hunters","weapon":"Splinter pods","shooters":1,"dist":6.5,"rng":18,"vis":true,"cover":false,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Techmarine","weapon":"Hexrifle","shooters":1,"dist":29,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":1}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Splinter cannon","shooters":1,"dist":29.4,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Shuriken cannon","shooters":1,"dist":15.8,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wracks","target":"Relic Razorback","weapon":"Ossefactor","shooters":1,"dist":23.3,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Relic Razorback","weapon":"Aeldari missile launcher – sunburst","shooters":1,"dist":29.4,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":1}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Voidreavers","target":"Grey Hunters","weapon":"Shuriken rifle","shooters":1,"dist":20.2,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Shredder","shooters":1,"dist":15.8,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":8063,"round":3,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Tantalus","target":"Grey Hunters","need":3.9,"roll":8,"made":true}
+{"gen":8063,"round":3,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":8063,"round":3,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Tantalus","target":"Grey Hunters","weapon":"Dire scythe blades","slain":1}
+{"gen":8063,"round":3,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":8063,"round":3,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"KHYMERAE","weapon":"Forge bolter","dist":17.7,"rng":24,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wracks","weapon":"Cyclone missile launcher – frag","dist":27.2,"rng":36,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Corsair Reaver Band","weapon":"Cyclone missile launcher – krak","dist":33.3,"rng":36,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Grey Hunters","tgt":"Wyches","weapon":"Bolt carbine","dist":21.8,"rng":24,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Heavy bolter","dist":11.2,"rng":36,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Heavy flamer","dist":11.2,"rng":12,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Laser destroyer","dist":4.4,"rng":36,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Multi-melta","dist":11.2,"rng":18,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Quad lascannon","dist":11.2,"rng":48,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Storm bolter","dist":11.2,"rng":24,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Twin heavy bolter","dist":11.2,"rng":36,"melee":false}
+{"gen":8063,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Corsair Reaver Band","weapon":"Twin heavy flamer","dist":11.2,"rng":12,"melee":false}
+{"gen":8063,"round":3,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Voidweaver","weapon":"Armoured tracks","dist":0,"rng":1,"melee":true}
+{"gen":8063,"round":3,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":5,"aiShots":13,"s1LostToAi":9,"cp1":7,"cp2":7,"vp1":15,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Starfangs","dice":[6,3],"ld":7,"pass":true}
+{"gen":8063,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":10,"cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qs3a6cu","unit":"Corsair Voidreavers","moved":0.7,"cap":7,"why":"→ Obj 2","fromX":48.8,"fromY":13.9,"toX":48.6,"toY":14.5}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h6vgbjg","unit":"Wyches","moved":8,"cap":8,"why":"→ Obj 5","fromX":44,"fromY":15.4,"toX":36.3,"toY":17.6}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"lkmtjd8","unit":"Tantalus","moved":5.58,"cap":16,"why":"→ Obj 4 (OC 5 v 3)","fromX":30.1,"fromY":16,"toX":24.9,"toY":14}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cjyt62f","unit":"Voidweaver","moved":1.5,"cap":14,"why":"→ Obj 3 (OC 2 v 0)","fromX":37.2,"fromY":22.7,"toX":35.7,"toY":22.6}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3y15mpy","unit":"Venom","moved":2.86,"cap":14,"why":"→ Obj 3 (OC 1 v 0)","fromX":35.6,"fromY":10.7,"toX":34.4,"toY":13.2}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Corsair Reaver Band","moved":2.8,"cap":7,"why":"→ Obj 1","fromX":46.8,"fromY":7.6,"toX":47.6,"toY":10.3}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"rhuwjaf","unit":"Skyweavers","moved":1.04,"cap":14,"why":"screens Obj 2","fromX":43.8,"fromY":21.5,"toX":43.7,"toY":22.6}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h291zgg","unit":"Starfangs","moved":1.4,"cap":14,"why":"→ Obj 3","fromX":45.2,"fromY":28.9,"toX":43.9,"toY":28.4}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"03dppzv","unit":"Corsair Reaver Band","moved":7,"cap":7,"why":"→ Obj 2","fromX":50.5,"fromY":28.2,"toX":44.4,"toY":31.6}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"npbuh1s","unit":"Court Of The Archon","moved":0.33,"cap":7,"why":"screens Obj 1","fromX":53.3,"fromY":14,"toX":53,"toY":14.2}
+{"gen":8063,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tantalus","target":"Grey Hunters","weapon":"Pulse disintegrators","shooters":1,"dist":3.8,"rng":36,"vis":true,"cover":true,"slain":3,"woundsDealt":6}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Voidweaver","target":"Spartan","weapon":"Voidweaver haywire cannon","shooters":1,"dist":2.1,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Venom","target":"Assault Squad","weapon":"Splinter cannon","shooters":1,"dist":17.7,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Skyweavers","target":"Spartan","weapon":"Shuriken cannon","shooters":4,"dist":3.5,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Skyclaws","weapon":"Starfang grenade launcher","shooters":1,"dist":26.8,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Starfangs","target":"Skyclaws","weapon":"Disintegrator cannon","shooters":1,"dist":26.8,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Skyweavers","target":"Spartan","weapon":"Skyweaver haywire cannon","shooters":1,"dist":3.5,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Skyclaws","weapon":"Splinter cannon","shooters":1,"dist":28.6,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Voidweaver","target":"Spartan","weapon":"Prismatic cannon – focused lances","shooters":1,"dist":2.1,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":4}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Corsair firearm","shooters":8,"dist":4.2,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":1}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Blaster","shooters":1,"dist":4.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Spartan","weapon":"Fusion gun","shooters":1,"dist":4.2,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":7}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Skyclaws","weapon":"Aeldari missile launcher – starshot","shooters":1,"dist":28.7,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Skyclaws","weapon":"Dark lance","shooters":1,"dist":28.7,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Reaver Band","target":"Skyclaws","weapon":"Aeldari missile launcher – sunburst","shooters":1,"dist":28.7,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Venom","target":"Assault Squad","weapon":"Twin splinter rifle","shooters":1,"dist":19.2,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wyches","target":"Relic Razorback","weapon":"Splinter pistol","shooters":8,"dist":10.1,"rng":12,"vis":true,"cover":false,"slain":0,"woundsDealt":1}
+{"gen":8063,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Wyches","target":"Relic Razorback","need":8.9,"roll":6,"made":false}
+{"gen":8063,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Tantalus","target":"Assault Squad","need":7.3,"roll":8,"made":true}
+{"gen":8063,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Skyweavers","target":"Spartan","need":1.6,"roll":7,"made":true}
+{"gen":8063,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Skyweavers","target":"Spartan","weapon":"Zephyrglaive","slain":0}
+{"gen":8063,"round":4,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":15,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wyches","weapon":"Forge bolter","dist":20.5,"rng":24,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Wyches","weapon":"Assault cannon","dist":21.7,"rng":24,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Corsair Reaver Band","weapon":"Cyclone missile launcher – frag","dist":28.8,"rng":36,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Techmarine","tgt":"Corsair Reaver Band","weapon":"Cyclone missile launcher – krak","dist":31.6,"rng":36,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Heavy bolter","dist":9,"rng":36,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Heavy flamer","dist":9,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Laser destroyer","dist":9,"rng":36,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Multi-melta","dist":9,"rng":18,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Spartan","tgt":"Starfangs","weapon":"Quad lascannon","dist":9,"rng":48,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Tantalus","weapon":"Blood Lance – witchfire","dist":2.2,"rng":18,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Tantalus","weapon":"Blood Lance – focused witchfire","dist":2.2,"rng":18,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Tantalus","weapon":"Heavy flamer","dist":2.2,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Tantalus","weapon":"Meltagun","dist":2.2,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Tantalus","weapon":"Hunter-killer missile","dist":8,"rng":48,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Tantalus","weapon":"Multi-melta","dist":8,"rng":18,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Tantalus","weapon":"Twin assault cannon","dist":8,"rng":24,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Tantalus","weapon":"Twin heavy bolter","dist":8,"rng":36,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Tantalus","weapon":"Twin lascannon","dist":8,"rng":48,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Flamer","dist":4.4,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Grav-pistol","dist":4.4,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Hand flamer","dist":4.4,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Inferno pistol","dist":4.4,"rng":6,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Meltagun","dist":4.4,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Plasma gun – standard","dist":4.4,"rng":24,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Plasma gun – supercharge","dist":4.4,"rng":24,"melee":false}
+{"gen":8063,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Assault Squad","tgt":"Tantalus","weapon":"Plasma pistol – supercharge","dist":4.4,"rng":12,"melee":false}
+{"gen":8063,"round":4,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Librarian Dreadnought","tgt":"Tantalus","weapon":"Furioso fist","dist":0,"rng":1,"melee":true}
+{"gen":8063,"round":4,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":27,"s1LostToAi":13,"cp1":9,"cp2":9,"vp1":25,"vp2":25,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":8063,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Wyches","dice":[3,2],"ld":7,"pass":false}
+{"gen":8063,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qs3a6cu","unit":"Corsair Voidreavers","moved":5.71,"cap":7,"why":"screens the backfield","fromX":48.6,"fromY":14.5,"toX":43,"toY":15.5}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"h6vgbjg","unit":"Wyches","moved":8,"cap":8,"why":"→ Obj 5","fromX":37,"fromY":17,"toX":29.4,"toY":19.3}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cjyt62f","unit":"Voidweaver","moved":1.1,"cap":14,"why":"→ Obj 2 (OC 2 v 0)","fromX":35.7,"fromY":22.6,"toX":36.3,"toY":23.5}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3y15mpy","unit":"Venom","moved":3.43,"cap":14,"why":"→ Obj 3 (OC 1 v 0)","fromX":34.4,"fromY":13.2,"toX":32.8,"toY":16.3}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Corsair Reaver Band","moved":0.7,"cap":7,"why":"→ Obj 3","fromX":47.6,"fromY":10.3,"toX":47,"toY":10.7}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"rhuwjaf","unit":"Skyweavers","moved":2,"cap":14,"why":"screens Obj 1","fromX":43,"fromY":23,"toX":44.4,"toY":21.6}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"npbuh1s","unit":"Court Of The Archon","moved":5.95,"cap":7,"why":"screens the backfield","fromX":53,"fromY":14.2,"toX":47.1,"toY":15.2}
+{"gen":8063,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Venom","target":"Assault Squad","weapon":"Splinter cannon","shooters":1,"dist":15.6,"rng":36,"vis":true,"cover":true,"slain":3,"woundsDealt":6}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Voidreavers","target":"Librarian Dreadnought","weapon":"Shredder","shooters":10,"dist":17.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Corsair Voidreavers","target":"Librarian Dreadnought","weapon":"Wraithcannon","shooters":1,"dist":17.2,"rng":18,"vis":true,"cover":true,"slain":1,"woundsDealt":6}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wyches","target":"Spartan","weapon":"Blast pistol","shooters":1,"dist":6,"rng":6,"vis":true,"cover":false,"slain":1,"woundsDealt":2}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Wyches","target":"Relic Razorback","weapon":"Splinter pistol","shooters":5,"dist":7.2,"rng":12,"vis":true,"cover":false,"slain":0,"woundsDealt":0}
+{"gen":8063,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":8063,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":8063,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":8063,"round":5,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":25,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wyches","weapon":"Hunter-killer missile","dist":4.1,"rng":48,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wyches","weapon":"Multi-melta","dist":4.2,"rng":18,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wyches","weapon":"Storm bolter","dist":4.2,"rng":24,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wyches","weapon":"Twin assault cannon","dist":4.2,"rng":24,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Relic Razorback","tgt":"Wyches","weapon":"Twin heavy bolter","dist":5.3,"rng":36,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Skyclaws","tgt":"Venom","weapon":"Grav-gun","dist":14.9,"rng":18,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Skyclaws","tgt":"Corsair Voidreavers","weapon":"Plasma gun – standard","dist":23.3,"rng":24,"melee":false}
+{"gen":8063,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Skyclaws","tgt":"Venom","weapon":"Plasma gun – supercharge","dist":14.9,"rng":24,"melee":false}
+{"gen":8063,"round":5,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":5,"aiShots":8,"s1LostToAi":5,"cp1":10,"cp2":10,"vp1":30,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}

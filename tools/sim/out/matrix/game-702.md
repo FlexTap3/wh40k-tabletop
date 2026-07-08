@@ -9,7 +9,7 @@
 - **Final VP:** Adepta Sororitas 25 — 45 T’au Empire
 - **Winner:** T’au Empire (AI)
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 2 / 0
-- **Reached round 5:** yes   |   **Runtime:** 752 ms
+- **Reached round 5:** yes   |   **Runtime:** 736 ms
 
 ## Per-round summary
 

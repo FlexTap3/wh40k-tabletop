@@ -9,7 +9,7 @@
 - **Final VP:** Drukhari 25 — 35 T’au Empire
 - **Winner:** T’au Empire (AI)
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 2
-- **Reached round 5:** yes   |   **Runtime:** 403 ms
+- **Reached round 5:** yes   |   **Runtime:** 397 ms
 
 ## Per-round summary
 

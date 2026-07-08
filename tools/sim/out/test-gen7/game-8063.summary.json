@@ -1,42 +1,42 @@
 {
-  "gen": 706,
+  "gen": 8063,
   "seed": 42,
   "tier": "S",
   "layout": "Official 1A · T&H vs T&H",
   "mission": "Battlefield Dominance / Battlefield Dominance",
   "sideA": {
-    "fid": "AS",
-    "name": "Adepta Sororitas",
-    "pts": 1975,
-    "units": 16,
-    "models": 34,
+    "fid": "DRU",
+    "name": "Drukhari",
+    "pts": 2000,
+    "units": 13,
+    "models": 70,
     "reserves": 1
   },
   "sideB": {
     "fid": "SM",
     "name": "Space Marines",
-    "pts": 1990,
-    "units": 12,
-    "models": 22,
+    "pts": 1995,
+    "units": 10,
+    "models": 57,
     "reserves": 1
   },
   "finalVp": {
-    "side1": 20,
+    "side1": 30,
     "side2": 30
   },
   "finalCp": {
     "side1": 10,
     "side2": 10
   },
-  "winner": 2,
-  "marginToAi": 10,
+  "winner": 0,
+  "marginToAi": 0,
   "reachedRound5": true,
   "finalOc": {
     "held1": 1,
-    "held2": 3,
+    "held2": 2,
     "contested": 0
   },
-  "runtimeMs": 534,
+  "runtimeMs": 722,
   "findings": {
     "total": 0,
     "critical": 0,
@@ -44,19 +44,19 @@
     "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 106,
+  "aiTotalShots": 85,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 755,
-    "lostByAi": -181,
-    "diff": 936,
+    "killedByAi": 1114,
+    "lostByAi": 1120,
+    "diff": -6,
     "s1Models": [
-      34,
-      21
+      70,
+      31
     ],
     "s2Models": [
-      22,
-      24
+      57,
+      25
     ]
   }
 }

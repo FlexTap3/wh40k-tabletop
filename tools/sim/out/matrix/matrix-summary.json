@@ -168,8 +168,8 @@
           "chPts": 1975,
           "attr": 936,
           "r5": true,
-          "rules": 2,
-          "findings": 2,
+          "rules": 0,
+          "findings": 0,
           "ais": 0.856,
           "aiShots": 106,
           "aiUnits": 12,
@@ -222,7 +222,7 @@
       "wins": 3,
       "draws": 0,
       "losses": 0,
-      "anyRules": true,
+      "anyRules": false,
       "allR5": true
     },
     {
