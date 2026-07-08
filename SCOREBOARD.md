@@ -4,7 +4,7 @@
 
 | Gen | Matchup (S1 vs S2-AI) | Result (VP S1–S2) | R5 | Rules viol. | Findings (c/M/m) | Process | Playability | AIStrength | FITNESS |
 |-----|-----------------------|-------------------|----|-------------|------------------|---------|-------------|------------|---------|
-| 0 | Adepta Sororitas vs T’au Empire | 40–45 (S2) | ✓ | 4 | 0/4/1 | 0.998 | 0 | 0.792 | 0.516 |
+| 0 | Adepta Sororitas vs T’au Empire | 40–40 (draw) | ✓ | 0 | 0/0/1 | 0.998 | 0.98 | 0.5 | 0.792 |
 
 ## Fitness definitions (first-pass baselines)
 - **Process** = 0.4·(artifacts complete) + 0.3·(reached round 5) + 0.3·(runtime, full credit under a few s).

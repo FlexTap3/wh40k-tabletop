@@ -4080,9 +4080,12 @@ function aiBestShoot(x,y,ms,ranged,enemies,prep){ // best expected damage from a
 }
 function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
   const scales=[1,0.85,0.7,0.5], offs=[[0,0],[0.8,0],[-0.8,0],[0,0.8],[0,-0.8],[1.4,1.4],[-1.4,1.4],[1.4,-1.4],[-1.4,-1.4]];
+  const cap=Math.hypot(tx,ty)+1e-6;   // FIDELITY: (tx,ty) is the caller's move-capped vector; a rigid translation moves every model by |(vx,vy)|, which may never exceed the unit's allowance (M, or M+D6 on an advance). Obstacle-dodging offsets must stay under this cap.
   for(const sc of scales) for(const [ox,oy] of offs){
+    const vx=tx*sc+ox, vy=ty*sc+oy;
+    if(Math.hypot(vx,vy)>cap) continue;   // this nudge would over-move the unit — skip it
     const good=ms.every(t=>{
-      const c=Object.assign({},t,{x:t.x+tx*sc+ox,y:t.y+ty*sc+oy});
+      const c=Object.assign({},t,{x:t.x+vx,y:t.y+vy});
       const r=tokRadius(c)+0.1;
       if(c.x<r||c.y<r||c.x>state.board.w-r||c.y>state.board.h-r) return false;
       if(wp5Illegal(c)) return false;
@@ -4093,7 +4096,7 @@ function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
       for(const o of state.tokens) if(o.owner===c.owner&&o.unit!==c.unit&&edgeDist(c,o)<0.02) return false;
       return true;
     });
-    if(good){ op({k:"tok~",toks:ms.map(t=>({id:t.id,x:t.x+tx*sc+ox,y:t.y+ty*sc+oy}))}); return true; }
+    if(good){ op({k:"tok~",toks:ms.map(t=>({id:t.id,x:t.x+vx,y:t.y+vy}))}); return true; }
   }
   return false;
 }

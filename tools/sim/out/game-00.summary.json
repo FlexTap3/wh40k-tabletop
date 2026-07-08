@@ -21,27 +21,27 @@
   },
   "finalVp": {
     "side1": 40,
-    "side2": 45
+    "side2": 40
   },
   "finalCp": {
     "side1": 11,
     "side2": 11
   },
-  "winner": 2,
-  "marginToAi": 5,
+  "winner": 0,
+  "marginToAi": 0,
   "reachedRound5": true,
   "finalOc": {
     "held1": 2,
     "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 662,
+  "runtimeMs": 688,
   "findings": {
-    "total": 5,
+    "total": 1,
     "critical": 0,
-    "major": 4,
+    "major": 0,
     "minor": 1,
-    "rulesViolations": 4
+    "rulesViolations": 0
   },
-  "aiTotalShots": 46
+  "aiTotalShots": 56
 }

@@ -112,6 +112,6 @@ function auditPrimary(round, side, scored) {
 function auditFlush() {
   const p = SIM.path.join(SIM.out, "findings.jsonl");
   const lines = AUDIT_FINDINGS.map(f => JSON.stringify(f)).join("\n");
-  SIM.fs.appendFileSync(p, (lines ? lines + "\n" : ""));
+  SIM.fs.writeFileSync(p, (lines ? lines + "\n" : ""));   // overwrite per run — AUDIT_FINDINGS already holds the whole game; appending leaked stale pre-fix findings across runs
   return AUDIT_FINDINGS.slice();
 }

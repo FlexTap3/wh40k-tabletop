@@ -214,5 +214,21 @@ should shrink in severity over the batch.
 
 ## 8. Generational log (append one block per generation)
 
-> Gen 0 — (pending) bring-up. Baseline fitness TBD.
+**Gen 0 — bring-up + first fitness gate (2026-07-08).** `tools/sim/` built (runner,
+Tier-N challenger, auditor, scoreboard). First full 2000-pt, 5-round, deterministic game
+runs end-to-end: Sororitas (side 1, Tier N) vs T'au AI (side 2), Official 1A, seed 42.
+- **Mutations kept** (all raised fitness, suite + control green):
+  1. *Mechanics/fidelity:* `aiTryTranslate` capped total rigid-translation displacement to
+     the unit's allowance — the AI was over-moving ~1–2" via obstacle-dodging offsets stacked
+     on an already-M-capped vector. **4 confirmed 11th-ed rules violations → 0.** Regression
+     test added (`wpmove-tests.js` (g)).
+  2. *Process:* auditor `findings.jsonl` now truncates per run (was appending, leaking stale
+     pre-fix findings across runs).
+- **Fitness: 0.516 → 0.792** (Process 0.998 · Playability 0 gated → **0.98** · AIStrength 0.5).
+- **Honest note:** removing the illegal over-move turned the AI's 45–40 "win" into a legit
+  40–40 draw — that's the true baseline; AIStrength climbs from here on *legal* play.
+- **Remaining (non-rules):** `cp-boundary` minor — stepping past round 5 enters a phantom
+  round-6 Command that grants +1 CP/side. Low priority; queued for a later gen.
+- **Carry forward to Gen 1:** build the Tier-S (agent-in-the-loop) challenger for the Control
+  C match to put real skill pressure on the AI and get the first measured AIStrength point.
 ```
