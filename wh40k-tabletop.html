@@ -3655,6 +3655,7 @@ const AI_TUNE={
   shootW:1.6,        // weight of expected shooting damage from a destination
   coverW:2.5,        // ending inside a terrain area (INFANTRY)
   threatW:0.9,       // expected incoming melee threat at a destination
+  holdThreat:0.55,   // reduced threat multiplier when the destination TAKES/HOLDS an objective for the AI (a point worth taking fire for)
   advancePen:4,      // advancing forfeits shooting
   closeW:0.4,        // pure-melee units: reward per inch of closed distance (capped)
   chargeGain:1.4,    // expected melee damage multiplier needed to attempt a charge
@@ -4178,7 +4179,7 @@ function aiMoveUnit(uk){
   // --- score every candidate ---
   cands.forEach(c=>{
     const d=Math.hypot(c.x-cx,c.y-cy), adv=d>M+0.05;
-    let s=0, why2=null;
+    let s=0, why2=null, holdsObj=false;
     tal.forEach((o,i)=>{ // objective swing if the unit ends on the marker, gradient toward it otherwise
       const dd=Math.hypot(o.o.x-c.x,o.o.y-c.y), wasOn=Math.hypot(o.o.x-cx,o.o.y-cy)<=2.8, onIt=dd<=2.2;
       if(!onIt){
@@ -4188,10 +4189,10 @@ function aiMoveUnit(uk){
       }
       const ocWithout=o.oc2-(wasOn?unitOC:0), oc2=ocWithout+unitOC;
       const holderAfter=o.oc1>oc2?1:oc2>o.oc1?2:(o.o.sec||0);
-      if(holderAfter===2&&o.holder!==2){ s+=AI_TUNE.objBase+(o.holder===1?AI_TUNE.objContest:0); why2=`→ Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
+      if(holderAfter===2&&o.holder!==2){ s+=AI_TUNE.objBase+(o.holder===1?AI_TUNE.objContest:0); why2=`→ Obj ${i+1} (OC ${oc2} v ${o.oc1})`; holdsObj=true; }
       else if(holderAfter===2){
         if(ocWithout>o.oc1){ s+=1.2; why2=`screens Obj ${i+1}`; }              // already held without this unit — don't pile on
-        else { s+=AI_TUNE.objBase*AI_TUNE.objKeep; why2=`holds Obj ${i+1}`; }
+        else { s+=AI_TUNE.objBase*AI_TUNE.objKeep; why2=`holds Obj ${i+1}`; holdsObj=true; }
       }
       else { s+=AI_TUNE.objContest*0.5; why2=`contests Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
     });
@@ -4204,10 +4205,11 @@ function aiMoveUnit(uk){
     }
     if(adv) s-=AI_TUNE.advancePen*(ranged.length?1:0.3);
     if(infantry&&state.terrain.some(t2=>LOS_DENSE[t2.kind]&&geomPointInRect(c.x,c.y,t2))) s+=AI_TUNE.coverW;
+    const threatW=holdsObj?AI_TUNE.holdThreat:AI_TUNE.threatW; // a point we can take/hold is worth taking fire for
     enemies.forEach(e=>{ // incoming melee threat at the destination
       const eM=Math.max(...e.toks.map(t=>(typeof t.Mv==="number")?t.Mv:6));
       const exd=Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)));
-      if(exd<=eM+8) s-=aiMeleeThreat(e.toks,ms)*AI_TUNE.threatW*((ranged.length&&!melee.length)?1.4:0.7);
+      if(exd<=eM+8) s-=aiMeleeThreat(e.toks,ms)*threatW*((ranged.length&&!melee.length)?1.4:0.7);
     });
     if(melee.length&&!ranged.length&&enemies.length){ // pure melee closes distance
       const nd=Math.min(...enemies.map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)))));
