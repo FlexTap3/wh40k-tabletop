@@ -4192,6 +4192,31 @@ function aiDeployAll(unitsToks){
     });
   });
 }
+function aiSeatAdjacent(chr,hx,hy,hostToks){
+  // Seat `chr` adjacent to its host squad with a POSITIVE base gap and within coherency
+  // (edge ≤ 2.02"). Deterministic — consumes NO aiRng.
+  const others=state.tokens.filter(t=>t.id!==chr.id);
+  const h0=hostToks[0];
+  // PRIMARY: the historical 8-offset snuggle (unchanged order). aiSpotOk already enforces a
+  // ≥0.12" clearance from every base, so a committed offset never overlaps. Kept identical so an
+  // intact deployment is byte-for-byte what it was — protects the Control-C win-record guardrail.
+  const need=tokRadius(chr)+tokRadius(h0)+0.15;
+  const offs=[[need,0],[-need,0],[0,need],[0,-need],[need,need],[-need,need],[need,-need],[-need,-need]];
+  for(const [ox,oy] of offs){
+    if(aiSpotOk(chr,hx+ox,hy+oy,others)){ op({k:"tok~",toks:[{id:chr.id,x:hx+ox,y:hy+oy}]}); return true; }
+  }
+  // FALLBACK (Gen 7, new): a tightly-packed squad blocked all 8 offsets — the old code then left the
+  // character STRANDED at its deploy spot (the overlap/coherency hazard in the §8 log). Ring-scan every
+  // host model so it still seats adjacent (edge ≤ 2.02", coherent) with a guaranteed positive gap.
+  const hosts=hostToks.slice().sort((a,b)=>Math.hypot(a.x-hx,a.y-hy)-Math.hypot(b.x-hx,b.y-hy));
+  for(let gap=0.15;gap<=1.95;gap+=0.2){
+    for(const h of hosts){ const d=tokRadius(chr)+tokRadius(h)+gap;
+      for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+        if(aiSpotOk(chr,x,y,others)){ op({k:"tok~",toks:[{id:chr.id,x,y}]}); return true; } }
+    }
+  }
+  return false; // squad fully boxed in — leave the character at its (already legal) deploy spot
+}
 function aiAttachCharacters(){ // leaders join squads at deployment (as the rules have it)
   const squads=aiUnits(2).filter(u=>u.toks.length>=3&&unitHasKw(u.toks,["INFANTRY"])
     &&!u.toks.some(t=>tokKw(t).includes("CHARACTER")));
@@ -4205,15 +4230,13 @@ function aiAttachCharacters(){ // leaders join squads at deployment (as the rule
     if(!host) return;
     used.add(host.uk);
     op({k:"tok~",toks:chr.map(t=>({id:t.id,attachedFrom:t.unit,unit:host.uk}))});
-    // snuggle the character next to the squad (nudge until legal)
-    const h0=host.toks[0], need=tokRadius(chr[0])+tokRadius(h0)+0.15;
-    const offs=[[need,0],[-need,0],[0,need],[0,-need],[need,need],[-need,need],[need,-need],[-need,-need]];
-    for(const [ox,oy] of offs){
-      if(aiSpotOk(chr[0],h0.x+ox,h0.y+oy,state.tokens.filter(t=>t.id!==chr[0].id))){
-        op({k:"tok~",toks:[{id:chr[0].id,x:h0.x+ox,y:h0.y+oy}]});
-        break;
-      }
-    }
+    // Seat the character adjacent to the squad WITHOUT base overlap (FIDELITY, Gen 7).
+    // The old snuggle tried 8 fixed offsets sized off tokRadius; if a tight squad blocked all
+    // eight it left the character un-seated (a latent coherency/overlap hazard). aiSeatAdjacent
+    // does a deterministic (no-aiRng) ring scan gated by aiSpotOk, so every committed spot has a
+    // strictly positive edge gap to every base and sits within coherency (edge ≤ 2.02") of the host.
+    const h0=host.toks[0];
+    aiSeatAdjacent(chr[0],h0.x,h0.y,host.toks);
     logShared(`🤖 AI attaches <b>${esc(chr[0].name)}</b> to <b>${esc(h0.name)}</b>`,"sys");
   });
 }
@@ -4299,8 +4322,62 @@ function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
   }
   return false;
 }
+/* ---- FIDELITY (Gen 7): re-form unit coherency after a move ----
+   11th-ed: at the END of its Movement phase every model must be in unit coherency (this
+   engine's checkCoherency: a squadmate within 2.02" edge, and none beyond 9.02"). aiMoveUnit
+   RIGID-translates a unit, so a unit that lost models to casualties keeps its (now-broken)
+   spread and can end Movement incoherent (e.g. SM Execrator, game 61 R4–5). This pass pulls
+   any straggler survivor back onto the unit's blob AFTER the translate. It:
+     • runs only when a model is genuinely out of coherency (no-op for intact units — so it
+       never perturbs the healthy-move behaviour the matrix measures),
+     • consumes NO aiRng (deterministic ring scan — mirrors the deploy-coherency repair),
+     • honours the per-model move cap (final pos ≤ `allow`" from that model's PRE-move spot —
+       the Gen-0 M / M+D6 allowance),
+     • never ends a model within 2.05" of an enemy (non-charge movement) or overlapping any base. */
+function aiReformUnit(uk,orig,allow,enemyToks){
+  const ms=state.tokens.filter(t=>t.unit===uk);
+  if(ms.length<2) return;
+  const coh=m=>{ // mirror checkCoherency's per-model rule exactly (near neighbour AND no far squadmate)
+    const near=ms.some(o=>o!==m&&edgeDist(m,o)<=2.02);
+    const far=ms.some(o=>o!==m&&edgeDist(m,o)>9.02);
+    return near&&!far;
+  };
+  const legal=(m,x,y)=>{
+    const c=Object.assign({},m,{x,y}), r=tokRadius(c)+0.1;
+    if(x<r||y<r||x>state.board.w-r||y>state.board.h-r) return false;
+    if(wp5Illegal(c)) return false;
+    const o0=orig[m.id]; if(o0&&Math.hypot(x-o0.x,y-o0.y)>allow+0.02) return false; // move cap from pre-move spot
+    for(const e of enemyToks) if(edgeDist(c,e)<=2.05) return false;                  // non-charge: stay out of engagement range
+    for(const t of state.tokens){ if(t.id===m.id) continue; if(edgeDist(c,t)<0.05) return false; } // no base overlap
+    return true;
+  };
+  for(let pass=0;pass<8;pass++){
+    const stray=ms.filter(m=>!coh(m));
+    if(!stray.length) break;
+    let progress=false;
+    for(const m of stray){
+      const mates=ms.filter(o=>o!==m);
+      const cohMates=mates.filter(coh);
+      const anchors=cohMates.length?cohMates:mates;   // chain onto the already-coherent blob when one exists
+      // Pull m the SHORTEST distance that restores coherency (edge gap ∈ (0,2.02]): this preserves the
+      // AI's chosen formation/board coverage as much as legality allows, so the fix barely costs strength.
+      let bestX=null,bestY=null,bestD=Infinity;
+      for(const h of anchors){ const base=tokRadius(m)+tokRadius(h);
+        for(let gap=1.9;gap>=0.25;gap-=0.2){ const d=base+gap;
+          for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+            if(!legal(m,x,y)) continue;
+            const disp=Math.hypot(x-m.x,y-m.y);
+            if(disp<bestD-1e-9){ bestD=disp; bestX=x; bestY=y; }
+          } }
+      }
+      if(bestX!==null){ op({k:"tok~",toks:[{id:m.id,x:bestX,y:bestY}]}); progress=true; }
+    }
+    if(!progress) break;
+  }
+}
 function aiMoveUnit(uk){
   const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  const orig={}; ms.forEach(t=>{ orig[t.id]={x:t.x,y:t.y}; }); // pre-move snapshot for the coherency-reform move cap
   const M=Math.min(...ms.map(t=>(typeof t.Mv==="number"&&t.Mv>0)?t.Mv:6));
   const cx=ms.reduce((s,t)=>s+t.x,0)/ms.length, cy=ms.reduce((s,t)=>s+t.y,0)/ms.length;
   const W=aiWeapons(ms), ranged=W.ranged, melee=W.melee;
@@ -4387,17 +4464,19 @@ function aiMoveUnit(uk){
   const enemyToks=state.tokens.filter(t=>t.owner===1);
   for(const c of cands){
     const dx=c.x-cx, dy=c.y-cy, dist=Math.hypot(dx,dy);
-    if(dist<0.3){ aiMoved[uk]={advanced:false}; logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}`,"sys"); return; }
+    if(dist<0.3){ aiMoved[uk]={advanced:false}; logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}`,"sys"); aiReformUnit(uk,orig,M,enemyToks); return; }
     let advanced=false, allow=M;
     if(dist>M+0.05){ allow=M+aiD6(); advanced=true; }        // real advance roll (AI dice)
     const f=Math.min(1,allow/dist);
     if(aiTryTranslate(ms,dx*f,dy*f,enemyToks,false)){
       aiMoved[uk]={advanced};
       logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}${advanced?` — <b>advances</b> ${(dist*f).toFixed(1)}" (M ${M}"+D6, no shooting)`:` (${(dist*f).toFixed(1)}")`}`,"sys");
+      aiReformUnit(uk,orig,allow,enemyToks);   // re-cohere survivors within this move's allowance
       return;
     }
   }
   aiMoved[uk]={advanced:false};
+  aiReformUnit(uk,orig,M,enemyToks);           // no legal translate found — still heal coherency in place
 }
 function aiResSpotScore(x,y,tal){
   if(!tal.length) return 0;
