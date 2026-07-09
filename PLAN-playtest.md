@@ -282,6 +282,44 @@ Pages queue can stick — per ops notes) but everything is verified-playable on 
 
 ## 8. Generational log (append one block per generation)
 
+**Gen 9 — final AI attempt (null) + ship-readiness gate (2026-07-08). RUN COMPLETE.**
+- **Lane A (AI):** last strength attempt (gunline under-shooting #3) — four variants, all traded down
+  vs Tier-S (0.683–0.719 < 0.722), all reverted. Honest null. **Finding: the AI sits at an efficiency
+  frontier** — more aggression (melee in Gen 8, shooting here) loses trades against a strong opponent,
+  so its caution is largely correct. AI unchanged at 0.722.
+- **Lane B (playability):** `verify-all.js` runs every UI harness — **7/7 PASS, 0 total console errors**
+  (solo 9/9, fight 11/11, cards 15/15, move 14/14, full-game 20/20, P2P 20/20 + live WebRTC, discover).
+  `explore-ui.js` first-10-minutes pass 10/10, 0 errors, no app defects, clean phone layout. Fixed a
+  stale test that lagged the fidelity gates (app was correct). **Ship-ready.**
+- **Final gate:** suite green · matrix **0.722, 0 rules across all 8 matchups** · Control 4W-1D-0L ·
+  7/7 UI harnesses 0 errors · deterministic.
+
+## FINAL SUMMARY — 10-generation genetic playtest
+
+**AI strength (Goal 2):** the built-in solo AI went from *cheating* (over-moving, 1690/2000 lists,
+1"-engagement) to a legal, competent player: full-strength quality lists (no fill-hordes), army-level
+focus fire, holds forward objectives under fire, re-forms coherency after casualties, deploys legally.
+It plateaus at a genuine efficiency frontier vs a strong doctrine opponent (4W-1D-0L on the control,
+0.722 cross-faction) — further aggression demonstrably trades down. The honest AIStrength curve rose
+on *legal* play; several late levers were correctly rejected as net-negative.
+
+**Playability + fidelity (Goal 1):** verified end-to-end on the real render — full 5-round solo game,
+every phase cluster, **two-window P2P convergence over loopback + live WebRTC** (the founding goal,
+never before tested), first-10-minutes UX, phone layout — all 0-error. Fidelity gates fixed to 11th ed:
+2" engagement everywhere, movement caps, deploy + post-casualty coherency, ranged-only Overwatch,
+Fell-Back/Advanced restrictions, correct 5-round end-game. **Matrix is rules-clean across all factions.**
+
+**Process:** multi-seed control + cross-faction matrix as the trustworthy fitness signal (replacing a
+single flattering matchup); strict genetic selection (revert anything that doesn't beat the metric;
+fidelity exempt and mandatory); parallel 2–3 lane worktree agents per generation with a coordinator
+integration gate; every fix ships a regression test.
+
+**Known/deferred (documented, non-blocking):** P2-5 charge-declaration feature; P5-2 AI shoot phase
+label (RNG-neutral fix pending); import undercost (enhancements); design calls (shared secondary hands,
+manual VP scoring, manual casualty allocation).
+
+
+
 **Gen 8 — P2P validated; AI levers honest-negative (2026-07-08).**
 - **Lane B (playability) — KEPT, milestone:** the **two-window P2P game converges** — the app's
   founding "play my brother online" goal, never previously tested. `p2p-sync.js` loads the real app

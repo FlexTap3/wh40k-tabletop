@@ -9,7 +9,7 @@
 - **Final VP:** Space Marines 35 — 35 Drukhari
 - **Winner:** Draw
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 2 / 2
-- **Reached round 5:** yes   |   **Runtime:** 720 ms
+- **Reached round 5:** yes   |   **Runtime:** 737 ms
 
 ## Per-round summary
 

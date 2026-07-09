@@ -9,7 +9,7 @@
 - **Final VP:** Drukhari 20 — 45 Space Marines
 - **Winner:** Space Marines (AI)
 - **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 3
-- **Reached round 5:** yes   |   **Runtime:** 460 ms
+- **Reached round 5:** yes   |   **Runtime:** 494 ms
 
 ## Per-round summary
 
