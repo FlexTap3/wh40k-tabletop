@@ -117,12 +117,33 @@ const step = (name, ok, note) => { report.steps.push({ name, ok, note: note || "
     try { wp15Go(foe); } catch (e) { return { staged: false, err: e.message }; }
     return { staged: !!wp3Label, blocked: !wp3Label };
   }, engage.A);
-  report.findings.push({ probe: "fell-back unit shooting", staged: fbShoot.staged, note: "11th: a unit that Fell Back cannot shoot or charge — app is assist-only, does not block" });
+  report.findings.push({ probe: "fell-back unit shooting", staged: fbShoot.staged, note: "11th: a unit that Fell Back cannot shoot or charge — app NOW ENFORCES this (P4-1/P2-3 gate in wp3Stage): staging is blocked with a red banner. Verified separately by move-ui.js." });
+  // The Fall-Back / no-shoot enforcement is proven above; the Overwatch and melee-range fidelity
+  // steps below test a DIFFERENT concern (6s-to-hit / 2" engagement) and reuse this same unit, so
+  // clear the transient fellBack flag first — otherwise the P4-1 gate (correctly) blocks them and
+  // we'd be re-testing Fall-Back enforcement instead. setPhase sets state.phase directly and skips
+  // wp7ApplyPhase's lifecycle clear (documented in Pass 4), so the flag must be cleared explicitly.
+  await page.evaluate(u => { state.tokens.filter(t => t.unit === u).forEach(t => { delete t.fellBack; delete t.advanced; }); }, engage.A);
 
   // ---- 4) FIRE OVERWATCH (reactive: opponent's Movement phase, I am the non-active side) ----
+  // Overwatch is a RANGED snap-shot: the app (correctly, P3-2/P2-4) refuses it for a melee-only
+  // unit. engage.A (Arco-flagellants) is melee-only, so pick a friendly unit that actually carries
+  // a ranged weapon for this step — otherwise we'd be re-testing the ranged-only gate, not the 6s.
   await setPhase(1, 2);                                   // AI's Movement phase; mySide stays 1
+  const owUnit = await page.evaluate(() => {
+    const byUnit = {};
+    state.tokens.forEach(t => { (byUnit[t.unit] = byUnit[t.unit] || []).push(t); });
+    for (const uk of Object.keys(byUnit)) {
+      if (byUnit[uk][0].owner !== 1) continue;
+      const card = wp3CardFor(byUnit[uk][0]);
+      if (!card) continue;
+      const weapons = String(card.weapons || "").split("\n").map(wp3ParseWeapon).filter(Boolean);
+      if (weapons.some(w => !w.melee)) return { unit: uk, name: byUnit[uk][0].name };
+    }
+    return null;
+  });
   await page.evaluate(([a, b]) => { sel.clear();
-    state.tokens.filter(t => t.unit === a || t.unit === b).forEach(t => sel.add(t.id)); wp3Inspect(); }, [engage.A, engage.B]);
+    state.tokens.filter(t => t.unit === a || t.unit === b).forEach(t => sel.add(t.id)); wp3Inspect(); }, [owUnit ? owUnit.unit : engage.A, engage.B]);
   const owBtn = await clickInspectorBtn("Fire Overwatch");
   await page.evaluate(() => showTab("attack"));
   await page.waitForTimeout(150);

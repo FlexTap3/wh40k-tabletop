@@ -350,3 +350,110 @@ Because the app was not touched, `run_all.sh` is unaffected and still green (ver
   the late-join test but not under a real drop mid-op.
 - **Two genuinely divergent starting states reconciling** — the app's model is host-authoritative full-sync
   on join, not CRDT merge; the harness tests that model, not a conflict-resolution one (there isn't one).
+
+## Pass 7 — final verification capstone: every harness + fresh first-10-minutes exploratory pass (Gen 9, Lane B, 2026-07-08)
+
+This is the **ship-readiness gate** before `playtest`→`main`. Two instruments:
+
+1. **`tools/shots/verify-all.js`** — a new single-command runner that executes **EVERY** UI harness in
+   sequence against the current integrated app (`playtest-ui`, `fight-ui`, `cards-ui`, `move-ui`,
+   `fullgame-ui`, `p2p-sync`, `discover`), reads each harness's own report JSON as the source of truth,
+   and prints one PASS/FAIL with the **total** console/page-error count. Exits 0 iff every harness passes
+   with **0** errors. It is the standing regression gate for the whole real-UI surface.
+2. **`tools/shots/explore-ui.js`** — a new fresh exploratory harness that walks the first-10-minutes
+   player journey a real person hits on a cold open: cold-open onboarding → help dialog → Army tab →
+   Builder overlay → load a layout → import+deploy → Solo dialog → phone board / phone help / phone Army,
+   asserting no horizontal page overflow and dialogs fit the viewport, with a screenshot at each step
+   (reviewed visually).
+
+**Result: `verify-all.js` — 7/7 harnesses PASS, 0 total console/page errors, exit 0.
+`explore-ui.js` — 10/10 steps ok, 0 errors, no layout overflow.** The whole real-UI surface is green
+on the final integrated app.
+
+**Headline:** every previously-built harness still passes on the fully-integrated Gen-9 app **and** a
+fresh first-run walkthrough surfaces no player-facing rough edge — the onboarding is coherent
+(a welcome log line "Welcome, commander. Click ? for how to play online…", an empty-Army-tab hint
+"No army yet. Build one in the Builder and hit Muster…", a clear "?" help dialog that fits and scrolls
+on both desktop and a 390px phone), the Builder overlay is clean and points-tracked, loading a layout
+and starting Solo are one-click each, and the phone layout is board-first with a working bottom nav and
+no horizontal overflow anywhere.
+
+### Findings (severity-ranked)
+
+| # | Sev | Area | Finding | Status |
+|---|-----|------|---------|--------|
+| P7-1 | minor | **test harness** (not the app) | Running every harness together surfaced that **`fight-ui.js` (written in Pass 2) was stale relative to the Pass-4 P4-1/P2-3 enforcement gate**: it stamped `t.fellBack` on the Arco-flagellants in its Fall-Back step, then reused that **same** unit for the later Fire-Overwatch and melee-engagement steps — which the app now (correctly) blocks (a Fell-Back unit can't shoot or fight). The harness also tried to Fire Overwatch with a **melee-only** unit (Arco-flagellants have no ranged weapon), which the app correctly refuses (P3-2 ranged-only Overwatch). So the harness reported 9/11 with **0 console errors** — a stale-test artefact, **not an app regression**. | **FIXED (harness only)** |
+| P7-2 | info (positive) | onboarding | The cold-open first-run experience is coherent with no missing guidance: a welcome log line points at the "?" and the Army tab; the empty Army tab explains the Builder→Muster path; the "?" dialog is a complete rules primer that fits and scrolls on desktop **and** phone. No first-load dead-end or blank-slate confusion. | verified good |
+| P7-3 | info (positive) | mobile | Phone (390px) layout is clean across cold-open, deployed board, help dialog, and Army tab — **0 horizontal overflow** in every state; board-first with a bottom nav (Army/Attack/Cards/Log/Builder + settings). | verified good |
+
+### Fix (harness-only, verified: 7/7 all-green after)
+
+- **P7-1 (`fight-ui.js` stale vs the P4-1 gate):** two harness edits, **no app change**. (a) After the
+  Fall-Back fidelity probe, the harness now **clears the transient `fellBack`/`advanced` flags** on the
+  test unit before the Overwatch/melee steps — the Fall-Back *enforcement* is still proven by the probe
+  (and owned end-to-end by `move-ui.js`), so the later steps correctly test their **own** concern (6s-to-hit,
+  2" engagement) instead of re-testing the block. (b) The Overwatch step now picks a friendly unit that
+  **actually carries a ranged weapon** (it lands on Morvenn Vahl's Paragon missile launcher at 36") rather
+  than the melee-only Arco-flagellants — because Overwatch is a ranged snap-shot the app correctly refuses
+  for a melee-only shooter. The stale finding note ("app is assist-only, does not block") was also corrected
+  to reflect that the app now enforces the gate. **Before:** `fight-ui` 9/11 (2 steps blocked by correct app
+  behaviour). **After:** **11/11, 0 errors**; `verify-all` 7/7 all-green. The app's Fell-Back/Overwatch
+  fidelity gates are confirmed *working* — this fix aligns the harness with them, it does not weaken them.
+
+### Verified good end-to-end (the ship gate)
+
+- **`verify-all.js` 7/7, 0 errors** — `playtest-ui` 9/9, `fight-ui` 11/11, `cards-ui` 15/15, `move-ui` 14/14,
+  `fullgame-ui` 20/20, `p2p-sync` 20/20 (+8/8 convergence, live PeerJS connected), `discover` clean.
+- **`explore-ui.js` 10/10, 0 errors** — onboarding, Builder, layout load, army deploy, Solo dialog, and the
+  full phone journey all render clean with no overflow and dialogs that fit the viewport.
+- Only `tools/shots/` was touched (two harness files + the runner); **`wh40k-tabletop.html` and all shared/
+  AI/sim/test code are untouched**, so `run_all.sh` is unaffected (no shared-code change to re-gate).
+
+### Could not drive / honestly out of reach
+- **AI decision quality** — out of Lane B scope (Lane A's control/matrix), unchanged here.
+- **Programmatic phone tab-switch** — on phone the Army/Cards/etc. tabs live in the bottom nav; the
+  exploratory harness verifies the phone layout renders with 0 overflow but drives `showTab` programmatically,
+  which on a phone viewport keeps the board-first view rather than animating the mobile panel. Cosmetic to
+  the harness, not an app issue; the phone board, help dialog, and overflow behaviour are all verified clean.
+
+---
+
+## Ship readiness (Gen 9 — final playability gate)
+
+**Verdict: PLAYABLE END-TO-END and READY for `playtest`→`main` from a playability standpoint.**
+
+**Verified working end-to-end (across Passes 1–7, all on the real render, 0 console errors):**
+- A full **5-round solo game** plays start→finish through the actual UI (Pass 5) — load mission, import +
+  deploy, Solo AI opponent, all six phases every round via the real stepper, ~30–40 casualty-allocation
+  prompts resolved through the real banner, correct end-game cue ("🏁 Game over", round "5 ✓"), scoring
+  integrity (CP 10/10, no phantom round-6 grant).
+- Every **phase cluster** individually: Movement (caps/Advance/Fall-Back/structured move — Pass 4), Fight
+  (engagement 2", Overwatch, pile-in/consolidate 3" caps, charge — Pass 2), Cards/secondaries + VP/CP
+  scoreboard + end-game (Pass 3), the ⚔ attack tool + battle-shock roller (Pass 1).
+- **11th-ed fidelity gates** enforced in the UI: 2" melee engagement (P2-1), ranged-only Overwatch
+  (P2-4/P3-2), Fell-Back/Advanced no-shoot/no-charge (P2-3/P4-1), 5-round end-of-game / no phantom CP (P3-1).
+- **Two-window P2P** converges over both a loopback and **live PeerJS/WebRTC** (Pass 6) — the app's founding
+  "play my brother online" goal, every op kind + full-sync + late-join deep-equal, CP derived per-peer.
+- **First-10-minutes UX** (Pass 7): coherent onboarding, clean Builder, one-click layout/Solo, clean phone
+  layout with no overflow, help dialog that fits desktop + phone.
+
+**Known / deferred items (all documented, none a blocker):**
+- **P2-5 / P4-3 — no first-class "declare charge" action** (deferred, larger feature): a charge is a
+  composite of ruler + 2D6 roller + manual move, so there's no charge verb to hard-gate (no auto-fail on a
+  natural 2, no Fights-First tracking, Overrun/3 consolidation modes unmodelled). Fell-Back/Advanced "no
+  charge" is enforced indirectly via the melee-stage block + reminder. Consistent with the app's
+  "assist, don't adjudicate" stance.
+- **P5-2 — AI shooting resolves one phase late** (AI-lane, out of Lane B scope): the AI's shooting
+  casualty prompts fire while the phase label already reads "Charge". No damage lost, no rules broken;
+  a known-minor cosmetic issue needing an RNG-neutral fix (the AI lane found any reorder reshuffles the
+  dice stream and drops the strength metric — Gen-8 §8). Deferred, documented.
+- **Import undercost (Pass-1 #3)** — imported meta armies show base datasheet points (e.g. Sororitas 1875,
+  not a legal 2000) because enhancements/proper costs aren't applied on import. Pre-existing import-pipeline
+  work, not a UI-layer issue.
+- **Design calls (Paul's, deliberately NOT changed):**
+  - **Shared secondary hands (P3-4):** each player sees the other's Tactical hand (a single-screen table
+    aid; the Cards-tab copy says so). Strict 11th matched play hides it. Left as-is by design.
+  - **Manual VP scoring (P3-5):** VP is manual via the steppers; the app ships no auto primary scoring
+    (the paid Mission Deck has the VP rules). "Assist, don't adjudicate." Left as-is by design.
+  - **Manual casualty allocation (P5-3):** ~30–40 prompts/game is 11th-ed-faithful (you allocate your own
+    casualties); the Setup "Auto-apply my casualties" toggle is the escape hatch. Default left faithful.
