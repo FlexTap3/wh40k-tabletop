@@ -1,0 +1,62 @@
+{
+  "gen": 713,
+  "seed": 7,
+  "tier": "S",
+  "layout": "Official 1A · T&H vs T&H",
+  "mission": "Battlefield Dominance / Battlefield Dominance",
+  "sideA": {
+    "fid": "TAU",
+    "name": "T’au Empire",
+    "pts": 1995,
+    "units": 16,
+    "models": 45,
+    "reserves": 1
+  },
+  "sideB": {
+    "fid": "AS",
+    "name": "Adepta Sororitas",
+    "pts": 1985,
+    "units": 14,
+    "models": 44,
+    "reserves": 1
+  },
+  "finalVp": {
+    "side1": 25,
+    "side2": 55
+  },
+  "finalCp": {
+    "side1": 10,
+    "side2": 10
+  },
+  "winner": 2,
+  "marginToAi": 30,
+  "reachedRound5": true,
+  "finalOc": {
+    "held1": 1,
+    "held2": 3,
+    "contested": 0
+  },
+  "runtimeMs": 499,
+  "findings": {
+    "total": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "rulesViolations": 0
+  },
+  "aiTotalShots": 72,
+  "pointsCap": 2000,
+  "attrition": {
+    "killedByAi": 931,
+    "lostByAi": 361,
+    "diff": 570,
+    "s1Models": [
+      45,
+      24
+    ],
+    "s2Models": [
+      44,
+      36
+    ]
+  }
+}

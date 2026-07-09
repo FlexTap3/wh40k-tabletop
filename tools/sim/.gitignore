@@ -1,0 +1,7 @@
+# heavy per-action logs regenerate deterministically from the code + seed — don't track them.
+# Battle reports (game-NN.md) and summaries (game-NN.summary.json) ARE deliverables — tracked.
+out/*.jsonl
+out/matrix/*.jsonl
+findings.jsonl
+out/control/
+out/smoke/

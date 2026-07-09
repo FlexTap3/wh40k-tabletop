@@ -1,0 +1,62 @@
+{
+  "gen": 722,
+  "seed": 7,
+  "tier": "S",
+  "layout": "Official 1A · T&H vs T&H",
+  "mission": "Battlefield Dominance / Battlefield Dominance",
+  "sideA": {
+    "fid": "SM",
+    "name": "Space Marines",
+    "pts": 1980,
+    "units": 10,
+    "models": 56,
+    "reserves": 1
+  },
+  "sideB": {
+    "fid": "DRU",
+    "name": "Drukhari",
+    "pts": 1980,
+    "units": 12,
+    "models": 63,
+    "reserves": 1
+  },
+  "finalVp": {
+    "side1": 35,
+    "side2": 35
+  },
+  "finalCp": {
+    "side1": 10,
+    "side2": 10
+  },
+  "winner": 0,
+  "marginToAi": 0,
+  "reachedRound5": true,
+  "finalOc": {
+    "held1": 2,
+    "held2": 2,
+    "contested": 0
+  },
+  "runtimeMs": 737,
+  "findings": {
+    "total": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "rulesViolations": 0
+  },
+  "aiTotalShots": 106,
+  "pointsCap": 2000,
+  "attrition": {
+    "killedByAi": 1131,
+    "lostByAi": 1163,
+    "diff": -31,
+    "s1Models": [
+      56,
+      24
+    ],
+    "s2Models": [
+      63,
+      26
+    ]
+  }
+}

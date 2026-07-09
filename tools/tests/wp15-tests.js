@@ -53,7 +53,7 @@
   assert(weapons.length === 4, "synthetic weapon lines parse");
 
   // ---------- default-weapon choice (unit level) ----------
-  assert(wp15DefaultWi(weapons, 0.5, atkToks) === 3, "engaged (≤1.02\"): first melee weapon preferred");
+  assert(wp15DefaultWi(weapons, 0.5, atkToks) === 3, "engaged (≤2.02\"): first melee weapon preferred");
   assert(wp15DefaultWi(weapons, 6.7, atkToks) === 0, "in range: unpipped Boltgun (3×2 output) beats plasma/sniper");
   assert(wp15DefaultWi(weapons, 30, atkToks) === 2, "at 30\": only the 48\" rifle is in range");
   assert(wp15DefaultWi(weapons, 60, atkToks) === 2, "nothing in range: smallest range shortfall (longest gun)");

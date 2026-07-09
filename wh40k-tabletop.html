@@ -106,14 +106,20 @@ kbd{background:var(--panel2); border:1px solid var(--edge); border-radius:4px; p
 #wp7PhaseBar b{min-width:112px; text-align:center; font-weight:600}
 /* ==== end WP7 ==== */
 /* ==== WP11: allocation ==== defender casualty-allocation banner (solo mode) */
-#wp11Banner{position:absolute; left:50%; transform:translateX(-50%); top:10px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:9px 14px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:13; font-size:13px; text-align:center; line-height:1.5}
+/* pointer-events:none so clicks pass THROUGH to the board — during allocation you must click your
+   models to assign damage, and a unit positioned under this top-centre banner would otherwise be
+   un-clickable (the banner ate the click). The Auto-assign button re-enables pointer-events. Mirrors
+   the P2-2 click-through fix on #wpRulesReminder. (Gen-7 Lane B, full-game capstone finding P5-1.) */
+#wp11Banner{position:absolute; left:50%; transform:translateX(-50%); top:10px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:9px 14px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:13; font-size:13px; text-align:center; line-height:1.5; pointer-events:none}
 #wp11Banner b{color:var(--accent-hi)}
 #wp11Banner .small{color:var(--dim)}
-#wp11Banner button{margin-left:10px; vertical-align:middle}
+#wp11Banner button{margin-left:10px; vertical-align:middle; pointer-events:auto}
 /* ==== end WP11 ==== */
 /* ==== WP-RULES: per-phase reminder banner ==== */
-#wpRulesReminder{position:absolute; left:50%; transform:translateX(-50%); top:54px; max-width:74%; background:rgba(24,20,25,.94); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:10px; padding:7px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:12; font-size:12px; text-align:center; line-height:1.4}
-#wpRulesReminder button{margin-left:10px; vertical-align:middle}
+/* Coaching strip: pinned flush to the board's top edge and made click-through (pointer-events:none)
+   so it never blocks selecting/dragging tokens beneath it; only the ✕ button stays clickable. */
+#wpRulesReminder{position:absolute; left:50%; transform:translateX(-50%); top:46px; max-width:60%; background:rgba(24,20,25,.82); backdrop-filter:blur(6px); border:1px solid var(--edge2); border-top:2px solid var(--accent); border-radius:8px; padding:5px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:12; font-size:12px; text-align:center; line-height:1.35; pointer-events:none}
+#wpRulesReminder button{margin-left:10px; vertical-align:middle; pointer-events:auto}
 html.phone #wpRulesReminder{top:auto; bottom:50px; left:8px; right:8px; transform:none; max-width:none}
 /* ==== end WP-RULES ==== */
 /* ==== WP12: phone ==== board-first command deck. Every rule is gated on html.phone
@@ -551,7 +557,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
   <div class="small" id="aiMetaBlurbEl" style="max-width:360px;margin:2px 0 6px"></div>
   <!-- ==== end WP11 ==== -->
   <div class="row"><label>AI faction</label><select id="aiFactionSel" style="min-width:220px"></select></div>
-  <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option selected>1000</option><option>1500</option><option>2000</option></select></div>
+  <div class="row"><label>Points</label><select id="aiPtsSel"><option>500</option><option>1000</option><option>1500</option><option selected>2000</option></select></div>
   <div class="small" style="max-width:360px;margin-top:6px">The AI builds a list, deploys into the Blue (side 2) deployment zone and plays its own turns through the phase stepper. You play Red (side 1) and take the first turn. Load a terrain layout first so it has a deployment zone and objectives. See ? → Solo mode for what it does (and approximates).</div>
   <div class="row" style="justify-content:flex-end; margin-top:8px">
     <button onclick="document.getElementById('aiDlg').close()">Cancel</button>
@@ -1494,7 +1500,11 @@ function bulkImportCards(){
 function renderScore(){
   const el=document.getElementById("scoreboard"); if(!el) return;
   const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}; /* WP8: spectator/legacy-safe */
-  el.innerHTML=[1,2].map(s=>{
+  const over=wpGameOver(); /* ==== WP-END ==== */
+  const overBanner=over?(()=>{ const v1=t.vp1||0,v2=t.vp2||0,nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+    const verdict=v1===v2?`Draw — ${v1}–${v2}`:(v1>v2?`<b style="color:var(--p1)">${nm(1)}</b> wins ${v1}–${v2}`:`<b style="color:var(--p2)">${nm(2)}</b> wins ${v2}–${v1}`);
+    return `<div class="card" style="padding:8px;margin-bottom:6px;border-left:3px solid var(--accent);background:rgba(212,175,55,.12)"><b>🏁 Game over</b> <span class="small">— battle round ${WP7_LAST_ROUND} complete.</span><div style="margin-top:3px">${verdict}</div><div class="small">Add any end-of-game secondaries, then tweak VP with the steppers if the tally differs.</div></div>`; })():"";
+  el.innerHTML=overBanner+[1,2].map(s=>{
     const nm=esc(state.names[s]||("Player "+s)), col=s===1?"var(--p1)":"var(--p2)";
     return `<div class="card" style="padding:8px;margin-bottom:6px;border-left:3px solid ${col}">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1503,7 +1513,7 @@ function renderScore(){
         <span>VP <button onclick="stepTracker('vp${s}',-1)">−</button> <b style="font-size:17px">${t['vp'+s]}</b> <button onclick="stepTracker('vp${s}',1)">+</button></span>
         <span>CP <button onclick="stepTracker('cp${s}',-1)">−</button> <b style="font-size:17px">${t['cp'+s]}</b> <button onclick="stepTracker('cp${s}',1)">+</button></span>
       </div></div>`;
-  }).join("")+`<div class="small" style="margin-bottom:6px">Battle round <button onclick="stepTracker('round',-1)">−</button> <b>${t.round}</b> <button onclick="stepTracker('round',1)">+</button> · synced with the top bar</div>`;
+  }).join("")+`<div class="small" style="margin-bottom:6px">Battle round <button onclick="stepTracker('round',-1)">−</button> <b>${over?(WP7_LAST_ROUND+" ✓"):t.round}</b> <button onclick="stepTracker('round',1)">+</button> · synced with the top bar</div>`;
 }
 function renderCards(){
   renderScore();
@@ -1565,7 +1575,8 @@ function stepTracker(key,dv){ state.trackers[key]=Math.max(key==="round"?1:0,(st
 }
 function refreshTrackers(){
   const t=state.trackers||{round:1,cp1:0,cp2:0,vp1:0,vp2:0}, g=id=>document.getElementById(id); /* WP8: spectator/legacy-safe */
-  g("tRound").textContent=t.round; g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
+  g("tRound").textContent=wpGameOver()?(WP7_LAST_ROUND+" ✓"):t.round; /* WP-END: never show a bogus round 6 — the game ends at round 5 */
+  g("tCp1").textContent=t.cp1; g("tCp2").textContent=t.cp2; g("tVp1").textContent=t.vp1; g("tVp2").textContent=t.vp2;
   g("n1").textContent=(state.names&&state.names[1])||"Player 1"; g("n2").textContent=(state.names&&state.names[2])||"Player 2"; /* WP8: spectator/legacy-safe */
   renderScore();
 }
@@ -1983,6 +1994,7 @@ function draw(){
     if(t.hid) drawHiddenBadge(t); /* ==== WP4: Hidden badge ==== */
     if(t.lvl) drawLvlBadge(t); /* ==== WP5: floor badge ==== */
     if(t.fellBack) drawFallBackBadge(t); /* ==== WP-FIGHT: Fell back badge ==== */
+    else if(t.advanced) drawAdvancedBadge(t); /* ==== WP-FIGHT (P2-3): Advanced badge (no shooting/charging) ==== */
     /* ==== WP-A: structured movement ==== a green ring/pip marks a model that's used its move this
        phase; a solid ✓ pip (unit marked "Movement complete") is drawn on top and reads at a glance. */
     if(wpMoved.has(t.id)||wpDone.has(t.unit)){
@@ -2193,6 +2205,17 @@ function drawFallBackBadge(t){
   ctx.fillText("F",r*.75,-r*.75+.5);
   ctx.restore();
 }
+/* ==== WP-FIGHT (P2-3): Advanced badge — a blue "A" pip; the unit can't shoot or charge this turn */
+function drawAdvancedBadge(t){
+  const r=(t.shape==="c"?mmIn(t.dmm)/2:Math.min(t.wIn,t.hIn)/2)*view.s;
+  ctx.save(); if(t.shape==="r") ctx.rotate(-(t.rot||0)*Math.PI/180);
+  const br=Math.max(5,view.s*.35);
+  ctx.beginPath(); ctx.arc(r*.75,-r*.75,br,0,7); ctx.fillStyle="#1a4a85"; ctx.fill();
+  ctx.strokeStyle="#7ec8ff"; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle="#e6f2ff"; ctx.font="bold "+Math.max(7,view.s*.45)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("A",r*.75,-r*.75+.5);
+  ctx.restore();
+}
 function drawLos(){
   if(tool!=="los"||!losSrc) return;
   const src=state.tokens.filter(t=>t.unit===losSrc);
@@ -2363,6 +2386,14 @@ function wp2LogMove(){
     if(d>WP2_JITTER) logShared(`· <b>${esc(myName)}</b> ${wpCapMode&&wpCapMode.mode==="consolidate"?"consolidated":"piled in"} ${d.toFixed(1)}" (cap 3")`,"sys");
     return;
   }
+  /* ==== WP-FIGHT fidelity (P2-3) ==== a move past M (into M+D6 advance territory) is an Advance —
+     stamp t.advanced on every model of the moved unit(s) so the shooting/charge gate can enforce
+     "no shooting or charging this turn"; a fresh move within M clears a stale flag. Synced via tok~;
+     auto-cleared when a fresh Movement phase begins (wp7ApplyPhase), same lifecycle as t.fellBack. */
+  const adv=d>cap+WP2_JITTER;
+  const movedUnits=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
+  const advChg=state.tokens.filter(t=>movedUnits.has(t.unit)&&(!!t.advanced)!==adv).map(t=>({id:t.id,advanced:adv}));
+  if(advChg.length) op({k:"tok~",toks:advChg});
   if(d<=cap+WP2_JITTER) return;
   if(d<=cap+6+WP2_JITTER) logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" (M ${cap}") — advance? (M+D6", no shooting or charging)`,"sys");
   else logShared(`· <b>${esc(myName)}</b> moved ${d.toFixed(1)}" — beyond M+6" (M ${cap}")`,"sys");
@@ -2502,18 +2533,47 @@ function wp3PickTarget(ix,iy){
   const aim=wp3Aiming; wp3Aiming=null; setTool(tool);
   const tk=hitToken(ix,iy);
   if(!tk||!wp3Ctx||tk.owner===wp3Ctx.tok.owner){ logSys("Targeting cancelled."); return; }
-  wp3Stage(wp3Ctx,aim.wi,tk);
+  if(wp3Stage(wp3Ctx,aim.wi,tk)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked (Fell Back / Advanced) — nothing staged */
   wp15AfterStage(wp3Ctx,aim.wi,tk,false); /* ==== WP15 ==== weapon selector for the inspector ⚔ flow (single-weapon aim: no carrier multiply) */
 }
+/* ==== WP-FIGHT fidelity gate (P2-3) ==== a unit that Fell Back this turn may neither shoot nor
+   charge/fight; a unit that Advanced this turn may not shoot (it may still fight). 11th ed — Core
+   Rules Study Notes (Fall Back / Advance). Returns a reason string when the staged attack is
+   illegal, else "". Owner-agnostic: only the human's own units ever carry these transient flags
+   (the AI tracks its own advance/charge state separately), so this never blocks a legal AI action. */
+function wpMoveActionBlock(uk,isMelee){
+  const toks=state.tokens.filter(t=>t.unit===uk);
+  if(!toks.length) return "";
+  const nm=toks[0].name;
+  if(toks.some(t=>t.fellBack)) return isMelee
+    ? `${nm} Fell Back this turn — it can't charge or fight (11th ed).`
+    : `${nm} Fell Back this turn — it can't shoot (11th ed).`;
+  if(!isMelee&&toks.some(t=>t.advanced)) return `${nm} Advanced this turn — it can't shoot (11th ed).`;
+  return "";
+}
+/* ==== end WP-FIGHT fidelity gate ==== */
 // Pre-fill the Attack tab from a weapon + target token, then switch to it.
+// Returns false if the attack is blocked by the fidelity gate (nothing staged), else undefined.
 function wp3Stage(ctx0,wi,tgtTok){
   const w=ctx0.weapons[wi], ab=wp3ParseAbilities(w.ab), g=id=>document.getElementById(id);
   const atkToks=state.tokens.filter(t=>t.unit===ctx0.tok.unit);
+  /* ==== WP-FIGHT fidelity gate (P2-3) ==== block a shot/charge from a Fell-Back/Advanced unit */
+  const block=wpMoveActionBlock(ctx0.tok.unit,!!w.melee);
+  if(block){
+    wp3Label=""; wp16Staged=null; if(typeof wp16Hide==="function")wp16Hide();
+    const st=g("akStage");
+    if(st){ st.style.display="block";
+      st.innerHTML=`<div class="card" style="padding:6px 8px;margin-bottom:0;border-left:3px solid var(--bad)"><b style="color:var(--bad)">⛔ Blocked</b> — ${esc(block)}</div>`; }
+    logSys("⛔ "+block);
+    showTab("attack");
+    return false;
+  }
+  /* ==== end WP-FIGHT fidelity gate ==== */
   const tgtToks=state.tokens.filter(t=>t.unit===tgtTok.unit);
   const tgtCard=wp3CardFor(tgtTok);
   const atkName=ctx0.card?ctx0.card.name:ctx0.tok.name, tgtName=tgtCard?tgtCard.name:tgtTok.name;
   const dist=wp3UnitDist(atkToks,tgtToks);
-  const inRange=w.melee?dist<=1.02:dist<=w.rng+0.02;
+  const inRange=w.melee?dist<=2.02:dist<=w.rng+0.02; /* 11th-ed engagement range is 2" horizontally (was 1" in 10th) */
   const notes=[];
   /* ==== WP4/WP5 wiring: LoS, cover and Plunging Fire feed the staged attack ==== */
   const los=losCheckUnits(ctx0.tok.unit,tgtTok.unit);
@@ -2557,7 +2617,7 @@ function wp3Stage(ctx0,wi,tgtTok){
   // staging banner + attack-log label
   wp3Label=`⚔ ${atkName} → ${tgtName} · ${w.n}`;
   wp16Staged={tgtUk:tgtTok.unit,atkUk:ctx0.tok.unit}; /* ==== WP16 ==== remember the staged pair for the apply-damage button ==== end WP16 ==== */
-  const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 1\")"}`
+  const rHint=w.melee?`melee — closest models ${dist.toFixed(1)}" ${inRange?"(in engagement range)":"(NOT within 2\")"}`
                      :`range ${w.rng}" — closest models ${dist.toFixed(1)}" ${inRange?"(in range)":"(OUT OF RANGE)"}`;
   const stage=g("akStage");
   stage.style.display="block";
@@ -3167,6 +3227,14 @@ function wp8Coherency(){
 
 /* ==== WP7: phases — turn/phase engine, reserves tray, attached units ==== */
 const WP7_PHASES=["Command","Movement","Shooting","Charge","Fight","End"];
+/* ==== WP-END: end of the game ==== 11th ed is played over five battle rounds ("Usually 5 battle
+   rounds" — ../Notes/11th Edition Core Rules - Study Notes.md L28). The phase stepper still lets the
+   round counter tick past 5 (headless drivers loop until round>5), but the app now (a) refuses to
+   grant the automatic Command-phase +1 CP once the game is over — killing the old phantom round-6
+   CP artifact — and (b) shows an explicit "Game over" cue instead of a bogus round-6 Command. */
+const WP7_LAST_ROUND=5;
+const wpGameOver=()=>(((state.trackers&&state.trackers.round)||1)>WP7_LAST_ROUND);
+let wp7OverLogged=false;      // client-local one-shot for the end-of-game summary (mirrors wp6LastRound)
 let wp7Placing=null;          // {id} of the reserves entry being placed (click the board to arrive)
 let wp7TrayOpen=true, wp7UiSig=null;
 
@@ -3228,12 +3296,16 @@ function wpRulesSideIsSM(side){ // best-effort: any card/token on this side carr
 }
 function wpRulesReminderText(ph,side){
   let t=WP_RULES_REMINDERS[ph]||"";
+  // WP-END: most primaries score in the Command phase from battle round 2 (progressive scoring —
+  // the mission deck has the exact VP). A neutral coaching nudge, no rules prose.
+  if(ph===0){ const rd=(state.trackers&&state.trackers.round)||1; if(rd>=2&&rd<=WP7_LAST_ROUND) t+=" · score your primary (use the VP steppers)"; }
   if(ph===0&&wpRulesSideIsSM(side)) t+=" · Oath of Moment: pick a target (Space Marines)";
   return t;
 }
 function wpRulesShowReminder(){
   const el=document.getElementById("wpRulesReminder"); if(!el) return;
   const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(wpGameOver()){ el.innerHTML=`<span>🏁 The game has ended — battle round ${WP7_LAST_ROUND} complete. Tally the final scores in the Cards tab.</span> <button onclick="document.getElementById('wpRulesReminder').style.display='none'">✕</button>`; el.style.display="block"; return; } /* WP-END */
   if(typeof p.ph!=="number"||p.ph<0){ el.style.display="none"; return; }
   el.innerHTML=`<span>${esc(WP7_PHASES[p.ph]||"")}: ${esc(wpRulesReminderText(p.ph,p.side))}</span> <button onclick="document.getElementById('wpRulesReminder').style.display='none'">✕</button>`;
   el.style.display="block";
@@ -3280,7 +3352,10 @@ function wp7Step(dir){
   }
   op({k:"phase",ph,side,round});
   const nm=s=>esc((state.names&&state.names[s])||("Player "+s));
-  if(ph>=0) logShared(`⏵ Round ${round} · <b style="color:${side===1?"var(--p1)":"var(--p2)"}">${nm(side)}</b> — <b>${WP7_PHASES[ph]} phase</b>`,"sys");
+  // WP-END: past round 5 the game is over — wp7ApplyPhase logs the end-of-game summary instead of
+  // a bogus "Round 6 · Command phase" transition line.
+  if(round>WP7_LAST_ROUND){ /* game over — no phase-transition line */ }
+  else if(ph>=0) logShared(`⏵ Round ${round} · <b style="color:${side===1?"var(--p1)":"var(--p2)"}">${nm(side)}</b> — <b>${WP7_PHASES[ph]} phase</b>`,"sys");
   else logShared("⏵ Back to Deploy (pre-game)","sys");
 }
 function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both peers; idempotent
@@ -3294,14 +3369,15 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
   /* ==== WP-FIGHT: a fresh Movement phase (new turn) clears every unit's Fall Back flag — direct
      mutation, not a nested op, because this function already runs identically on both peers from
      the synced "phase" op (same pattern as the CP auto-grant a few lines down). */
-  if(o.ph===1&&prevPh!==1) state.tokens.forEach(t=>{ if(t.fellBack) t.fellBack=false; });
+  if(o.ph===1&&prevPh!==1) state.tokens.forEach(t=>{ if(t.fellBack) t.fellBack=false; if(t.advanced) t.advanced=false; /* ==== WP-FIGHT (P2-3): Advance flag shares Fall Back's fresh-Movement-phase reset ==== */ });
   // any phase change drops an armed pile-in/consolidate — client-local UI state, not synced
   if(o.ph!==prevPh) wpCapMode=null;
   /* ==== end WP-FIGHT ==== */
   if(typeof o.round==="number"&&state.trackers&&o.round!==state.trackers.round)
     state.trackers.round=Math.max(1,o.round); // WP6's end-of-round log picks this up in draw() — exactly once
-  if(o.ph===0){
-    // auto +1 CP to both on entering a Command phase — exactly once per (round, side), ever
+  if(o.ph===0&&!wpGameOver()){
+    // auto +1 CP to both on entering a Command phase — exactly once per (round, side), ever.
+    // WP-END: never past round 5 — that used to grant a phantom round-6 CP to both sides.
     const key=(((state.trackers&&state.trackers.round)||1)+":"+state.phase.side);
     if(!state.phase.cpDone[key]){
       state.phase.cpDone[key]=1;
@@ -3311,6 +3387,16 @@ function wp7ApplyPhase(o){ // applyOp case "phase": runs identically on both pee
       wp7ShockReminder();
     }
   }
+  /* ==== WP-END ==== once the game is over, announce it once (each peer logs locally, like the
+     WP6 end-of-round summary); reset the one-shot if the round is stepped back into play. */
+  if(wpGameOver()){
+    if(!wp7OverLogged){
+      wp7OverLogged=true;
+      const tr=state.trackers||{}, v1=tr.vp1||0, v2=tr.vp2||0, nm=s=>esc((state.names&&state.names[s])||("Player "+s));
+      const verdict=v1===v2?`a draw, ${v1}–${v2}`:(v1>v2?`${nm(1)} ${v1}–${v2}`:`${nm(2)} ${v2}–${v1}`);
+      logShared(`🏁 <b>The game is over</b> — battle round ${WP7_LAST_ROUND} complete. Final VP: <b>${verdict}</b>. Tally any end-of-game secondaries, then adjust VP with the steppers if needed.`,"sys");
+    }
+  } else wp7OverLogged=false;
   refreshTrackers();
   if(typeof wpRulesRenderStrats==="function") wpRulesRenderStrats(); /* ==== WP-RULES ==== */
   if(typeof wpRulesShowReminder==="function") wpRulesShowReminder(); /* ==== WP-RULES ==== */
@@ -3337,6 +3423,7 @@ function wp7ShockReminder(){ // logged locally on each peer, so each player sees
 function wp7RenderPhase(){
   const el=document.getElementById("wp7PhaseLabel"); if(!el) return;
   const p=(state.phase&&typeof state.phase==="object")?state.phase:{ph:-1,side:1};
+  if(wpGameOver()){ el.innerHTML='<span style="color:var(--accent)">🏁 Game over</span>'; return; } /* WP-END */
   if(typeof p.ph!=="number"||p.ph<0){ el.innerHTML='<span class="small">Deploy</span>'; return; }
   const col=p.side===1?"var(--p1)":"var(--p2)";
   el.innerHTML=`<span style="color:${col}">${esc((state.names&&state.names[p.side])||("Player "+p.side))}</span> · ${WP7_PHASES[p.ph]||"?"}`;
@@ -3455,7 +3542,12 @@ function wp7InspectorHtml(tok){
 function wpMoveInspectorHtml(tok){
   if(tok.owner!==mySide) return "";
   const uk=tok.unit, done=wpDone.has(uk), hasSnap=!!wpMoveStart[uk];
-  return `<div class="row" style="margin-top:4px;margin-bottom:0">`+
+  /* ==== WP-FIGHT (P2-3): surface the Advance/Fall Back lock so the shooting/charge block isn't a surprise */
+  const mates=state.tokens.filter(t=>t.unit===uk);
+  const lock=mates.some(t=>t.fellBack)?`⛔ Fell Back — no shooting or charging this turn`
+           :mates.some(t=>t.advanced)?`⛔ Advanced — no shooting or charging this turn`:"";
+  const lockHtml=lock?`<div class="small" style="color:var(--bad);margin-top:4px">${lock}</div>`:"";
+  return lockHtml+`<div class="row" style="margin-top:4px;margin-bottom:0">`+
     `<button onclick="wpMarkDone('${uk}')" title="Lock every model in this unit — no more moves this phase"${done?" disabled":""}>${done?"✓ Movement complete":"Movement complete"}</button> `+
     `<button onclick="wpUndoMove('${uk}')" title="Snap this unit back to where it was when the Movement phase began"${hasSnap?"":" disabled"}>↩ Undo move</button>`+
     `</div>`;
@@ -3471,7 +3563,7 @@ function wpMarkDone(unitId){
 function wpUndoMove(unitId){
   const snap=wpMoveStart[unitId];
   if(!snap||!snap.length){ logSys("No movement to undo for this unit yet this phase."); return; }
-  op({k:"tok~",toks:snap.map(s=>({id:s.id,x:s.x,y:s.y,rot:s.rot}))});
+  op({k:"tok~",toks:snap.map(s=>({id:s.id,x:s.x,y:s.y,rot:s.rot,advanced:false}))}); /* ==== WP-FIGHT: undo also clears the Advance flag ==== */
   snap.forEach(s=>wpMoved.delete(s.id));
   wpDone.delete(unitId);
   logSys("Move undone — unit snapped back to the start of the Movement phase.");
@@ -3546,8 +3638,8 @@ function wpFightOverwatch(){
   const shooter=groups[mineIdx][0], target=groups[1-mineIdx][0];
   wp3Label="";
   wp15Atk={unit:shooter.unit,owner:shooter.owner};
-  wp15Go(target);
-  if(!wp3Label) return; // wp15Go bailed (no card/weapons for the shooter) — nothing staged, nothing to log
+  wp15Go(target,true); // P2-4: Overwatch is a ranged attack — never auto-stage a melee weapon (blocks melee-only shooters)
+  if(!wp3Label) return; // wp15Go bailed (no card/weapons, or a melee-only shooter) — nothing staged, nothing to log
   const bsEl=document.getElementById("akBS"); if(bsEl) bsEl.value="6+"; // Overwatch: hits only on an unmodified 6
   logShared(`🔥 <b>${esc(myName)}</b> fires Overwatch: <b>${esc(shooter.name)}</b> → <b>${esc(target.name)}</b>`,"sys");
 }
@@ -3653,6 +3745,7 @@ const AI_TUNE={
   shootW:1.6,        // weight of expected shooting damage from a destination
   coverW:2.5,        // ending inside a terrain area (INFANTRY)
   threatW:0.9,       // expected incoming melee threat at a destination
+  holdThreat:0.55,   // reduced threat multiplier when the destination TAKES/HOLDS an objective for the AI (a point worth taking fire for)
   advancePen:4,      // advancing forfeits shooting
   closeW:0.4,        // pure-melee units: reward per inch of closed distance (capped)
   chargeGain:1.4,    // expected melee damage multiplier needed to attempt a charge
@@ -3660,6 +3753,11 @@ const AI_TUNE={
   tgtOnObj:1.5,      // target priority: unit parked on an objective the AI doesn't hold
   minShootExp:0.25,  // don't fire below this expected damage
   reserveMax:1,      // units held in Strategic Reserves
+  // ---- list-build quality knobs (Gen-6: stop padding elite/gunline armies into fill-hordes) ----
+  chaffPpm:13,       // a unit costing ≤ this many points-per-model is "cheap chaff" (a body, not a threat)
+  chaffShare:0.35,   // cap: at most this fraction of the list's points may be spent on cheap chaff
+  elitePpm:18,       // a non-character costing ≥ this points-per-model counts as a quality/"hammer" pick
+  maxUnitShare:0.33, // skip any single datasheet costing > this fraction of the list (no Lord-of-War hogging)
 };
 
 /* ---- solo flag + seedable RNG (mulberry32; aiSeed(n) reproduces a whole game) ---- */
@@ -3668,6 +3766,7 @@ let aiGen=0, aiTimer=null, aiPaused=false, aiQueue=[], aiDelay=600;
 let aiActing=false, aiCurTgt=null, aiCurAtk=null;   // set while the AI itself is rolling an attack
 let aiStagedTgt=null, aiStagedAtk=null;             // last player-staged attacker→target (wp3Stage hook)
 let aiShotLog=[];                     // {atk,tgt,dist,rng,vis,weapon} — every AI attack (tests assert legality)
+let aiFocus={};                       // enemy unitKey -> expected damage the army has COMMITTED this shooting phase (army-level focus fire)
 let aiMoved={};                       // unitId -> {advanced,charged} for the current AI turn
 let aiPhaseKey="";                    // "round:side:ph" last planned — guards double-planning
 function aiMulberry(seed){ let a=seed>>>0; return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -3688,6 +3787,15 @@ function aiSoloToggle(){
   const sel=document.getElementById("aiFactionSel");
   sel.innerHTML=DB.factions.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join("");
   if(typeof wp11PopulateMeta==="function") wp11PopulateMeta(); /* ==== WP11: meta-opponent picker ==== */
+  // Default the AI's points to a standard 2000 (Strike Force), or match the player's loaded army to
+  // the nearest bracket — a 1000pt default gave a new solo player a lopsided half-strength opponent.
+  const ptsSel=document.getElementById("aiPtsSel");
+  if(ptsSel){
+    const mine=((state.cards&&state.cards[1])||[]).reduce((s,c)=>s+(parseInt(c.pts)||0),0)
+             ||(myArmy||[]).reduce((s,c)=>s+(parseInt(c.pts)||0),0);
+    const brackets=[...ptsSel.options].map(o=>parseInt(o.value)).sort((a,b)=>a-b);
+    ptsSel.value=String(mine>0?(brackets.filter(b=>b>=mine)[0]||brackets[brackets.length-1]):2000);
+  }
   document.getElementById("aiDlg").showModal();
 }
 function aiStartFromDlg(){
@@ -3708,7 +3816,7 @@ function aiStartFromDlg(){
 }
 function aiReset(){
   solo=true; aiGen++; aiQueue=[]; if(aiTimer){clearTimeout(aiTimer);aiTimer=null;} aiPaused=false;
-  aiShotLog=[]; aiMoved={}; aiPhaseKey="";
+  aiShotLog=[]; aiFocus={}; aiMoved={}; aiPhaseKey="";
   if(mySide!==1){ mySide=1; const s=document.getElementById("mySide"); if(s) s.value="1"; op({k:"name",side:1,name:myName}); }
 }
 function aiTakeOver(){ // resume solo against whatever side 2 already has (cards persist in state)
@@ -3898,31 +4006,78 @@ function aiPickSize(u,budget,preferBig){
   return opts[0]||null;
 }
 function aiBuildList(fid,pts){
+  // Gen-6 quality lists: a strong player builds to faction strength (T'au fields battlesuits, not a
+  // Fire-Warrior swarm) and wins attrition on firepower/durability EFFICIENCY, not raw model count.
+  // So we cap the share of points spent on cheap chaff, bias fill toward points-dense quality picks,
+  // and only pad with chaff up to its cap — keeping the Rule-of-Three cap and the ~2000-pt fill
+  // target (with a floor so we never regress the earlier under-spend fix).
   const units=DB.units[fid]||[], picked=[]; let left=pts;
   const kOf=u=>(u.k||[]).map(s=>String(s).toUpperCase());
   const cost0=u=>(u.p&&u.p[0]&&+u.p[0][1])||0;
+  const models0=u=>{ const m=u.p&&u.p[0]&&String(u.p[0][0]).match(/(\d+)/); return m?+m[1]:1; };
+  const ppm0=u=>cost0(u)/Math.max(1,models0(u));    // base points-per-model — the cheapness signal
   const shuffle=a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
-  const pool=f=>units.map((u,i)=>[u,i]).filter(([u])=>f(u)&&cost0(u)>0
-    &&!kOf(u).includes("FORTIFICATION")&&!kOf(u).includes("AIRCRAFT")&&u.r!=="Fortifications").map(([,i])=>i);
-  const take=(idxs,n,preferBig)=>{ let got=0;
-    for(const i of shuffle(idxs)){
-      if(got>=n) break;
-      const u=units[i], o=aiPickSize(u,left,preferBig);
-      if(!o) continue;
-      if(picked.filter(p=>p.idx===i).length>=2) continue; // max 2 copies of anything
-      picked.push({idx:i,size:o.models,pts:o.pts,name:u.n}); left-=o.pts; got++;
-    }
+  const legalU=u=>cost0(u)>0&&!kOf(u).includes("FORTIFICATION")&&!kOf(u).includes("AIRCRAFT")
+    &&u.r!=="Fortifications"&&cost0(u)<=AI_TUNE.maxUnitShare*pts;   // no single datasheet hogs the list
+  const pool=f=>units.map((u,i)=>[u,i]).filter(([u])=>f(u)&&legalU(u)).map(([,i])=>i);
+  const chaffCap=AI_TUNE.chaffShare*pts;             // cap on points spent on cheap bodies
+  const isChaff=u=>ppm0(u)<=AI_TUNE.chaffPpm;
+  let chaffPts=0;                                    // running points spent on cheap chaff
+  const copies=i=>picked.filter(p=>p.idx===i).length;
+  // add one pick honoring the Rule-of-Three copy cap AND the chaff-points cap; returns pts spent.
+  // Pass capChaff=false only in the last-resort floor pass, so a chaff-poor faction can still fill.
+  const add=(i,preferBig,maxCopies,capChaff)=>{
+    if(copies(i)>=(maxCopies||3)) return 0;
+    const u=units[i];
+    let budget=left;
+    if(isChaff(u)&&capChaff!==false) budget=Math.min(budget,chaffCap-chaffPts); // cheap bodies can't blow their share
+    const o=aiPickSize(u,budget,preferBig);
+    if(!o) return 0;
+    picked.push({idx:i,size:o.models,pts:o.pts,name:u.n});
+    left-=o.pts; if(isChaff(u)) chaffPts+=o.pts;
+    return o.pts;
+  };
+  const take=(idxs,n,preferBig,maxCopies)=>{ let got=0;
+    for(const i of shuffle(idxs)){ if(got>=n) break; if(add(i,preferBig,maxCopies||2)>0) got++; }
     return got; };
   const chars=pool(u=>kOf(u).includes("CHARACTER")&&!kOf(u).includes("EPIC HERO"));
   const battle=pool(u=>kOf(u).includes("BATTLELINE"));
   const heavy=pool(u=>(kOf(u).includes("VEHICLE")||kOf(u).includes("MONSTER"))
     &&!kOf(u).includes("CHARACTER")&&!kOf(u).includes("DEDICATED TRANSPORT")&&cost0(u)>=100);
   const inf=pool(u=>kOf(u).includes("INFANTRY")&&!kOf(u).includes("CHARACTER"));
+  // quality bodies: points-dense non-characters + every vehicle/monster (battlesuits, tanks, hammers)
+  const elite=pool(u=>!kOf(u).includes("CHARACTER")
+    &&(ppm0(u)>=AI_TUNE.elitePpm||kOf(u).includes("VEHICLE")||kOf(u).includes("MONSTER")));
+  const quality=[...new Set([...heavy,...elite])];
+  const chaffPool=(inf.length?inf:battle).filter(i=>isChaff(units[i]));
+  const nonChaffInf=inf.filter(i=>!isChaff(units[i]));
+  // --- spine: leaders, a battleline core, anti-tank/durable heavies, and an elite hammer ---
   take(chars,pts>=1000?2:1,false);
   take(battle,pts>=1500?3:2,pts>=1000);
   take(heavy,pts>=1000?2:1,false);
-  let guard=0;
-  while(left>=50&&guard++<24&&take(inf.length?inf:battle,1,false)>0){}
+  take(elite,pts>=1500?3:2,false);
+  // --- upsize pass: grow already-picked NON-chaff units to their largest affordable profile (a
+  //     denser quality squad, not more cheap bodies). Chaff is deliberately left small. ---
+  for(const p of picked){
+    if(isChaff(units[p.idx])) continue;
+    const o=aiPickSize(units[p.idx],left+p.pts,true);   // biggest size that fits if this unit's cost is refunded
+    if(o&&o.pts>p.pts){ left-=(o.pts-p.pts); p.pts=o.pts; p.size=o.models; }
+  }
+  // Buy from the first of `pools` that yields an affordable pick this round (prefer big), RoT=3.
+  const fillRound=(pools,capChaff)=>{
+    for(const P of pools){ for(const i of shuffle(P)){ if(add(i,true,3,capChaff)>0) return true; } }
+    return false;
+  };
+  // --- quality fill: spend leftover points on points-dense units (and quality infantry) FIRST —
+  //     this is what stops elite/gunline armies becoming Fire-Warrior swarms. ---
+  let g1=0; while(left>=50&&g1++<80&&fillRound([quality,nonChaffInf])){}
+  // --- chaff fill: only now top up with cheap bodies, and only up to the chaff-share cap. ---
+  let g2=0; while(left>=50&&g2++<80&&fillRound([chaffPool.length?chaffPool:battle])){}
+  // --- floor safety net: if still short of the ~1950 floor (chaff-poor faction, cap reached),
+  //     drop the chaff cap and buy anything affordable (RoT=3) so we always spend ≥~1950. ---
+  if(left>=50){ const anyPool=[...quality,...inf,...battle,...chars]; let g3=0;
+    while(left>=50&&g3++<80&&fillRound([anyPool],false)){}
+  }
   return picked;
 }
 
@@ -3968,7 +4123,7 @@ function aiPlaceUnit(toks,poly,placed){
   if(!toks.length) return false;
   const xs=poly.map(p=>p[0]), ys=poly.map(p=>p[1]);
   const x0=Math.min.apply(null,xs), x1=Math.max.apply(null,xs), y0=Math.min.apply(null,ys), y1=Math.max.apply(null,ys);
-  const gap=Math.max(1.3,2*tokRadius(toks[0])+0.25);
+  const gap=Math.max(1.3,2*Math.max.apply(null,toks.map(tokRadius))+0.25); // size the grid from the unit's LARGEST base, not toks[0] — mixed/large-base units stay non-overlapping & in coherency
   const cands=[];
   for(let y=y0+1;y<=y1-1;y+=1.5) for(let x=x0+1;x<=x1-1;x+=1.5) if(wp7PtInPoly(x,y,poly)) cands.push([x,y]);
   for(let i=cands.length-1;i>0;i--){ const j=Math.floor(aiRng()*(i+1)); const t=cands[i]; cands[i]=cands[j]; cands[j]=t; }
@@ -3992,6 +4147,79 @@ function aiDeployAll(unitsToks){
     if(!aiPlaceUnit(toks,poly,placed))
       logSys("🤖 Couldn't fit "+((toks[0]&&toks[0].name)||"a unit")+" in the DZ — left where it dropped; drag it if needed.");
   });
+  /* ---- deploy-time coherency repair (11th-ed: every unit is SET UP in coherency) ----
+     Runs AFTER grid placement and consumes NO aiRng, so it is a strict no-op — and can
+     never perturb the shared aiRng game stream — unless a model is genuinely out of
+     coherency (edge > 2.02" from EVERY squadmate, matching checkCoherency's 1-neighbour
+     rule). Two latent sources of incoherence are healed:
+       (a) A solo/2-model INFANTRY character that aiAttachCharacters will merge into a
+           squad: its 8-offset "snuggle" can fail against a tightly-packed squad and leave
+           the character 2"+ from every squadmate. We pre-seat the character adjacent to
+           the squad it WILL join (mirroring that pairing) so a later snuggle failing is
+           harmless. This is the real cross-faction repro (Hospitaller/Cadre Fireblade/
+           Death Jester at 2.1"-4.1").
+       (b) Any multi-model unit with a stray model (e.g. a mixed/large-base squad, or a
+           unit left on its base-unaware fallback drop grid): nudge it back toward its
+           nearest squadmate. */
+  const findAdj=(chr,hostToks)=>{ // deterministic legal spot within coherency of a host model — no aiRng
+    const others=state.tokens.filter(t=>t.id!==chr.id);
+    const hs=hostToks.slice().sort((a,b)=>edgeDist(chr,a)-edgeDist(chr,b));
+    for(const h of hs){ const need=tokRadius(chr)+tokRadius(h);
+      for(let g=0.3;g<=1.6;g+=0.3){ const d=need+g;
+        for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+          if(!wp7PtInPoly(x,y,poly)) continue;
+          if(!aiSpotOk(chr,x,y,others)) continue;
+          return [x,y]; } } }
+    return null;
+  };
+  const units=aiUnits(2);
+  const squads=units.filter(u=>u.toks.length>=3&&unitHasKw(u.toks,["INFANTRY"])&&!u.toks.some(t=>tokKw(t).includes("CHARACTER")));
+  const used=new Set();
+  units.forEach(u=>{ // (a) pre-seat attaching characters next to their host squad (mirrors aiAttachCharacters pairing)
+    if(!u.toks.every(t=>tokKw(t).includes("CHARACTER"))||u.toks.length>2) return;
+    if(!unitHasKw(u.toks,["INFANTRY"])) return;
+    const host=squads.filter(s=>!used.has(s.uk)).sort((a,b)=>edgeDist(u.toks[0],a.toks[0])-edgeDist(u.toks[0],b.toks[0]))[0];
+    if(!host) return;
+    used.add(host.uk);
+    u.toks.forEach(chr=>{
+      if(host.toks.some(m=>edgeDist(chr,m)<=2.02)) return; // already in coherency with host — leave EXACTLY as placed
+      const spot=findAdj(chr,host.toks);
+      if(spot) op({k:"tok~",toks:[{id:chr.id,x:spot[0],y:spot[1]}]});
+    });
+  });
+  aiUnits(2).forEach(u=>{ const ms=u.toks; if(ms.length<2) return; // (b) nudge any stray model back into coherency
+    ms.forEach(m=>{
+      let nn=Infinity,near=null; ms.forEach(o=>{ if(o!==m){ const d=edgeDist(m,o); if(d<nn){nn=d;near=o;} } });
+      if(!near||nn<=2.02) return; // in coherency — untouched
+      const spot=findAdj(m,[near]);
+      if(spot) op({k:"tok~",toks:[{id:m.id,x:spot[0],y:spot[1]}]});
+    });
+  });
+}
+function aiSeatAdjacent(chr,hx,hy,hostToks){
+  // Seat `chr` adjacent to its host squad with a POSITIVE base gap and within coherency
+  // (edge ≤ 2.02"). Deterministic — consumes NO aiRng.
+  const others=state.tokens.filter(t=>t.id!==chr.id);
+  const h0=hostToks[0];
+  // PRIMARY: the historical 8-offset snuggle (unchanged order). aiSpotOk already enforces a
+  // ≥0.12" clearance from every base, so a committed offset never overlaps. Kept identical so an
+  // intact deployment is byte-for-byte what it was — protects the Control-C win-record guardrail.
+  const need=tokRadius(chr)+tokRadius(h0)+0.15;
+  const offs=[[need,0],[-need,0],[0,need],[0,-need],[need,need],[-need,need],[need,-need],[-need,-need]];
+  for(const [ox,oy] of offs){
+    if(aiSpotOk(chr,hx+ox,hy+oy,others)){ op({k:"tok~",toks:[{id:chr.id,x:hx+ox,y:hy+oy}]}); return true; }
+  }
+  // FALLBACK (Gen 7, new): a tightly-packed squad blocked all 8 offsets — the old code then left the
+  // character STRANDED at its deploy spot (the overlap/coherency hazard in the §8 log). Ring-scan every
+  // host model so it still seats adjacent (edge ≤ 2.02", coherent) with a guaranteed positive gap.
+  const hosts=hostToks.slice().sort((a,b)=>Math.hypot(a.x-hx,a.y-hy)-Math.hypot(b.x-hx,b.y-hy));
+  for(let gap=0.15;gap<=1.95;gap+=0.2){
+    for(const h of hosts){ const d=tokRadius(chr)+tokRadius(h)+gap;
+      for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+        if(aiSpotOk(chr,x,y,others)){ op({k:"tok~",toks:[{id:chr.id,x,y}]}); return true; } }
+    }
+  }
+  return false; // squad fully boxed in — leave the character at its (already legal) deploy spot
 }
 function aiAttachCharacters(){ // leaders join squads at deployment (as the rules have it)
   const squads=aiUnits(2).filter(u=>u.toks.length>=3&&unitHasKw(u.toks,["INFANTRY"])
@@ -4006,15 +4234,13 @@ function aiAttachCharacters(){ // leaders join squads at deployment (as the rule
     if(!host) return;
     used.add(host.uk);
     op({k:"tok~",toks:chr.map(t=>({id:t.id,attachedFrom:t.unit,unit:host.uk}))});
-    // snuggle the character next to the squad (nudge until legal)
-    const h0=host.toks[0], need=tokRadius(chr[0])+tokRadius(h0)+0.15;
-    const offs=[[need,0],[-need,0],[0,need],[0,-need],[need,need],[-need,need],[need,-need],[-need,-need]];
-    for(const [ox,oy] of offs){
-      if(aiSpotOk(chr[0],h0.x+ox,h0.y+oy,state.tokens.filter(t=>t.id!==chr[0].id))){
-        op({k:"tok~",toks:[{id:chr[0].id,x:h0.x+ox,y:h0.y+oy}]});
-        break;
-      }
-    }
+    // Seat the character adjacent to the squad WITHOUT base overlap (FIDELITY, Gen 7).
+    // The old snuggle tried 8 fixed offsets sized off tokRadius; if a tight squad blocked all
+    // eight it left the character un-seated (a latent coherency/overlap hazard). aiSeatAdjacent
+    // does a deterministic (no-aiRng) ring scan gated by aiSpotOk, so every committed spot has a
+    // strictly positive edge gap to every base and sits within coherency (edge ≤ 2.02") of the host.
+    const h0=host.toks[0];
+    aiSeatAdjacent(chr[0],h0.x,h0.y,host.toks);
     logShared(`🤖 AI attaches <b>${esc(chr[0].name)}</b> to <b>${esc(h0.name)}</b>`,"sys");
   });
 }
@@ -4080,25 +4306,82 @@ function aiBestShoot(x,y,ms,ranged,enemies,prep){ // best expected damage from a
 }
 function aiTryTranslate(ms,tx,ty,enemyToks,allowEngage){
   const scales=[1,0.85,0.7,0.5], offs=[[0,0],[0.8,0],[-0.8,0],[0,0.8],[0,-0.8],[1.4,1.4],[-1.4,1.4],[1.4,-1.4],[-1.4,-1.4]];
+  const cap=Math.hypot(tx,ty)+1e-6;   // FIDELITY: (tx,ty) is the caller's move-capped vector; a rigid translation moves every model by |(vx,vy)|, which may never exceed the unit's allowance (M, or M+D6 on an advance). Obstacle-dodging offsets must stay under this cap.
   for(const sc of scales) for(const [ox,oy] of offs){
+    const vx=tx*sc+ox, vy=ty*sc+oy;
+    if(Math.hypot(vx,vy)>cap) continue;   // this nudge would over-move the unit — skip it
     const good=ms.every(t=>{
-      const c=Object.assign({},t,{x:t.x+tx*sc+ox,y:t.y+ty*sc+oy});
+      const c=Object.assign({},t,{x:t.x+vx,y:t.y+vy});
       const r=tokRadius(c)+0.1;
       if(c.x<r||c.y<r||c.x>state.board.w-r||c.y>state.board.h-r) return false;
       if(wp5Illegal(c)) return false;
       for(const e of enemyToks){
-        if(!allowEngage&&edgeDist(c,e)<=1.05) return false;   // may not end within 1" unless charging
+        if(!allowEngage&&edgeDist(c,e)<=2.05) return false;   // 11th-ed: may not end within 2" engagement range unless charging
         if(allowEngage&&edgeDist(c,e)<-0.05) return false;    // …but never overlapping bases
       }
       for(const o of state.tokens) if(o.owner===c.owner&&o.unit!==c.unit&&edgeDist(c,o)<0.02) return false;
       return true;
     });
-    if(good){ op({k:"tok~",toks:ms.map(t=>({id:t.id,x:t.x+tx*sc+ox,y:t.y+ty*sc+oy}))}); return true; }
+    if(good){ op({k:"tok~",toks:ms.map(t=>({id:t.id,x:t.x+vx,y:t.y+vy}))}); return true; }
   }
   return false;
 }
+/* ---- FIDELITY (Gen 7): re-form unit coherency after a move ----
+   11th-ed: at the END of its Movement phase every model must be in unit coherency (this
+   engine's checkCoherency: a squadmate within 2.02" edge, and none beyond 9.02"). aiMoveUnit
+   RIGID-translates a unit, so a unit that lost models to casualties keeps its (now-broken)
+   spread and can end Movement incoherent (e.g. SM Execrator, game 61 R4–5). This pass pulls
+   any straggler survivor back onto the unit's blob AFTER the translate. It:
+     • runs only when a model is genuinely out of coherency (no-op for intact units — so it
+       never perturbs the healthy-move behaviour the matrix measures),
+     • consumes NO aiRng (deterministic ring scan — mirrors the deploy-coherency repair),
+     • honours the per-model move cap (final pos ≤ `allow`" from that model's PRE-move spot —
+       the Gen-0 M / M+D6 allowance),
+     • never ends a model within 2.05" of an enemy (non-charge movement) or overlapping any base. */
+function aiReformUnit(uk,orig,allow,enemyToks){
+  const ms=state.tokens.filter(t=>t.unit===uk);
+  if(ms.length<2) return;
+  const coh=m=>{ // mirror checkCoherency's per-model rule exactly (near neighbour AND no far squadmate)
+    const near=ms.some(o=>o!==m&&edgeDist(m,o)<=2.02);
+    const far=ms.some(o=>o!==m&&edgeDist(m,o)>9.02);
+    return near&&!far;
+  };
+  const legal=(m,x,y)=>{
+    const c=Object.assign({},m,{x,y}), r=tokRadius(c)+0.1;
+    if(x<r||y<r||x>state.board.w-r||y>state.board.h-r) return false;
+    if(wp5Illegal(c)) return false;
+    const o0=orig[m.id]; if(o0&&Math.hypot(x-o0.x,y-o0.y)>allow+0.02) return false; // move cap from pre-move spot
+    for(const e of enemyToks) if(edgeDist(c,e)<=2.05) return false;                  // non-charge: stay out of engagement range
+    for(const t of state.tokens){ if(t.id===m.id) continue; if(edgeDist(c,t)<0.05) return false; } // no base overlap
+    return true;
+  };
+  for(let pass=0;pass<8;pass++){
+    const stray=ms.filter(m=>!coh(m));
+    if(!stray.length) break;
+    let progress=false;
+    for(const m of stray){
+      const mates=ms.filter(o=>o!==m);
+      const cohMates=mates.filter(coh);
+      const anchors=cohMates.length?cohMates:mates;   // chain onto the already-coherent blob when one exists
+      // Pull m the SHORTEST distance that restores coherency (edge gap ∈ (0,2.02]): this preserves the
+      // AI's chosen formation/board coverage as much as legality allows, so the fix barely costs strength.
+      let bestX=null,bestY=null,bestD=Infinity;
+      for(const h of anchors){ const base=tokRadius(m)+tokRadius(h);
+        for(let gap=1.9;gap>=0.25;gap-=0.2){ const d=base+gap;
+          for(let a=0;a<16;a++){ const ang=a*Math.PI/8, x=h.x+Math.cos(ang)*d, y=h.y+Math.sin(ang)*d;
+            if(!legal(m,x,y)) continue;
+            const disp=Math.hypot(x-m.x,y-m.y);
+            if(disp<bestD-1e-9){ bestD=disp; bestX=x; bestY=y; }
+          } }
+      }
+      if(bestX!==null){ op({k:"tok~",toks:[{id:m.id,x:bestX,y:bestY}]}); progress=true; }
+    }
+    if(!progress) break;
+  }
+}
 function aiMoveUnit(uk){
   const ms=state.tokens.filter(t=>t.unit===uk); if(!ms.length) return;
+  const orig={}; ms.forEach(t=>{ orig[t.id]={x:t.x,y:t.y}; }); // pre-move snapshot for the coherency-reform move cap
   const M=Math.min(...ms.map(t=>(typeof t.Mv==="number"&&t.Mv>0)?t.Mv:6));
   const cx=ms.reduce((s,t)=>s+t.x,0)/ms.length, cy=ms.reduce((s,t)=>s+t.y,0)/ms.length;
   const W=aiWeapons(ms), ranged=W.ranged, melee=W.melee;
@@ -4142,7 +4425,7 @@ function aiMoveUnit(uk){
   // --- score every candidate ---
   cands.forEach(c=>{
     const d=Math.hypot(c.x-cx,c.y-cy), adv=d>M+0.05;
-    let s=0, why2=null;
+    let s=0, why2=null, holdsObj=false;
     tal.forEach((o,i)=>{ // objective swing if the unit ends on the marker, gradient toward it otherwise
       const dd=Math.hypot(o.o.x-c.x,o.o.y-c.y), wasOn=Math.hypot(o.o.x-cx,o.o.y-cy)<=2.8, onIt=dd<=2.2;
       if(!onIt){
@@ -4152,10 +4435,10 @@ function aiMoveUnit(uk){
       }
       const ocWithout=o.oc2-(wasOn?unitOC:0), oc2=ocWithout+unitOC;
       const holderAfter=o.oc1>oc2?1:oc2>o.oc1?2:(o.o.sec||0);
-      if(holderAfter===2&&o.holder!==2){ s+=AI_TUNE.objBase+(o.holder===1?AI_TUNE.objContest:0); why2=`→ Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
+      if(holderAfter===2&&o.holder!==2){ s+=AI_TUNE.objBase+(o.holder===1?AI_TUNE.objContest:0); why2=`→ Obj ${i+1} (OC ${oc2} v ${o.oc1})`; holdsObj=true; }
       else if(holderAfter===2){
         if(ocWithout>o.oc1){ s+=1.2; why2=`screens Obj ${i+1}`; }              // already held without this unit — don't pile on
-        else { s+=AI_TUNE.objBase*AI_TUNE.objKeep; why2=`holds Obj ${i+1}`; }
+        else { s+=AI_TUNE.objBase*AI_TUNE.objKeep; why2=`holds Obj ${i+1}`; holdsObj=true; }
       }
       else { s+=AI_TUNE.objContest*0.5; why2=`contests Obj ${i+1} (OC ${oc2} v ${o.oc1})`; }
     });
@@ -4168,10 +4451,11 @@ function aiMoveUnit(uk){
     }
     if(adv) s-=AI_TUNE.advancePen*(ranged.length?1:0.3);
     if(infantry&&state.terrain.some(t2=>LOS_DENSE[t2.kind]&&geomPointInRect(c.x,c.y,t2))) s+=AI_TUNE.coverW;
+    const threatW=holdsObj?AI_TUNE.holdThreat:AI_TUNE.threatW; // a point we can take/hold is worth taking fire for
     enemies.forEach(e=>{ // incoming melee threat at the destination
       const eM=Math.max(...e.toks.map(t=>(typeof t.Mv==="number")?t.Mv:6));
       const exd=Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)));
-      if(exd<=eM+8) s-=aiMeleeThreat(e.toks,ms)*AI_TUNE.threatW*((ranged.length&&!melee.length)?1.4:0.7);
+      if(exd<=eM+8) s-=aiMeleeThreat(e.toks,ms)*threatW*((ranged.length&&!melee.length)?1.4:0.7);
     });
     if(melee.length&&!ranged.length&&enemies.length){ // pure melee closes distance
       const nd=Math.min(...enemies.map(e=>Math.min(...e.toks.map(t=>Math.hypot(t.x-c.x,t.y-c.y)))));
@@ -4184,17 +4468,19 @@ function aiMoveUnit(uk){
   const enemyToks=state.tokens.filter(t=>t.owner===1);
   for(const c of cands){
     const dx=c.x-cx, dy=c.y-cy, dist=Math.hypot(dx,dy);
-    if(dist<0.3){ aiMoved[uk]={advanced:false}; logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}`,"sys"); return; }
+    if(dist<0.3){ aiMoved[uk]={advanced:false}; logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}`,"sys"); aiReformUnit(uk,orig,M,enemyToks); return; }
     let advanced=false, allow=M;
     if(dist>M+0.05){ allow=M+aiD6(); advanced=true; }        // real advance roll (AI dice)
     const f=Math.min(1,allow/dist);
     if(aiTryTranslate(ms,dx*f,dy*f,enemyToks,false)){
       aiMoved[uk]={advanced};
       logShared(`🤖 AI: <b>${esc(ms[0].name)}</b> ${esc(c.why)}${advanced?` — <b>advances</b> ${(dist*f).toFixed(1)}" (M ${M}"+D6, no shooting)`:` (${(dist*f).toFixed(1)}")`}`,"sys");
+      aiReformUnit(uk,orig,allow,enemyToks);   // re-cohere survivors within this move's allowance
       return;
     }
   }
   aiMoved[uk]={advanced:false};
+  aiReformUnit(uk,orig,M,enemyToks);           // no legal translate found — still heal coherency in place
 }
 function aiResSpotScore(x,y,tal){
   if(!tal.length) return 0;
@@ -4314,16 +4600,29 @@ function aiShootUnit(uk){
         if(!los||!los.vis||los.dist>w.rng+0.02) return;
         const exp=aiExpDamage(w,shooters,e.toks,los.dist,!!los.cover);
         if(exp<AI_TUNE.minShootExp) return;
-        const sc=aiTargetScore(e,exp);
-        if(!best||sc>best.sc) best={e,los,sc};
+        let sc=aiTargetScore(e,exp);
+        // --- army-level focus fire: once the army commits damage to a unit this phase, pull the
+        //     rest of the guns onto it until it's REMOVED, rather than re-picking the raw-juiciest
+        //     fresh target every volley (which leaves half-dead units all over the board). ---
+        const curW=e.toks.reduce((a,t)=>a+(t.wounds||1),0), committed=aiFocus[e.uk]||0;
+        if(curW>0&&committed>0){
+          // Gentle nudge (not an override): among targets of comparable value, prefer FINISHING one
+          // the army has already committed to, so guns don't scatter and leave half-dead units. Kept
+          // small on purpose — base value (pts/wound, on-objective) still leads target choice; an
+          // over-aggressive "finish it" bonus dumped good guns into cheap chaff (measured net-negative).
+          if(committed+exp>=curW) sc*=1.4;                                    // in-progress kill this volley completes
+          else sc*=1+0.3*Math.min(1,(committed+exp)/curW);                   // in-progress kill, pile a bit more on
+        }
+        if(!best||sc>best.sc) best={e,los,sc,exp};
       });
       if(!best) return;
+      aiFocus[best.e.uk]=(aiFocus[best.e.uk]||0)+best.exp;   // credit committed damage so later shooters finish this unit
       aiShotLog.push({atk:uk,tgt:best.e.uk,dist:best.los.dist,rng:w.rng,vis:best.los.vis,weapon:w.n});
       aiFireWeapon(uk,ms2,w,shooters,best.e,best.los);
     });
   });
 }
-function aiShooting(){ aiUnits(2).forEach(u=>aiEnqueue(()=>aiShootUnit(u.uk))); }
+function aiShooting(){ aiFocus={}; aiUnits(2).forEach(u=>aiEnqueue(()=>aiShootUnit(u.uk))); }
 
 /* ---- Charge + Fight phases ---- */
 function aiClosestPair(aToks,bToks){
@@ -4340,7 +4639,7 @@ function aiChargeUnit(uk){
   aiUnits(1).forEach(e=>{
     if(!e.toks.length) return;
     const d=wp3UnitDist(ms,e.toks);
-    if(d>12.02||d<=1.02) return;
+    if(d>12.02||d<=2.02) return;   // 11th-ed: skip enemies already within 2" engagement range
     const los=losCheckUnits(uk,e.uk);
     if(!los||!los.vis) return;
     const exp=Math.max(...W.melee.map(w=>aiExpDamage(w,ms.length,e.toks,0,false)));
@@ -4349,12 +4648,13 @@ function aiChargeUnit(uk){
   });
   if(!best) return;
   const a=aiD6(),b=aiD6(),roll=a+b;                          // real charge roll (AI dice)
-  if(roll+1.02<best.d){
+  if(roll+2.02<best.d){                                       // 11th-ed: charge succeeds if it can END within 2" engagement range
     logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> needs ${best.d.toFixed(1)}", rolled ${a}+${b}=${roll} — <b>failed</b>`,"dice");
     return;
   }
   const [am,bm]=aiClosestPair(ms,best.e.toks);
-  const need=Math.max(0,edgeDist(am,bm)-0.15), dd=Math.hypot(bm.x-am.x,bm.y-am.y)||1;
+  // move toward contact, but never further than the charge roll (each model moves up to `roll`")
+  const need=Math.min(roll,Math.max(0,edgeDist(am,bm)-0.15)), dd=Math.hypot(bm.x-am.x,bm.y-am.y)||1;
   if(aiTryTranslate(ms,(bm.x-am.x)/dd*need,(bm.y-am.y)/dd*need,state.tokens.filter(t=>t.owner===1),true)){
     aiMoved[uk]=Object.assign(aiMoved[uk]||{},{charged:true});
     logShared(`🎲 🤖 AI charge: <b>${esc(ms[0].name)}</b> → <b>${esc(best.e.toks[0].name)}</b> rolled ${a}+${b}=${roll} vs ${best.d.toFixed(1)}" — <b>made it</b> (base contact approximation)`,"dice");
@@ -4368,7 +4668,7 @@ function aiFightUnit(uk){
   const W=aiWeapons(ms); if(!W.melee.length) return;
   let best=null;
   aiUnits(1).forEach(e=>{
-    if(!e.toks.length||wp3UnitDist(ms,e.toks)>1.02) return;
+    if(!e.toks.length||wp3UnitDist(ms,e.toks)>2.02) return;   // 11th-ed: can fight anything within 2" engagement range
     const w=W.melee.reduce((a2,b2)=>aiExpDamage(b2,ms.length,e.toks,0,false)>aiExpDamage(a2,ms.length,e.toks,0,false)?b2:a2);
     const sc=aiTargetScore(e,aiExpDamage(w,ms.length,e.toks,0,false));
     if(!best||sc>best.sc) best={e,w,sc};
@@ -4964,7 +5264,11 @@ function wp11ScoreAdjust(c,ctx){ // aiMoveUnit hook: doctrine scoring terms, ret
   //    over open lanes when expected return fire exceeds their own output
   if(ctx.ranged.length&&!ctx.adv&&info.gt.total>info.own
      &&(round===1||(round===2&&info.gt.total>info.own*AI_TUNE.outgunnedRatio))){
-    if(ctx.sh>0&&!inDense) d-=AI_TUNE.stageW;
+    // Don't hide a gunline that can actually shoot: only penalize an open lane when the shot from
+    // here is too weak to earn the exposure (return fire outweighs it). A worthwhile shot cancels
+    // the stage-back pressure — idle guns are pure lost output.
+    const shootVal=(ctx.sh||0)*AI_TUNE.shootW;
+    if(ctx.sh>0&&!inDense&&shootVal<info.gt.worst*AI_TUNE.tradeW) d-=AI_TUNE.stageW;
     if(inDense) d+=AI_TUNE.stageW*0.6;
   }
   // 5: trade math — a move into the open must earn its exposure (objective swing + damage dealt
@@ -5403,10 +5707,10 @@ function wp15CarrierCount(atkToks,w){
 // Deterministic default weapon: melee when engaged; otherwise the in-range gun with
 // the biggest carriers×average-attacks output (ties → first); otherwise the ranged
 // weapon with the smallest range shortfall (i.e. the longest gun).
-function wp15DefaultWi(weapons,dist,atkToks){
-  if(dist<=1.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; }
+function wp15DefaultWi(weapons,dist,atkToks,rangedOnly){
+  if(!rangedOnly&&dist<=2.02){ const mi=weapons.findIndex(w=>w.melee); if(mi>=0) return mi; } /* 11th-ed engagement range 2" */
   const ranged=weapons.map((w,i)=>({w,i})).filter(x=>!x.w.melee);
-  if(!ranged.length) return weapons.findIndex(w=>w.melee); // melee-only unit out of engagement: stage the melee anyway
+  if(!ranged.length) return rangedOnly?-1:weapons.findIndex(w=>w.melee); // rangedOnly (e.g. Overwatch): a melee-only unit can't; else stage melee anyway
   const inR=ranged.filter(x=>dist<=x.w.rng+0.02);
   if(inR.length){
     let best=inR[0],bestV=-1;
@@ -5418,7 +5722,7 @@ function wp15DefaultWi(weapons,dist,atkToks){
   return best.i;
 }
 // Second click: build ctx0 from the armed unit and stage the default weapon.
-function wp15Go(tgtTok){
+function wp15Go(tgtTok,rangedOnly){
   const armed=wp15Atk; wp15Disarm(); // the next two clicks are a fresh attack; tool stays active
   if(!armed) return;
   const atkToks=state.tokens.filter(t=>t.unit===armed.unit);
@@ -5432,10 +5736,10 @@ function wp15Go(tgtTok){
     logSys(`No weapon profiles for ${atk.name} — add or import the unit card (Army tab) to quick-stage attacks.`);
     return;
   }
-  const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks);
-  if(wi<0) return;
+  const wi=wp15DefaultWi(weapons,wp3UnitDist(atkToks,tgtToks),atkToks,rangedOnly);
+  if(wi<0){ if(rangedOnly) logSys(`${atk.name} has no ranged weapon — Fire Overwatch is a ranged snap-shot, so a melee-only unit can't make it.`); return; }
   const ctx0={tok:atk,card,weapons};
-  wp3Stage(ctx0,wi,tgtTok);
+  if(wp3Stage(ctx0,wi,tgtTok)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked — don't show the weapon selector */
   wp15AfterStage(ctx0,wi,tgtTok);
 }
 // After wp3Stage (both the ⚔ tool AND the inspector flow): remember the pair for
@@ -5455,7 +5759,7 @@ function wp15WepChange(v){
   if(!wp15Ctx) return;
   const c=wp15Ctx, wi=Math.max(0,parseInt(v)||0);
   if(!c.ctx0.weapons[wi]) return;
-  wp3Stage(c.ctx0,wi,c.tgtTok);
+  if(wp3Stage(c.ctx0,wi,c.tgtTok)===false) return; /* ==== WP-FIGHT fidelity gate ==== blocked — keep prior selector state */
   wp15AfterStage(c.ctx0,wi,c.tgtTok,c.mul);
 }
 // Manual edit anywhere in the Attack tab: staging is the player's now — hide the selector.

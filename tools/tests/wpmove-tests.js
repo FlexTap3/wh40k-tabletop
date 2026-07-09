@@ -106,6 +106,31 @@
   dragTo([20.5,20],[21.5,20]); // re-drag f1 immediately, f2 (squadmate) never moved
   assert(Math.abs(tok("f1").x-21.5)<0.01,"(f) toggle off: re-dragging an already-moved model with unmoved squadmates is a free drag");
 
+  /* ================= (g) FIDELITY: aiTryTranslate never over-moves a unit past its allowance =================
+     Regression for the playtest Gen-0 bug: obstacle-dodging offsets were added on top of an
+     already move-capped vector, letting the AI advance ~1–2" further than M (or M+D6). Each model
+     moves by the rigid translation vector, so |actual displacement| must be <= |intended vector|. */
+  state.tokens.length=0; state.terrain.length=0; sel.clear();
+  const capMs=[mkTok("c1","CU",30,22,{Mv:6}),mkTok("c2","CU",31.5,22,{Mv:6})];
+  op({k:"tok+",toks:capMs});
+  // force the offset path: put a friendly blocker exactly where the straight (0-offset) move would land
+  op({k:"tok+",toks:[mkTok("blk","BU",36,22,{owner:1,Mv:6})]});
+  const before={c1:{x:tok("c1").x,y:tok("c1").y},c2:{x:tok("c2").x,y:tok("c2").y}};
+  const tx=6,ty=0, intended=Math.hypot(tx,ty);                 // ask for a full 6" straight move
+  const moved=aiTryTranslate([tok("c1"),tok("c2")],tx,ty,state.tokens.filter(t=>t.owner!==1?false:true).filter(t=>t.unit==="BU"),false);
+  const disp=id=>Math.hypot(tok(id).x-before[id].x,tok(id).y-before[id].y);
+  if(moved){
+    assert(disp("c1")<=intended+1e-3,`(g) c1 displacement ${disp("c1").toFixed(2)}" <= allowance ${intended}" (no over-move via offsets)`);
+    assert(disp("c2")<=intended+1e-3,`(g) c2 displacement ${disp("c2").toFixed(2)}" <= allowance ${intended}" (no over-move via offsets)`);
+  } else {
+    assert(disp("c1")<1e-6&&disp("c2")<1e-6,"(g) refused translate leaves the unit exactly in place");
+  }
+  // and the trivially-legal straight move takes exactly the intended distance, no more
+  state.tokens.length=0; op({k:"tok+",toks:[mkTok("s1","SU",5,30,{Mv:6})]});
+  const s0={x:tok("s1").x,y:tok("s1").y};
+  aiTryTranslate([tok("s1")],6,0,[],false);
+  assert(Math.abs(Math.hypot(tok("s1").x-s0.x,tok("s1").y-s0.y)-6)<1e-3,"(g) unobstructed 6\" request moves exactly 6\", not 6\"+offset");
+
   console.log(fails?("WPMOVE TESTS: "+fails+" FAILURES"):"WPMOVE TESTS: ALL PASSED");
   process.exitCode=fails?1:0;
 })();

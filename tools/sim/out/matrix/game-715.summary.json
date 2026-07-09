@@ -1,0 +1,62 @@
+{
+  "gen": 715,
+  "seed": 42,
+  "tier": "S",
+  "layout": "Official 1A · T&H vs T&H",
+  "mission": "Battlefield Dominance / Battlefield Dominance",
+  "sideA": {
+    "fid": "SM",
+    "name": "Space Marines",
+    "pts": 1980,
+    "units": 9,
+    "models": 18,
+    "reserves": 1
+  },
+  "sideB": {
+    "fid": "AS",
+    "name": "Adepta Sororitas",
+    "pts": 1985,
+    "units": 13,
+    "models": 37,
+    "reserves": 1
+  },
+  "finalVp": {
+    "side1": 25,
+    "side2": 25
+  },
+  "finalCp": {
+    "side1": 10,
+    "side2": 10
+  },
+  "winner": 0,
+  "marginToAi": 0,
+  "reachedRound5": true,
+  "finalOc": {
+    "held1": 1,
+    "held2": 0,
+    "contested": 0
+  },
+  "runtimeMs": 404,
+  "findings": {
+    "total": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "rulesViolations": 0
+  },
+  "aiTotalShots": 65,
+  "pointsCap": 2000,
+  "attrition": {
+    "killedByAi": 1100,
+    "lostByAi": 1502,
+    "diff": -402,
+    "s1Models": [
+      18,
+      8
+    ],
+    "s2Models": [
+      37,
+      9
+    ]
+  }
+}

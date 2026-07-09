@@ -37,4 +37,6 @@ node harness.js wpfight-tests.js
 node harness.js wprules-tests.js
 node harness.js wpwave2-tests.js
 node harness.js meta-refresh-probe.js
+node deploy-coherency-test.js
+node ai-move-coherency-test.js
 echo "ALL SUITES PASSED"

@@ -1,0 +1,40 @@
+# Battle Report — Game 61
+
+**Layout:** Official 1A · T&H vs T&H  |  **Mission:** Battlefield Dominance / Battlefield Dominance  |  **Seed:** 42
+
+**Side 1 (Challenger, Tier S):** Adepta Sororitas — 16 units / 34 models / ~1975 pts (1 in reserve)
+**Side 2 (Built-in AI):** Space Marines — 12 units / 22 models / ~1990 pts (1 in reserve)
+
+## Result
+- **Final VP:** Adepta Sororitas 20 — 30 Space Marines
+- **Winner:** Space Marines (AI)
+- **Final CP:** 10 / 10   |   **Objectives held at end:** 1 / 3
+- **Reached round 5:** yes   |   **Runtime:** 532 ms
+
+## Per-round summary
+
+| Rd | S1 moves | S1 shoot-kills | S1 charges | S1 fight-kills | S1 primary | AI shots | S1 losses to AI | AI primary | OC (S1–S2) | VP (S1–S2) |
+|----|----------|----------------|------------|----------------|-----------|----------|-----------------|-----------|-----------|-----------|
+| 1 | 16 | 0 | 0 | 0 | 0 | 7 | 0 | 0 | 1–2 | 0–0 |
+| 2 | 16 | 1 | 0 | 0 | 5 | 18 | 2 | 10 | 1–1 | 5–10 |
+| 3 | 15 | 2 | 0 | 0 | 5 | 23 | 3 | 5 | 1–1 | 10–15 |
+| 4 | 12 | 2 | 1 | 1 | 5 | 19 | 4 | 5 | 1–2 | 15–20 |
+| 5 | 11 | 2 | 0 | 0 | 5 | 39 | 8 | 10 | 1–3 | 20–30 |
+
+## Turning points
+- Round 2: lead swings to Space Marines (5–10).
+- Round 4: AI shooting/fighting removes 4 challenger models.
+- Round 5: AI shooting/fighting removes 8 challenger models.
+
+## Auditor findings (2)
+Rules violations: **2**  |  critical 0 · major 2 · minor 0
+
+- major/coherency: 2
+
+First 10:
+- [major] coherency (r4 End): Execrator (owner 2) is out of unit coherency after its Movement phase (8 models)
+- [major] coherency (r5 End): Execrator (owner 2) is out of unit coherency after its Movement phase (6 models)
+
+## Notes
+- Side 2 is the shipping built-in AI (only it can play side 2). Side 1 is the Tier-S deterministic challenger in tools/sim/challenger.js.
+- Primary VP is scored by the sim (Take & Hold: 5 VP per controlled objective, max 15/turn, rounds 2-5); the app itself leaves VP as manual entry.
