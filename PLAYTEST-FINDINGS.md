@@ -285,3 +285,68 @@ scoring — VP is manual via the steppers, the known P3-5 stance; the harness on
   outside Lane B's edit region, so it is documented and handed off rather than patched here.
 - **Automatic primary scoring** — still manual (P3-5); the harness scores side 1 by hand, so the final
   AI VP reads 0. Unchanged, intentional.
+
+## Pass 6 — P2P / netcode: the two-window game convergence (Gen 8, Lane B, 2026-07-08)
+
+Instrument: **`tools/shots/p2p-sync.js`** — a new sibling harness (Playwright/Chromium, Brave-wedge
+immune) that tests the app's **original, never-verified goal**: a **two-window host+guest game** over
+PeerJS. It loads the REAL app in **TWO isolated pages** (separate JS contexts, each with its own
+module-level `state`) and exercises PLAN.md §1.1 **invariant #3 ("Both peers converge")** two ways:
+
+1. **Offline op-convergence (primary, deterministic):** it replaces ONLY the PeerJS transport with a
+   loopback — installs a fake `conn` (`{open:true, send}`) on each page so the app's own
+   `send()`/`op()`/`applyOp()`/`onMsg()` run **unchanged**, and pumps every emitted message from one
+   page's outbox into the *other* page's real `onMsg` (exactly what `conn.on("data",onMsg)` does over
+   PeerJS). Nothing in the app is stubbed — only the wire is swapped for a loopback, which is precisely
+   what PeerJS is. It then drives the host's real mutations and after each asserts **deep-equality** of
+   the converge-critical `state` sub-tree (`tokens/trackers/phase/cards/objectives/sec/dz/reserves/
+   mission/names/board`) on both peers.
+2. **Live PeerJS (best-effort):** a second block drives the app's OWN `hostGame()`/`joinPrompt()` over
+   the real PeerJS cloud broker in two more pages, then pushes a real op and polls the guest.
+
+**Result: 20/20 steps ok, 0 console/page errors; 8/8 convergence deep-equals passed; live PeerJS
+CONNECTED and a real op converged over the actual WebRTC wire** (reproduced across 3 runs).
+
+**Headline (the one the session handoff has been waiting for):** the **two-window P2P game converges** —
+this is the first verification of the app's founding goal. Every op kind exercised
+(`tok+`/`tok~`/`tok-`/`track`/`sec+`/`obj~`/`phase`) leaves **both peers byte-identical** on the synced
+state; the `{t:"state"}` full-sync brings a late joiner exactly to the host's mid-game state; older
+saves missing new fields load without throwing and default sanely; and — beyond what the plan required —
+**live PeerJS signalling is NOT blocked in this sandbox**: a real host+guest connected over the cloud
+broker and a host op (clear + tok+ + track) propagated to the guest over real WebRTC.
+
+### What was verified (each an assertion in the harness)
+
+| # | Invariant #3 facet | Check | Result |
+|---|--------------------|-------|--------|
+| P6-1 | (c) full-sync on join | Guest connecting after the host loaded a mission + 78-model army receives the whole board via `{t:"state"}` → deep-equal. | **converges** (78 tokens) |
+| P6-2 | (b) mutate via `applyOp` | Host `op(tok~)` token move → guest matches. | **converges** |
+| P6-3 | (a)(b) synced state | Host `stepTracker` VP/CP (`track` op) → guest matches (vp 5/3, cp 1/0). | **converges** |
+| P6-4 | (a)(b) synced state | Host `drawSecondary` ×2 (`sec+`) → guest matches; **owner is the host's side on the guest too** (no owner flip). | **converges** |
+| P6-5 | (a)(b) synced state | Host deploys side-2 tokens (`tok+`) + secures an objective (`obj~`) → guest matches. | **converges** |
+| P6-6 | derived-on-both | Host steps a full round of phases (`phase` op). The Command-phase **+1 CP auto-grant is derived independently on each peer** inside `wp7ApplyPhase` (not sent as a separate op) — asserted the derived CP is identical on both (cp 3/2). | **converges** |
+| P6-7 | bidirectional | **Guest**-originated `op(tok~)` + `op(track)` reach the host. | **converges** |
+| P6-8 | (c) late join | A **brand-new** guest connects mid-game and catches up to the heavily-mutated host state via `{t:"state"}` → deep-equal. | **converges** |
+| P6-9 | (d) default when absent | A legacy `{t:"state"}` missing `sec`/`cards`/`reserves`/`phase` loads with **no throw**; the back-compat shims fill `sec=[]`, `cards={1,2}`, `reserves`, `phase` and subsequent `renderCards`/`wp7Step`/`drawSecondary` don't error. | **defaults sanely, 0 errors** |
+| P6-10 | transient (not state) | `{t:"dmg"}` (defender-allocation direct message) is handled without throwing and **does not enter `state`** (correct: like `ruler`, it's ephemeral and intentionally lost on reconnect). | **ok, state unchanged** |
+| P6-11 | live wire | Real PeerJS host+guest connect over the cloud broker; a host op propagates to the guest over WebRTC. | **CONNECTED + converged** |
+
+### Findings (severity-ranked)
+
+| # | Sev | Area | Finding | Status |
+|---|-----|------|---------|--------|
+| P6-1 | info (positive) | netcode | **The convergence invariant holds across every op kind + full-sync + late join.** No desync, no throw, no owner drift, no double-applied CP. The op protocol's idempotent replace-by-id design and the "derive-on-both, never nest an op" rule for the Command-phase CP grant both hold under a two-peer drive. | **verified — no bug** |
+| P6-2 | info | netcode/sandbox | **Live PeerJS is reachable in this sandbox** (contrary to the usual assumption). The founding two-window game connects and syncs over the real cloud broker. Documented honestly; the offline loopback remains the deterministic regression guard (network-independent). | **verified** |
+| P6-3 | info | netcode (documented, not a bug) | `{t:"dmg"}` defender-allocation and `{t:"ruler"}`/`{t:"movepath"}` are **transient direct messages, deliberately outside `state`** — they do not survive reconnect / full-sync. This is by design (a mid-roll damage packet or a live ruler tape is ephemeral) and consistent with invariant #3, which governs *mutable game state*, not transient UI signals. Noted so a future reader doesn't mistake it for a convergence gap. | **by design** |
+
+**No convergence/desync/throw bug was found**, so **no app code was changed** — the highest-value
+outcome here is the *proof* that the netcode already converges, plus a permanent regression harness.
+Because the app was not touched, `run_all.sh` is unaffected and still green (verified).
+
+### Could not drive / honestly out of reach
+- **Real adverse-network behaviour** (packet reorder/loss/high latency, mid-op disconnect + WP1
+  reconnect/resync) — the loopback delivers in-order and lossless, and the live path is a healthy LAN-ish
+  link. The reconnect path (`wp1Reconnect`, `{t:"state"}` re-sync on re-open) is exercised structurally by
+  the late-join test but not under a real drop mid-op.
+- **Two genuinely divergent starting states reconciling** — the app's model is host-authoritative full-sync
+  on join, not CRDT merge; the harness tests that model, not a conflict-resolution one (there isn't one).
