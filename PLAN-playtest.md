@@ -282,6 +282,30 @@ Pages queue can stick — per ops notes) but everything is verified-playable on 
 
 ## 8. Generational log (append one block per generation)
 
+**Gen 8 — P2P validated; AI levers honest-negative (2026-07-08).**
+- **Lane B (playability) — KEPT, milestone:** the **two-window P2P game converges** — the app's
+  founding "play my brother online" goal, never previously tested. `p2p-sync.js` loads the real app
+  in two Playwright pages, deep-equals the synced `state` sub-tree after each op (20/20 steps, 8/8
+  convergence checks, 0 errors), and a **live PeerJS connection over real WebRTC** propagated a host
+  op to the guest (not sandbox-blocked). CP is derived per-peer (the classic desync trap) correctly.
+  **No netcode bugs found** — value is the proof + a permanent regression harness. No app code changed.
+- **Lane A (AI) — both levers not kept:**
+  - *Melee aggression (#2):* the agent raised melee-action counts (DRU 2.3→3.5, AS 2.7→3.0) but every
+    variant **hurt the target factions** (assault-only units trade down when they charge more) — matrix
+    ≤0.719 < 0.722. **Reverted** (genetic discipline). Honest finding: more charges ≠ better for melee.
+  - *P5-2 turn-loop ordering:* fixable, but reordering shooting-before-charge inherently **reshuffles
+    the dice stream** (charge-dice vs shooting-dice interleave differently), dropping matrix 0.722→0.709
+    and control 4W-1D-0L→3W-2D-0L. Per the standing rule (**non-fidelity changes must beat the metric**;
+    only fidelity fixes are exempt), and since Gen 7 classified P5-2 as cosmetic (not a rules break),
+    **coordinator rejected it.** Documented as a known-minor issue (P5-2) needing an RNG-neutral fix.
+- **Net:** metric unchanged (matrix 0.722, Control 4W-1D-0L, 0 rules); a major playability milestone
+  (P2P) banked. A generation can legitimately end with the AI unchanged when the levers don't clear
+  the bar — that's selection working.
+- **→ Gen 9 (final):** one more AI-strength attempt (gunline under-shooting #3, or an RNG-neutral P5-2),
+  a final playability sweep, then merge `playtest` → `main`.
+
+
+
 **Gen 7 — fidelity cleanup + full-game capstone (2026-07-08).** Cleared the Gen-6 fidelity debt and
 validated a whole game on a live render. Both lanes merged clean.
 - **Lane A (AI fidelity):** `aiReformUnit` re-forms unit coherency after casualties in all move exit
