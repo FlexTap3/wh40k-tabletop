@@ -399,6 +399,13 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <div class="small" style="margin-bottom:6px">Once a model has moved this phase it can't be re-dragged until the rest of its unit has also moved. Use "Movement complete" in a unit's inspector to lock it early, or "↩ Undo move" to snap it back to where the phase began. Untick this to drag freely like before.</div>
       <!-- ==== end WP-A ==== -->
       <div class="small" style="margin-bottom:6px">Models breaking coherency (2" of a squadmate, 9" of every squadmate) glow red. With enforcement on, a drag that breaks a previously-coherent unit is reverted.</div>
+      <!-- ==== WP-VISUALS ==== board-cosmetics toggles. Draw-layer only: geometry, hit-tests and rules are untouched. -->
+      <h3>Visuals</h3>
+      <div class="row"><label><input type="checkbox" id="wpvFaction" checked onchange="wpvSave()"> Faction colours (token bodies tinted per army)</label></div>
+      <div class="row"><label><input type="checkbox" id="wpvGlyphs" checked onchange="wpvSave()"> Unit-type silhouettes (tank / claw / wing / helm glyphs)</label></div>
+      <div class="row"><label><input type="checkbox" id="wpvTerrain" checked onchange="wpvSave()"> Detailed terrain (brick ruins, canopy stipple, corrugated containers)</label></div>
+      <div class="small" style="margin-bottom:6px">Cosmetic only. The red/blue base rim always shows who owns a model; the body colour is its faction. Untick to go back to plain red-vs-blue tokens.</div>
+      <!-- ==== end WP-VISUALS ==== -->
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== --><button onclick="wp21Refit()" title="Recompute every one of your models' base/hull sizes from its army card using the current rules (oval bases, vehicle hull footprints). Fixes tokens deployed or saved before this update — leaves anything already correct alone.">♻ Fix base sizes</button><!-- ==== WP21 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
@@ -1721,6 +1728,7 @@ function wp9Ruin(w,h,seed){
   ctx.fillRect(-w/2,-h/2,w,h);
   const hat=wp9Hatch("rgba(255,255,255,.04)");
   if(hat){ ctx.fillStyle=hat; ctx.fillRect(-w/2,-h/2,w,h); }
+  wpvRuinFloor(w,h); /* ==== WP-VISUALS ==== brick floor under the wall slabs (toggle-gated) */
   ctx.strokeStyle="rgba(140,150,175,.3)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
   ctx.strokeRect(-w/2,-h/2,w,h); ctx.setLineDash([]); // area footprint boundary (rules-relevant)
   const th=Math.max(3.5,s*.34);
@@ -1770,6 +1778,7 @@ function wp9Wood(w,h,seed){
     ctx.strokeStyle="rgba(15,28,16,.55)"; ctx.lineWidth=1.2; ctx.stroke();
     ctx.fillStyle="rgba(190,220,160,.10)"; ctx.beginPath(); ctx.arc(tx-r*.3,ty-r*.35,r*.32,0,7); ctx.fill();
   }
+  wpvWoodStipple(w,h,seed); /* ==== WP-VISUALS ==== leafy canopy stipple (toggle-gated) */
 }
 function wp9Crate(w,h,seed){
   const s=view.s;
@@ -1782,6 +1791,7 @@ function wp9Crate(w,h,seed){
   ctx.strokeStyle="#77613b"; ctx.lineWidth=2; ctx.strokeRect(-w/2,-h/2,w,h);
   ctx.fillStyle="rgba(230,215,180,.16)"; const cp=Math.max(2.5,s*.28);
   [[-w/2,-h/2],[w/2-cp,-h/2],[-w/2,h/2-cp],[w/2-cp,h/2-cp]].forEach(([cx2,cy2])=>ctx.fillRect(cx2,cy2,cp,cp));
+  wpvCrateDetail(w,h); /* ==== WP-VISUALS ==== corrugation highlights + door seams (toggle-gated) */
 }
 function wp9Wall(w,h,seed){
   const s=view.s;
@@ -1797,6 +1807,7 @@ function wp9Wall(w,h,seed){
   else { ctx.moveTo(-w/2+ctx.lineWidth*.5,-h/2+1); ctx.lineTo(-w/2+ctx.lineWidth*.5,h/2-1); }
   ctx.stroke();
   ctx.strokeStyle="#8a744a"; ctx.lineWidth=1.5; ctx.strokeRect(-w/2,-h/2,w,h);
+  wpvWallEdge(w,h); /* ==== WP-VISUALS ==== bold blocking-line edge (toggle-gated) */
 }
 function wp9Crater(w,h,seed){
   const rnd=wp9Rng(seed), n=14, pts=[];
@@ -1821,6 +1832,296 @@ function wp9Terrain(t,w,h){
 }
 const WP9_P1={hi:"#e07a6a",mid:"#b23a34",lo:"#5f1e1a"}, WP9_P2={hi:"#74aade",mid:"#3a72ae",lo:"#1c3d63"};
 /* ==== end WP9 ==== */
+/* ==== WP-VISUALS ==== faction colour schemes + unit-type silhouettes + terrain detail.
+   Draw-layer ONLY: no geometry, hit-testing, ops or rules math is touched. Three Setup
+   toggles (wpvFaction / wpvGlyphs / wpvTerrain, default ON, persisted in
+   localStorage["wh40k_visuals"]) gate everything; with all three off the board renders
+   exactly as before this section existed. Ownership stays instantly readable: the token
+   BODY takes the faction palette, the base RIM (and inner ring) takes the owner's
+   red/blue — the gold leader rim (WP14 contract) is never overridden.
+   Under the node test stubs every checkbox reads false, so all of this is dormant there. */
+let wpvFlags={f:false,g:false,t:false};
+function wpvSync(){
+  const g=id=>{ try{ const el=document.getElementById(id); return el?!!el.checked:false; }catch(e){ return false; } };
+  wpvFlags={f:g("wpvFaction"),g:g("wpvGlyphs"),t:g("wpvTerrain")};
+}
+function wpvSave(){
+  wpvSync();
+  try{ localStorage.setItem("wh40k_visuals",JSON.stringify({f:wpvFlags.f?1:0,g:wpvFlags.g?1:0,t:wpvFlags.t?1:0})); }catch(e){}
+  try{ draw(); }catch(e){}
+}
+function wpvInit(){
+  try{
+    const v=JSON.parse(localStorage.getItem("wh40k_visuals")||"{}");
+    [["wpvFaction","f"],["wpvGlyphs","g"],["wpvTerrain","t"]].forEach(([id,k])=>{
+      const el=document.getElementById(id); if(el&&(k in v)) el.checked=!!v[k];
+    });
+  }catch(e){}
+  wpvSync();
+}
+/* Faction palettes — {hi,mid,lo} feeds the same radial/linear base gradients WP9 uses.
+   Mids are kept mid-dark so the ivory stat text (dark drop shadow + #f4efe6) and the
+   Okabe-Ito weapon pips stay readable, and none sit close to the WP14 leader gold. */
+const WPV_FACTIONS={
+  AS:{hi:"#c8a288",mid:"#8a2430",lo:"#3a0d12"},   // Sororitas: martyr red under bone
+  AC:{hi:"#e0bc62",mid:"#96702a",lo:"#443010"},   // Custodes: auric gold
+  AdM:{hi:"#d8825a",mid:"#8f3a20",lo:"#3c1608"},  // Mechanicus: Mars rust
+  TL:{hi:"#8a97ad",mid:"#4e5a70",lo:"#20283a"},   // Titanicus: god-engine steel
+  AE:{hi:"#72d0c0",mid:"#2a8078",lo:"#0e3834"},   // Aeldari: seer teal
+  AM:{hi:"#a8a86e",mid:"#5c5e34",lo:"#282a14"},   // Militarum: olive drab
+  CD:{hi:"#d86a92",mid:"#8a2a4c",lo:"#380e1e"},   // Daemons: warp crimson
+  QT:{hi:"#a8925a",mid:"#4a4238",lo:"#1a1712"},   // Chaos Knights: black iron & brass
+  CSM:{hi:"#c0a052",mid:"#443a42",lo:"#171319"},  // CSM: legion black & gold
+  DG:{hi:"#b2b272",mid:"#68703e",lo:"#2c301a"},   // Death Guard: plague green
+  DRU:{hi:"#48b0a0",mid:"#1e564e",lo:"#0a2422"},  // Drukhari: kabalite dark teal
+  EC:{hi:"#dc8cc4",mid:"#8e3a76",lo:"#3a1232"},   // Emperor's Children: slaaneshi pink
+  GC:{hi:"#a898cc",mid:"#544684",lo:"#221b3c"},   // GSC: cult purple
+  GK:{hi:"#bcc4d2",mid:"#68727e",lo:"#2c3239"},   // Grey Knights: silver
+  AoI:{hi:"#8a8aa2",mid:"#464660",lo:"#1c1c2a"},  // Agents: inquisitorial slate
+  QI:{hi:"#ccae58",mid:"#4e5e80",lo:"#222c44"},   // Imperial Knights: heraldic blue & gold
+  LoV:{hi:"#c89a4c",mid:"#5a6848",lo:"#242c1c"},  // Votann: kin green & copper
+  NEC:{hi:"#48d868",mid:"#1c6434",lo:"#0a2412"},  // Necrons: gauss green on black
+  ORK:{hi:"#8cbc4c",mid:"#4a7626",lo:"#1e360e"},  // Orks: da green
+  SM:{hi:"#5a86cc",mid:"#2a4e92",lo:"#122446"},   // Space Marines: Ultramar blue
+  TS:{hi:"#d0a648",mid:"#2c5694",lo:"#122844"},   // Thousand Sons: lapis & gold
+  TYR:{hi:"#c0a088",mid:"#6e4470",lo:"#2e1830"},  // Tyranids: leviathan purple & bone
+  TAU:{hi:"#dcae66",mid:"#9a6c2e",lo:"#442e10"},  // T'au: fio'tak ochre
+  UN:{hi:"#a0a0a0",mid:"#585858",lo:"#262626"},   // Unaligned: neutral grey
+  UA:{hi:"#a08080",mid:"#544040",lo:"#241a1a"},   // Unbound Adversaries: ashen maroon
+  WE:{hi:"#d8ccb8",mid:"#96302a",lo:"#38100e"},   // World Eaters: arena white & red
+};
+/* Which faction is each SIDE playing? Cards/tokens don't carry a faction id, so derive it
+   by majority-vote of the side's unit names against the DB (unit + profile names). Memoized
+   on a cheap composition key; recomputed only when armies/tokens change. */
+let wpvNameMap=null;
+function wpvNameFid(){
+  if(wpvNameMap) return wpvNameMap;
+  wpvNameMap=new Map();
+  try{
+    for(const fid in DB.units) for(const u of DB.units[fid]){
+      const add=n=>{ if(!n) return; const key=norm(n); let s=wpvNameMap.get(key); if(!s){ s=new Set(); wpvNameMap.set(key,s); } s.add(fid); };
+      add(u.n); (u.m||[]).forEach(p=>add(p.n));
+    }
+  }catch(e){}
+  return wpvNameMap;
+}
+const wpvFidCache={};
+function wpvSideFid(side){
+  const cards=(state.cards&&state.cards[side])||[];
+  const mine=(side===mySide&&typeof myArmy!=="undefined")?myArmy:[];
+  const key=side+":"+mySide+":"+cards.length+":"+mine.length+":"+state.tokens.length;
+  const c=wpvFidCache[side];
+  if(c&&c.key===key) return c.fid;
+  const map=wpvNameFid(), votes={};
+  const vote=n=>{ const s=map.get(norm(n||"")); if(!s) return; for(const f of s) votes[f]=(votes[f]||0)+1/s.size; };
+  cards.forEach(cd=>vote(cd.name));
+  if(!cards.length) mine.forEach(cd=>vote(cd.name));
+  let best=null,bv=0;
+  for(const f in votes) if(votes[f]>bv){ bv=votes[f]; best=f; }
+  if(!best){ // last resort: vote over the side's token (profile) names
+    state.tokens.forEach(t=>{ if(t.owner===side) vote(t.name); });
+    for(const f in votes) if(votes[f]>bv){ bv=votes[f]; best=f; }
+  }
+  wpvFidCache[side]={key,fid:best};
+  return best;
+}
+function wpvPal(t){ // token body palette: faction if known & enabled, else the WP9 player palette
+  if(wpvFlags.f){ const fid=wpvSideFid(t.owner), p=fid&&WPV_FACTIONS[fid]; if(p) return p; }
+  return t.owner===1?WP9_P1:WP9_P2;
+}
+function wpvRimCol(t,fb){ // base rim = ownership when faction bodies are on (fb = the pre-WPV dark rim)
+  return wpvFlags.f ? (t.owner===1?"#e0483a":"#3f8fe8") : fb;
+}
+function wpvInnerCol(t,fb){ // inner ring keeps ownership readable on gold-rimmed leaders too
+  return wpvFlags.f ? (t.owner===1?"rgba(255,128,108,.75)":"rgba(126,188,255,.78)") : fb;
+}
+/* ---- unit-type silhouettes ---- keyword-derived glyph, pre-rendered to a sprite per
+   (kind, size-bucket) so the per-frame cost is one drawImage per token. */
+function wpvGlyphFor(kwArr){
+  const k=(kwArr||[]).map(s=>String(s).toUpperCase());
+  const has=x=>k.indexOf(x)>=0;
+  if(has("TITANIC")||has("TOWERING")) return "titan";
+  if(has("AIRCRAFT")) return "wing";
+  if(has("VEHICLE")) return "tank";
+  if(has("MONSTER")) return "claw";
+  if(has("MOUNTED")) return "steed";
+  if(has("FLY")||has("JUMP PACK")) return "wing";
+  if(has("CHARACTER")) return "helm";
+  if(has("BATTLELINE")) return "shield";
+  if(has("INFANTRY")||has("BEASTS")||has("SWARM")) return "skull";
+  return null;
+}
+/* Each glyph draws in a 100×100 box (centre 50,50). fs(g) = fill+stroke the current path;
+   rc = rect fill+stroke. Pale fill + dark stroke on EVERY subpath so the emblem separates
+   from any faction body colour; detail is punched out with destination-out. */
+function wpvFS(g){ g.fill(); g.stroke(); }
+function wpvRC(g,x,y,w,h){ g.beginPath(); g.rect(x,y,w,h); wpvFS(g); }
+const WPV_GLYPHS={
+  skull(g){
+    g.beginPath(); g.arc(50,44,26,Math.PI,0); g.lineTo(76,56); g.quadraticCurveTo(76,66,66,68); g.lineTo(66,80); g.lineTo(34,80); g.lineTo(34,68); g.quadraticCurveTo(24,66,24,56); g.closePath();
+    wpvFS(g);
+    g.globalCompositeOperation="destination-out";
+    g.beginPath(); g.arc(39,48,7,0,7); g.fill(); g.beginPath(); g.arc(61,48,7,0,7); g.fill(); // eye sockets
+    g.beginPath(); g.moveTo(50,58); g.lineTo(45,66); g.lineTo(55,66); g.closePath(); g.fill(); // nose
+    g.fillRect(41,71,3.5,9); g.fillRect(48,71,3.5,9); g.fillRect(55,71,3.5,9);  // teeth
+    g.globalCompositeOperation="source-over";
+  },
+  helm(g){
+    g.beginPath(); g.moveTo(26,38); g.quadraticCurveTo(50,6,74,38); g.lineTo(74,44); g.lineTo(80,48); g.lineTo(74,52); g.lineTo(72,78); g.lineTo(60,84); g.lineTo(40,84); g.lineTo(28,78); g.lineTo(26,52); g.lineTo(20,48); g.lineTo(26,44); g.closePath();
+    wpvFS(g);
+    g.beginPath(); g.moveTo(38,20); g.quadraticCurveTo(50,10,62,20); g.lineTo(58,28); g.quadraticCurveTo(50,22,42,28); g.closePath(); wpvFS(g); // crest
+    g.globalCompositeOperation="destination-out";
+    g.fillRect(30,48,40,8);                                                     // visor slit
+    g.fillRect(46,58,8,20);                                                     // breather line
+    g.globalCompositeOperation="source-over";
+  },
+  shield(g){
+    g.beginPath(); g.moveTo(28,24); g.lineTo(72,24); g.lineTo(72,52); g.quadraticCurveTo(72,72,50,84); g.quadraticCurveTo(28,72,28,52); g.closePath();
+    wpvFS(g);
+    g.globalCompositeOperation="destination-out";
+    g.fillRect(46,32,8,32); g.fillRect(36,42,28,8);                             // cross boss
+    g.globalCompositeOperation="source-over";
+  },
+  tank(g){
+    g.beginPath(); g.moveTo(38,32); g.lineTo(62,32); g.lineTo(64,42); g.lineTo(94,38); g.lineTo(94,44); g.lineTo(66,48); g.lineTo(36,48); g.closePath(); wpvFS(g); // turret + gun
+    g.beginPath(); g.moveTo(24,48); g.lineTo(78,48); g.lineTo(84,57); g.lineTo(80,59); g.lineTo(20,59); g.lineTo(16,57); g.closePath(); wpvFS(g);                 // hull
+    g.beginPath(); g.moveTo(20,59); g.arc(30,68,10,Math.PI,Math.PI*1.5); g.lineTo(70,58); g.arc(70,68,10,Math.PI*1.5,0); g.lineTo(80,68); g.arc(70,68,10,0,Math.PI*.5); g.lineTo(30,78); g.arc(30,68,10,Math.PI*.5,Math.PI); g.closePath(); wpvFS(g); // track run
+    g.globalCompositeOperation="destination-out";
+    g.beginPath(); g.arc(30,68,4,0,7); g.fill(); g.beginPath(); g.arc(50,68,4,0,7); g.fill(); g.beginPath(); g.arc(70,68,4,0,7); g.fill(); // road wheels
+    g.globalCompositeOperation="source-over";
+  },
+  claw(g){
+    for(let i=0;i<3;i++){
+      const x=26+i*20;
+      g.beginPath();
+      g.moveTo(x,18+i*4);
+      g.quadraticCurveTo(x+16,42,x+8,82-i*4);
+      g.quadraticCurveTo(x+2,50,x-8,26+i*4);
+      g.closePath(); wpvFS(g);
+    }
+  },
+  steed(g){
+    g.beginPath();
+    g.moveTo(30,84); g.lineTo(34,52); g.quadraticCurveTo(36,38,46,30);          // neck front
+    g.lineTo(44,18); g.lineTo(54,26);                                           // ear
+    g.quadraticCurveTo(66,26,74,36); g.lineTo(78,44); g.lineTo(68,46);          // muzzle
+    g.quadraticCurveTo(62,52,56,54); g.quadraticCurveTo(52,66,52,84);           // jaw → neck back
+    g.closePath(); wpvFS(g);
+    g.globalCompositeOperation="destination-out";
+    g.beginPath(); g.arc(56,38,4,0,7); g.fill();                                // eye
+    g.globalCompositeOperation="source-over";
+  },
+  wing(g){
+    g.beginPath();
+    g.moveTo(50,64);
+    g.lineTo(14,30); g.lineTo(30,44); g.lineTo(24,40); g.lineTo(36,52); g.lineTo(32,50); g.lineTo(44,60); // feather steps left
+    g.closePath(); wpvFS(g);
+    g.beginPath();
+    g.moveTo(50,64);
+    g.lineTo(86,30); g.lineTo(70,44); g.lineTo(76,40); g.lineTo(64,52); g.lineTo(68,50); g.lineTo(56,60);
+    g.closePath(); wpvFS(g);
+    g.beginPath(); g.moveTo(50,34); g.lineTo(58,56); g.lineTo(50,78); g.lineTo(42,56); g.closePath(); wpvFS(g); // body diamond
+  },
+  titan(g){
+    g.beginPath(); g.arc(50,26,10,Math.PI,0); g.lineTo(60,32); g.lineTo(40,32); g.closePath(); wpvFS(g); // dome head
+    wpvRC(g,12,36,8,18); wpvRC(g,80,36,8,18);                                   // weapon arms
+    wpvRC(g,20,32,60,14);                                                       // shoulder block
+    g.beginPath(); g.moveTo(32,46); g.lineTo(68,46); g.lineTo(62,66); g.lineTo(38,66); g.closePath(); wpvFS(g); // torso
+    wpvRC(g,38,66,8,20); wpvRC(g,54,66,8,20);                                   // legs
+    wpvRC(g,34,84,14,6); wpvRC(g,52,84,14,6);                                   // feet
+    g.globalCompositeOperation="destination-out";
+    g.fillRect(46,36,8,6);                                                      // visor
+    g.globalCompositeOperation="source-over";
+  },
+};
+const wpvSpriteCache=new Map();
+function wpvSprite(kind,px){
+  const q=Math.max(10,Math.round(px/4)*4); // bucketed size so zooming reuses sprites
+  const key=kind+"|"+q;
+  if(wpvSpriteCache.has(key)) return wpvSpriteCache.get(key);
+  let spr=null;
+  try{
+    const c=document.createElement("canvas");
+    if(c.getContext){
+      c.width=c.height=q;
+      const g=c.getContext("2d");
+      if(g&&g.beginPath&&g.scale){
+        g.scale(q/100,q/100);
+        // pale fill + dark stroke on every subpath → separates from any faction body colour
+        g.fillStyle="rgba(240,234,222,.50)"; g.strokeStyle="rgba(10,8,12,.60)";
+        g.lineWidth=3.5; g.lineJoin="round"; g.lineCap="round";
+        WPV_GLYPHS[kind](g);
+        spr=c;
+      }
+    }
+  }catch(e){ spr=null; }
+  if(wpvSpriteCache.size>240) wpvSpriteCache.clear();
+  wpvSpriteCache.set(key,spr);
+  return spr;
+}
+const wpvKindCache=new WeakMap(); // token object → glyph kind (tokens are replaced by ops, so this self-invalidates)
+function wpvGlyph(t,rpx){
+  if(!wpvFlags.g||!(rpx>11)) return;
+  let kind=wpvKindCache.get(t);
+  if(kind===undefined){ kind=wpvGlyphFor(t.kw); wpvKindCache.set(t,kind); }
+  if(!kind) return;
+  const spr=wpvSprite(kind,Math.min(rpx*1.7,rpx*2-4));
+  if(!spr||!ctx.drawImage) return;
+  try{ ctx.drawImage(spr,-spr.width/2,-spr.height/2); }catch(e){}
+}
+/* ---- terrain detail (hooked from the wp9<Kind> painters; footprints untouched) ---- */
+let wpvBrickPat=null, wpvBrickTried=false;
+function wpvBrick(){
+  if(wpvBrickTried) return wpvBrickPat;
+  wpvBrickTried=true;
+  try{
+    const c=document.createElement("canvas"); if(!c.getContext) return wpvBrickPat=null;
+    c.width=26; c.height=16;
+    const g=c.getContext("2d"); if(!g||!g.beginPath) return wpvBrickPat=null;
+    g.strokeStyle="rgba(0,0,0,.30)"; g.lineWidth=1;
+    g.beginPath();
+    g.moveTo(0,3.5); g.lineTo(26,3.5); g.moveTo(0,11.5); g.lineTo(26,11.5);    // mortar courses
+    g.moveTo(7.5,3.5); g.lineTo(7.5,11.5); g.moveTo(20.5,11.5); g.lineTo(20.5,16); g.moveTo(20.5,0); g.lineTo(20.5,3.5); // staggered joints
+    g.stroke();
+    g.strokeStyle="rgba(200,210,235,.06)"; g.beginPath(); g.moveTo(0,4.5); g.lineTo(26,4.5); g.moveTo(0,12.5); g.lineTo(26,12.5); g.stroke(); // lit brick tops
+    wpvBrickPat=ctx.createPattern(c,"repeat")||null;
+  }catch(e){ wpvBrickPat=null; }
+  return wpvBrickPat;
+}
+function wpvRuinFloor(w,h){ // tiled rubble-brick floor inside the ruin footprint (under the wall slabs)
+  if(!wpvFlags.t) return;
+  const p=wpvBrick(); if(!p) return;
+  ctx.save(); ctx.fillStyle=p; ctx.fillRect(-w/2,-h/2,w,h); ctx.restore();
+}
+function wpvWoodStipple(w,h,seed){ // leafy canopy stipple over the wood blobs
+  if(!wpvFlags.t) return;
+  const rnd=wp9Rng((seed^0x5f356495)>>>0), s=view.s;
+  const n=Math.max(8,Math.min(120,Math.round((w*h)/(s*s*0.9))));
+  for(let i=0;i<n;i++){
+    const x=(rnd()-.5)*w*.92, y=(rnd()-.5)*h*.92, r=Math.max(.7,s*.055*(.5+rnd()));
+    ctx.fillStyle=rnd()<.45?"rgba(186,220,146,.14)":"rgba(8,22,10,.22)";
+    ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  }
+}
+function wpvCrateDetail(w,h){ // corrugation highlights + door seams so containers read as containers
+  if(!wpvFlags.t) return;
+  const s=view.s, step=Math.max(3,s*.38);
+  ctx.strokeStyle="rgba(240,226,190,.10)"; ctx.lineWidth=1;
+  if(w>=h){ for(let x=-w/2+step+1;x<w/2;x+=step){ ctx.beginPath(); ctx.moveTo(x,-h/2+1.5); ctx.lineTo(x,h/2-1.5); ctx.stroke(); } }
+  else { for(let y=-h/2+step+1;y<h/2;y+=step){ ctx.beginPath(); ctx.moveTo(-w/2+1.5,y); ctx.lineTo(w/2-1.5,y); ctx.stroke(); } }
+  ctx.strokeStyle="rgba(18,13,6,.55)"; ctx.lineWidth=Math.max(1.5,s*.08);
+  ctx.beginPath();
+  if(w>=h){ const dx=w/2-Math.max(3,s*.4); ctx.moveTo(dx,-h/2+1); ctx.lineTo(dx,h/2-1); ctx.moveTo(-dx,-h/2+1); ctx.lineTo(-dx,h/2-1); }
+  else { const dy=h/2-Math.max(3,s*.4); ctx.moveTo(-w/2+1,dy); ctx.lineTo(w/2-1,dy); ctx.moveTo(-w/2+1,-dy); ctx.lineTo(w/2-1,-dy); }
+  ctx.stroke();
+}
+function wpvWallEdge(w,h){ // walls are the blocking lines — give them a crisp bold edge
+  if(!wpvFlags.t) return;
+  ctx.strokeStyle="rgba(8,6,2,.9)"; ctx.lineWidth=2.5; ctx.strokeRect(-w/2,-h/2,w,h);
+  ctx.strokeStyle="#a68c52"; ctx.lineWidth=1.2; ctx.strokeRect(-w/2,-h/2,w,h);
+}
+wpvInit();
+/* ==== end WP-VISUALS ==== */
 /* ==== WP-B: vehicle rotate handle ==== geometry shared by hit-test (pointerdown/inches) and draw (screen px).
    Local offset before rotation is (0,-(rad+gap)) — the same convention drawToken uses for shape "r"
    (ctx.rotate(rot) about the centre), so the handle always sits at the model's "front". */
@@ -1919,16 +2220,17 @@ function draw(){
   // tokens
   state.tokens.forEach(t=>{
     const col=t.owner===1?"#d84a4a":"#4a8fd8"; /* WP9: shaded bases */
-    const P=t.owner===1?WP9_P1:WP9_P2;
+    const P=wpvPal(t); /* ==== WP-VISUALS ==== body = faction palette when on; falls back to WP9_P1/P2 */
     const [tx,ty]=px(t.x,t.y);
     ctx.save(); ctx.translate(tx,ty);
     if(t.shape==="c"){
       const r=mmIn(t.dmm)/2*view.s;
       ctx.beginPath(); ctx.arc(0,0,r,0,7);
       ctx.fillStyle=wp9RadGrad(-r*.32,-r*.36,r*.12,0,0,r,[[0,P.hi],[.55,P.mid],[1,P.lo]],P.mid); ctx.fill();
-      ctx.lineWidth=Math.max(1.5,r*.14); ctx.strokeStyle=t.sgt?"#c9922e":"rgba(10,8,10,.8)"; ctx.stroke(); /* ==== WP14 ==== gold rim = squad leader, readable at any zoom */
+      ctx.lineWidth=Math.max(1.5,r*.14); ctx.strokeStyle=t.sgt?"#c9922e":wpvRimCol(t,"rgba(10,8,10,.8)"); ctx.stroke(); /* ==== WP14 ==== gold rim = squad leader */ /* ==== WP-VISUALS ==== else rim = owner colour when faction bodies on */
       ctx.beginPath(); ctx.arc(0,0,Math.max(1,r-ctx.lineWidth*.9),0,7);
-      ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(255,255,255,.28)"; ctx.stroke();
+      ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":wpvInnerCol(t,"rgba(255,255,255,.28)"); ctx.stroke(); /* ==== WP-VISUALS ==== inner ring keeps ownership on gold-rim leaders */
+      wpvGlyph(t,r); /* ==== WP-VISUALS ==== unit-type silhouette under the label */
       if(r>8){
         ctx.font="bold "+Math.max(8,r*.5)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
         ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(initials(t.name),0,1.2);
@@ -1941,14 +2243,15 @@ function draw(){
         const lw=Math.max(1.5,Math.min(w,h)/2*.14);
         ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,7);
         ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fill();
-        ctx.lineWidth=lw; ctx.strokeStyle=t.sgt?"#c9922e":"rgba(10,8,10,.8)"; ctx.stroke(); /* WP14 contract: gold rim = leader */
+        ctx.lineWidth=lw; ctx.strokeStyle=t.sgt?"#c9922e":wpvRimCol(t,"rgba(10,8,10,.8)"); ctx.stroke(); /* WP14 contract: gold rim = leader */ /* ==== WP-VISUALS ==== else owner rim */
         ctx.beginPath(); ctx.ellipse(0,0,Math.max(1,w/2-lw*.9),Math.max(1,h/2-lw*.9),0,0,7); /* slightly inset selection ring */
-        ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":"rgba(255,255,255,.28)"; ctx.stroke();
+        ctx.lineWidth=sel.has(t.id)?2.5:1.2; ctx.strokeStyle=sel.has(t.id)?"#fff":wpvInnerCol(t,"rgba(255,255,255,.28)"); ctx.stroke(); /* ==== WP-VISUALS ==== owner inner ring */
       } else { /* ==== end WP21 ==== */
       ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,P.mid],[1,P.lo]],P.mid); ctx.fillRect(-w/2,-h/2,w,h);
-      ctx.strokeStyle="rgba(255,255,255,.14)"; ctx.lineWidth=1; ctx.strokeRect(-w/2+2.5,-h/2+2.5,w-5,h-5); /* hull inset */
-      ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":(t.sgt?"#c9922e":"rgba(10,8,10,.85)"); ctx.strokeRect(-w/2,-h/2,w,h); /* ==== WP14 ==== gold border = leader */
+      ctx.strokeStyle=wpvInnerCol(t,"rgba(255,255,255,.14)"); ctx.lineWidth=1; ctx.strokeRect(-w/2+2.5,-h/2+2.5,w-5,h-5); /* hull inset */ /* ==== WP-VISUALS ==== owner-tinted when faction bodies on */
+      ctx.lineWidth=sel.has(t.id)?2.5:1.5; ctx.strokeStyle=sel.has(t.id)?"#fff":(t.sgt?"#c9922e":wpvRimCol(t,"rgba(10,8,10,.85)")); ctx.strokeRect(-w/2,-h/2,w,h); /* ==== WP14 ==== gold border = leader */ /* ==== WP-VISUALS ==== else owner border */
       }
+      wpvGlyph(t,Math.min(w,h)/2); /* ==== WP-VISUALS ==== unit-type silhouette under the label */
       ctx.font="bold "+Math.max(8,h*.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(initials(t.name),0,1.2);
       ctx.fillStyle="#f4efe6"; ctx.fillText(initials(t.name),0,0);

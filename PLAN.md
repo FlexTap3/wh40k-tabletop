@@ -620,6 +620,33 @@ Merged suite: 742 checks, exit 0, + composite v4 smoke (knight oval → rhino
 hull → exact long-axis distance → refit → side-2 deploy). NOTE: saved games
 keep their old token dims until the user hits ♻ Fix base sizes.
 
+### WP-VISUALS — Faction colours, unit silhouettes, terrain detail  [M] — SHIPPED (July 2026)
+
+Draw-layer-only pass closing the visual gap with 3D VTTs. Marked
+`/* ==== WP-VISUALS ==== */`; three Setup toggles (default ON, persisted in
+`localStorage["wh40k_visuals"]`): `wpvFaction`, `wpvGlyphs`, `wpvTerrain`.
+All three off ⇒ the pre-WP-VISUALS rendering path, unchanged; the node-stub
+tests see unchecked boxes, so the section is dormant under the suite.
+- **Faction colours** (`WPV_FACTIONS`, one tunable map): token BODY takes the
+  side's faction palette (26 fids, {hi,mid,lo} feeding the existing WP9
+  gradients); the base RIM + inner ring take the owner's red/blue so ownership
+  stays instant (WP14 gold leader rim never overridden — leaders keep ownership
+  via the inner ring). The side's faction is derived by majority-voting card/
+  token names against the DB (`wpvSideFid`, memoized) — cards carry no fid.
+- **Unit silhouettes** (`WPV_GLYPHS`): keyword-derived emblem under the stat
+  text — TITANIC/TOWERING→titan, AIRCRAFT→wing, VEHICLE→tank, MONSTER→claw,
+  MOUNTED→steed, FLY→wing, CHARACTER→helm, BATTLELINE→shield, INFANTRY→skull.
+  Pale-fill/dark-stroke two-tone reads on any body colour; pre-rendered to
+  size-bucketed offscreen sprites (one drawImage per token per frame); skipped
+  below ~11px base radius so small tokens stay clean.
+- **Terrain detail**: brick-pattern ruin floors (under the wall slabs), canopy
+  stipple in woods, corrugation highlights + door seams on containers, bold
+  crisp edges on walls (the blocking lines). One marked hook line per
+  wp9<Kind> painter; footprint geometry/hit-tests untouched (locked invariant).
+- Verified: run_all.sh green, node --check, both JSON blocks parse, Playwright
+  pixel pass (desktop+phone, two factions mustered, leader/pip/glyph detail
+  shots, toggles-off baseline) via `tools/shots/wpv-shots.js`.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
