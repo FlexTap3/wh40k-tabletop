@@ -428,7 +428,10 @@ function buildBoard(w, h, matCanvas) {
 /* buildDZ(poly, cssColor) -> decal mesh at y≈0.01, fan-triangulated from poly points
  * (world x = p.x, world z = p.y — DZ polys are already in board/world coordinates). */
 function buildDZ(poly, cssColor) {
-  const pts = (poly && poly.length >= 3) ? poly : [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  // The app's real DZ polys are [x,y] point ARRAYS (see draw()'s `px(p[0],p[1])`);
+  // accept both that and the {x,y} object form the contract originally described.
+  const norm = (p) => Array.isArray(p) ? { x: p[0], y: p[1] } : p;
+  const pts = ((poly && poly.length >= 3) ? poly : [[0, 0], [0, 0], [0, 0]]).map(norm);
   const n = pts.length;
   const positions = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { positions[i * 3] = pts[i].x; positions[i * 3 + 1] = 0.01; positions[i * 3 + 2] = pts[i].y; }
