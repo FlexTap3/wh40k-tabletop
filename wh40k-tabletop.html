@@ -69,6 +69,13 @@ h3{font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--a
 .tabpane.active{display:block}
 #boardwrap{flex:1; position:relative; min-width:0}
 canvas{display:block; width:100%; height:100%; cursor:default}
+/* ==== WP3D-0: 3D foundation ==== #board3d matches #board's sizing exactly (same generic
+   `canvas{}` rule above) so DOM overlays (toolbar/inspector/etc, all positioned against
+   #boardwrap) line up identically in either mode. Hidden unless .mode3d is active. */
+#board3d{display:none}
+#boardwrap.mode3d #board{display:none}
+#boardwrap.mode3d #board3d{display:block}
+/* ==== end WP3D-0 ==== */
 #toolbar{position:absolute; top:8px; left:8px; display:flex; flex-direction:column; gap:4px}
 #toolbar button{width:36px; height:32px; font-size:15px; background:rgba(22,19,23,.88); backdrop-filter:blur(4px); border-color:#3e3840; box-shadow:0 2px 6px rgba(0,0,0,.45)}
 #toolbar button:hover{border-color:var(--accent)}
@@ -406,6 +413,10 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <div class="row"><label><input type="checkbox" id="wpvTerrain" checked onchange="wpvSave()"> Detailed terrain (brick ruins, canopy stipple, corrugated containers)</label></div>
       <div class="small" style="margin-bottom:6px">Cosmetic only. The red/blue base rim always shows who owns a model; the body colour is its faction. Untick to go back to plain red-vs-blue tokens.</div>
       <!-- ==== end WP-VISUALS ==== -->
+      <!-- ==== WP3D-0: 3D foundation ==== Setup toggle for the optional lazy-loaded 3D board. Disabled + tooltipped by wp3dInit() when unavailable (file:// or no WebGL2). -->
+      <div class="row"><label><input type="checkbox" id="wp3d" onchange="wp3dToggle()"> 🎲 3D view (beta)</label></div>
+      <div class="small" style="margin-bottom:6px" id="wp3dHint">Experimental 3D board (WebGL2). Requires the online (https/Pages) version — falls back to 2D automatically if unavailable. All toggles off still renders pixel-identical 2D.</div>
+      <!-- ==== end WP3D-0 ==== -->
       <h3>Game</h3>
       <div class="row"><button onclick="saveGame()">💾 Save game</button><button onclick="document.getElementById('gameFile').click()">📂 Load game</button><button onclick="wp20Export()" title="Download the whole game record — players, score, surviving units, full log — as a text file">📄 Summary</button><!-- ==== WP20 ==== --><button onclick="wp21Refit()" title="Recompute every one of your models' base/hull sizes from its army card using the current rules (oval bases, vehicle hull footprints). Fixes tokens deployed or saved before this update — leaves anything already correct alone.">♻ Fix base sizes</button><!-- ==== WP21 ==== -->
       <input type="file" id="gameFile" accept=".json" style="display:none" onchange="loadGame(this)"></div>
@@ -415,6 +426,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
 
   <div id="boardwrap">
     <canvas id="board"></canvas>
+    <!-- ==== WP3D-0: 3D foundation ==== sibling canvas for the optional lazy-loaded 3D view; hidden unless #boardwrap has .mode3d (see CSS above). -->
+    <canvas id="board3d"></canvas>
+    <!-- ==== end WP3D-0 ==== -->
     <div id="toolbar">
       <button id="tool-select" class="active" title="Select / move (V)" onclick="setTool('select')">➤</button>
       <button id="tool-ruler" title="Tape measure (T) — drag to measure" onclick="setTool('ruler')">📏</button>
@@ -2173,6 +2187,114 @@ function wpvWallEdge(w,h){ // walls are the blocking lines — give them a crisp
 }
 wpvInit();
 /* ==== end WP-VISUALS ==== */
+/* ==== WP3D-0: 3D foundation ====
+   Optional 3D board. Everything below is additive/append-only and gated behind the
+   `wp3d` Setup checkbox (default OFF, localStorage["wh40k_3d"]) — with it unchecked
+   the app behaves exactly as before this section existed (stated contract: all
+   toggles off => pixel-identical 2D output). Downstream WPs (WP3D-1..4) build the
+   real module at ./wh40k-3d.js against the window.WP3D bridge defined here; WP3D-5
+   wires the orchestration. This packet (WP3D-0) never renders anything in 3D itself.
+
+   Placement note: this section sits textually BEFORE draw() (further down the file) and
+   before hitToken/hitTerrain/hitObjective/WP21_HULLS/wp21BaseFor (all further down
+   the file). That's safe for plain `function` declarations and `let`-reassigned
+   bindings (draw, hitToken, hitTerrain, hitObjective, wp21BaseFor, DB, sel, state,
+   view, mySide, myArmy, op, applyOp, checkCoherency, mmIn/px/inch, uid) because
+   JS hoists function declarations fully and none of the wrapped/bridged code below
+   actually RUNS until user interaction — long after the whole script (ending in the
+   init calls at the bottom of the file) has executed once, top to bottom. The one
+   exception is WP21_HULLS, a `const` (TDZ risk) — bridged via a getter so it's read
+   lazily at access time, not at bridge-creation time. */
+
+/* ---- (a) Setup toggle + persistence, cloned from the wpv-functions / wh40k_visuals pattern ---- */
+let wp3dOn=false;
+function wp3dSync(){
+  const g=id=>{ try{ const el=document.getElementById(id); return el?!!el.checked:false; }catch(e){ return false; } };
+  wp3dOn=g("wp3d");
+}
+function wp3dSave(){
+  wp3dSync();
+  try{ localStorage.setItem("wh40k_3d",JSON.stringify({on:wp3dOn?1:0})); }catch(e){}
+}
+/* ---- (b) Availability gate: file:// or no WebGL2 => unavailable, checkbox disabled+tooltipped ---- */
+function wp3dAvailable(){
+  try{ if(typeof location!=="undefined" && location.protocol==="file:") return false; }catch(e){}
+  try{
+    const c=document.createElement("canvas");
+    const gl=c.getContext && (c.getContext("webgl2"));
+    return !!gl;
+  }catch(e){ return false; }
+}
+function wp3dInit(){
+  try{
+    const el=document.getElementById("wp3d");
+    if(el){
+      if(!wp3dAvailable()){
+        el.disabled=true; el.checked=false;
+        el.title="3D needs the online version (WebGL2)";
+        const hint=document.getElementById("wp3dHint");
+        if(hint) hint.textContent="3D needs the online version (WebGL2) — unavailable here.";
+      } else {
+        const v=JSON.parse(localStorage.getItem("wh40k_3d")||"{}");
+        if("on" in v) el.checked=!!v.on;
+      }
+    }
+  }catch(e){}
+  wp3dSync();
+}
+/* ---- (d) Lazy loader — bound to the checkbox's onchange, not wp3dSave itself (wp3dSave stays a
+   pure persistence clone of wpvSave so it round-trips cleanly under tests with no async side
+   effects; this is the one deliberate deviation from a literal wpv* clone, documented per the
+   packet brief). First toggle-on imports+inits the module; later toggle-ons reuse it (start()). */
+let wp3dModule=null;
+async function wp3dToggle(){
+  wp3dSave();
+  const el=document.getElementById("wp3d");
+  const on=el?!!el.checked:false;
+  const wrap=document.getElementById("boardwrap");
+  if(on){
+    try{
+      if(!wp3dModule){
+        wp3dModule=await import("./wh40k-3d.js");
+        wp3dModule.init(document.getElementById("board3d"),window.WP3D);
+      } else if(typeof wp3dModule.start==="function"){
+        wp3dModule.start();
+      }
+      if(wrap) wrap.classList.add("mode3d");
+      draw();
+    }catch(e){
+      logSys("3D view couldn't load ("+(e&&e.message||e)+") — staying on the 2D board.");
+      if(el) el.checked=false;
+      wp3dSave();
+    }
+  } else {
+    if(wrap) wrap.classList.remove("mode3d");
+    if(wp3dModule && typeof wp3dModule.stop==="function") wp3dModule.stop();
+    draw();
+  }
+}
+/* ---- (e) window.WP3D bridge — THE WHOLE contract between the app and wh40k-3d.js.
+   Downstream WPs should mock exactly this shape when testing against it in isolation.
+   Deviations from the packet-brief literal shape: WP21_HULLS is a getter (TDZ, see note
+   above) instead of a bare property; everything else matches verbatim. */
+window.WP3D={
+  state: ()=>state, view: ()=>view, sel, DB,
+  mySide: ()=>mySide, myArmy: ()=>myArmy,
+  op, applyOp, draw: ()=>draw(),
+  hitToken, hitTerrain, hitObjective, checkCoherency,
+  mmIn, px, inch, uid,
+  wpvGlyphFor, wpvSideFid, WPV_FACTIONS,
+  get WP21_HULLS(){ return WP21_HULLS; }, // const declared later in the file (TDZ) — lazy getter
+  wp21BaseFor,
+  tokDragBegin, tokDragMove, tokDragCommit,
+};
+/* ---- (f) draw() wrap — append-only. window.wp3dOnDraw is defined by the 3D module once
+   loaded; undefined (module never loaded, or toggled off) is a no-op, i.e. zero behaviour
+   change for anyone who never touches the wp3d checkbox. ---- */
+const wp3dOrigDraw=draw;
+draw=function(){ wp3dOrigDraw(); if(window.wp3dOnDraw) window.wp3dOnDraw(); };
+wp3dInit();
+/* ==== end WP3D-0 ==== */
 /* ==== WP-B: vehicle rotate handle ==== geometry shared by hit-test (pointerdown/inches) and draw (screen px).
    Local offset before rotation is (0,-(rad+gap)) — the same convention drawToken uses for shape "r"
    (ctx.rotate(rot) about the centre), so the handle always sits at the model's "front". */
@@ -3026,6 +3148,76 @@ function hitTerrain(ix,iy){
   return null;
 }
 function hitObjective(ix,iy){ return state.objectives.find(o=>Math.hypot(ix-o.x,iy-o.y)<=mmIn(40)/2+.2); }
+/* ==== WP3D-0: drag extraction ==== token-move core lifted verbatim out of the pointerdown/
+   pointermove/pointerup handlers below (same statements, same order, same shared module-level
+   state — `drag`, `sel`, `wpMoved`, `wpDone`, `wpMoveStart`) so a future 3D picking/drag path
+   can reuse it. The handlers below now just call these; behaviour is unchanged (proven by the
+   full existing test suite staying green — these are exactly the old inline bodies).
+   Left in the handlers (NOT extracted, non-token concerns tangled with token hit/selection):
+   the tk=hitToken(ix,iy) hit-test + shift-click add/remove/toggle-return in pointerdown, and
+   the wp19 ruler / marquee / terrain / WP-B rotate branches everywhere — those are separate
+   drag.mode values, not the "tokens" core. */
+function tokDragBegin(ids,ix,iy){ // pointerdown "tokens" branch, after hit/selection resolution
+  const tk=state.tokens.find(t=>t.id===ids[0]); if(!tk) return null;
+  /* ==== WP-A: structured movement ==== move-once hard lock (opt-out via Setup checkbox) */
+  const structOn=!!(document.getElementById("structMove")&&document.getElementById("structMove").checked);
+  const unitMemberIds=state.tokens.filter(t=>t.unit===tk.unit).map(t=>t.id);
+  if(wpDone.has(tk.unit)){
+    logSys("This unit's movement is complete — use ↩ Undo move in its inspector to move it again.");
+    draw(); return null;
+  }
+  if(structOn&&wpMoved.has(tk.id)&&unitMemberIds.some(id=>!wpMoved.has(id))){
+    logSys("Move the rest of this unit before re-moving a model.");
+    draw(); return null;
+  }
+  /* ==== end WP-A ==== */
+  checkCoherency();
+  const units=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
+  /* ==== WP-A ==== lazily snapshot each involved unit's pre-move position, once per Movement phase */
+  units.forEach(uk=>{ if(!wpMoveStart[uk]) wpMoveStart[uk]=state.tokens.filter(t=>t.unit===uk).map(t=>({id:t.id,x:t.x,y:t.y,rot:t.rot||0})); });
+  drag={mode:"tokens",lx:ix,ly:iy,moved:false,
+    snap:state.tokens.filter(t=>units.has(t.unit)).map(t=>({id:t.id,x:t.x,y:t.y})),
+    cohBefore:new Set([...units].filter(unitCoherent))};
+  wp2DragStart(ix,iy); /* ==== WP2: move measure ==== */
+  draw();
+  return drag;
+}
+function tokDragMove(ix,iy){ // pointermove "tokens" branch
+  if(!drag||drag.mode!=="tokens") return;
+  const dx=ix-drag.lx, dy=iy-drag.ly; drag.lx=ix; drag.ly=iy; drag.moved=true;
+  state.tokens.forEach(t=>{ if(sel.has(t.id)){ t.x+=dx; t.y+=dy; } });
+  wp2DragMove(ix,iy); /* ==== WP2: move measure ==== */
+  draw();
+}
+function tokDragCommit(){ // pointerup "tokens" branch (incl. its own WP5 early-return gate)
+  if(!drag||drag.mode!=="tokens") return;
+  /* ==== WP5: terrain collision — illegal drops snap back ==== */
+  if(drag.moved&&wp5BlockDrop(drag)){ wp2DragEnd(); drag=null; draw(); return; }
+  /* ==== end WP5 ==== */
+  if(drag.moved){
+    /* ==== WP2: move measure ==== */
+    if(wp2DropCheck()){ wp2DragEnd(); drag=null; draw(); return; }
+    /* ==== end WP2 ==== */
+    checkCoherency();
+    const broken=[...drag.cohBefore].filter(uk=>!unitCoherent(uk));
+    if(broken.length && document.getElementById("strictCoh").checked){
+      op({k:"tok~",toks:drag.snap});
+      logSys("Move undone: that would break unit coherency (2\" of a squadmate, 9\" of every squadmate). Untick enforcement in Setup to allow it.");
+    } else {
+      op({k:"tok~",toks:state.tokens.filter(t=>sel.has(t.id)).map(t=>({id:t.id,x:t.x,y:t.y}))});
+      wp2LogMove(); /* ==== WP2: move measure ==== */
+      /* ==== WP-A: structured movement ==== drop committed clean — every dragged model has now used its move */
+      [...sel].filter(id=>state.tokens.some(t=>t.id===id)).forEach(id=>wpMoved.add(id));
+      /* ==== end WP-A ==== */
+    }
+  }
+  /* ==== WP3: inspector ==== click without movement opens the unit inspector */
+  else { wp3Inspect(); }
+  /* ==== end WP3 ==== */
+  wp2DragEnd(); /* ==== WP2: move measure ==== */
+  drag=null; draw();
+}
+/* ==== end WP3D-0: drag extraction ==== */
 let panning=null;
 cv.addEventListener("contextmenu",e=>e.preventDefault());
 cv.addEventListener("wheel",e=>{
@@ -3074,27 +3266,8 @@ cv.addEventListener("pointerdown",e=>{ /* WP8: was "mousedown" — handler logic
   if(tk){
     if(!sel.has(tk.id)){ if(!e.shiftKey) sel.clear(); sel.add(tk.id); }
     else if(e.shiftKey){ sel.delete(tk.id); draw(); return; }
-    /* ==== WP-A: structured movement ==== move-once hard lock (opt-out via Setup checkbox) */
-    const structOn=!!(document.getElementById("structMove")&&document.getElementById("structMove").checked);
-    const unitMemberIds=state.tokens.filter(t=>t.unit===tk.unit).map(t=>t.id);
-    if(wpDone.has(tk.unit)){
-      logSys("This unit's movement is complete — use ↩ Undo move in its inspector to move it again.");
-      draw(); return;
-    }
-    if(structOn&&wpMoved.has(tk.id)&&unitMemberIds.some(id=>!wpMoved.has(id))){
-      logSys("Move the rest of this unit before re-moving a model.");
-      draw(); return;
-    }
-    /* ==== end WP-A ==== */
-    checkCoherency();
-    const units=new Set(state.tokens.filter(t=>sel.has(t.id)).map(t=>t.unit));
-    /* ==== WP-A ==== lazily snapshot each involved unit's pre-move position, once per Movement phase */
-    units.forEach(uk=>{ if(!wpMoveStart[uk]) wpMoveStart[uk]=state.tokens.filter(t=>t.unit===uk).map(t=>({id:t.id,x:t.x,y:t.y,rot:t.rot||0})); });
-    drag={mode:"tokens",lx:ix,ly:iy,moved:false,
-      snap:state.tokens.filter(t=>units.has(t.unit)).map(t=>({id:t.id,x:t.x,y:t.y})),
-      cohBefore:new Set([...units].filter(unitCoherent))};
-    wp2DragStart(ix,iy); /* ==== WP2: move measure ==== */
-    draw(); return;
+    tokDragBegin([tk.id],ix,iy); /* ==== WP3D-0: drag extraction ==== was the inline WP-A gate + drag bookkeeping below */
+    return;
   }
   const tr=hitTerrain(ix,iy);
   if(tr){
@@ -3123,12 +3296,7 @@ window.addEventListener("pointermove",e=>{ /* WP8: was "mousemove" — handler l
     /* ==== end WP19 ==== */
     ruler.x1=ix; ruler.y1=iy; send({t:"ruler",r:ruler}); draw(); }
   else if(drag.mode==="marquee"){ marquee.x1=ix; marquee.y1=iy; draw(); }
-  else if(drag.mode==="tokens"){
-    const dx=ix-drag.lx, dy=iy-drag.ly; drag.lx=ix; drag.ly=iy; drag.moved=true;
-    state.tokens.forEach(t=>{ if(sel.has(t.id)){ t.x+=dx; t.y+=dy; } });
-    wp2DragMove(ix,iy); /* ==== WP2: move measure ==== */
-    draw();
-  }
+  else if(drag.mode==="tokens"){ tokDragMove(ix,iy); } /* ==== WP3D-0: drag extraction ==== */
   else if(drag.mode==="terrainMove"){
     const t=state.terrain.find(x=>x.id===drag.id); if(!t)return;
     t.x+=ix-drag.lx; t.y+=iy-drag.ly; drag.lx=ix; drag.ly=iy; draw();
@@ -3155,34 +3323,16 @@ window.addEventListener("pointerup",e=>{ /* WP8: was "mouseup" — handler logic
     wp19Click(drag.wp19x,drag.wp19y); drag=null; draw(); return;
   }
   /* ==== end WP19 ==== */
-  /* ==== WP5: terrain collision — illegal drops snap back ==== */
-  if(drag.mode==="tokens"&&drag.moved&&wp5BlockDrop(drag)){ wp2DragEnd(); drag=null; draw(); return; }
-  /* ==== end WP5 ==== */
+  /* ==== WP3D-0: drag extraction ==== the whole "tokens" case (incl. its own WP5 early-return
+     gate, the WP2/coherency/op-commit path, and the click-no-move wp3Inspect() path) now lives
+     in tokDragCommit(), which ends with its own wp2DragEnd()/drag=null/draw() — so this branch
+     returns instead of falling into the shared tail below. */
+  if(drag.mode==="tokens"){ tokDragCommit(); return; }
   if(drag.mode==="marquee"){
     const x0=Math.min(marquee.x0,marquee.x1),x1=Math.max(marquee.x0,marquee.x1),y0=Math.min(marquee.y0,marquee.y1),y1=Math.max(marquee.y0,marquee.y1);
     state.tokens.forEach(t=>{ if(t.x>=x0&&t.x<=x1&&t.y>=y0&&t.y<=y1) sel.add(t.id); });
     marquee=null;
   }
-  else if(drag.mode==="tokens"&&drag.moved){
-    /* ==== WP2: move measure ==== */
-    if(wp2DropCheck()){ wp2DragEnd(); drag=null; draw(); return; }
-    /* ==== end WP2 ==== */
-    checkCoherency();
-    const broken=[...drag.cohBefore].filter(uk=>!unitCoherent(uk));
-    if(broken.length && document.getElementById("strictCoh").checked){
-      op({k:"tok~",toks:drag.snap});
-      logSys("Move undone: that would break unit coherency (2\" of a squadmate, 9\" of every squadmate). Untick enforcement in Setup to allow it.");
-    } else {
-      op({k:"tok~",toks:state.tokens.filter(t=>sel.has(t.id)).map(t=>({id:t.id,x:t.x,y:t.y}))});
-      wp2LogMove(); /* ==== WP2: move measure ==== */
-      /* ==== WP-A: structured movement ==== drop committed clean — every dragged model has now used its move */
-      [...sel].filter(id=>state.tokens.some(t=>t.id===id)).forEach(id=>wpMoved.add(id));
-      /* ==== end WP-A ==== */
-    }
-  }
-  /* ==== WP3: inspector ==== click without movement opens the unit inspector */
-  else if(drag.mode==="tokens"&&!drag.moved){ wp3Inspect(); }
-  /* ==== end WP3 ==== */
   else if(drag.mode==="terrainMove"){
     const t=state.terrain.find(x=>x.id===drag.id); if(t) op({k:"ter~",ter:{id:t.id,x:t.x,y:t.y}});
   }

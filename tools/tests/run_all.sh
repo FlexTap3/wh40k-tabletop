@@ -40,4 +40,5 @@ node harness.js wpwave2-tests.js
 node harness.js meta-refresh-probe.js
 node deploy-coherency-test.js
 node ai-move-coherency-test.js
+node harness.js wp3d-bridge-tests.js
 echo "ALL SUITES PASSED"
