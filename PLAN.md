@@ -680,6 +680,35 @@ copy structurally can't load it. Toggle off ⇒ 2D pixel-identical (Playwright-d
 - **Owed**: real-device iPhone/iPad perf pass (Safari remote inspector) and a live
   two-human 3D playtest; deploy needs Paul (`ALLOW_PUBLIC_PUSH=1`).
 
+### WP3D-v2 — Immersion pass ("make it TTS")  [XL, 5 agents] — SHIPPED (2026-07-12, same day)
+
+Paul's review of v1: terrain didn't match the official layouts, models too generic, no
+immersion boost. v2 architecture: `wp3d-1-geometry.js` gained a PLUG-IN SURFACE
+(`registerMiniKit` / `registerTerrainBuilder` / `setPoolMaterialFactory` / `setMeshDecorator`
+/ `voxelsToGeometry`) so five content packs live in their own files (`sections/wp3d-6..10`)
+with zero merge contention; bridge gained additive `onDice` (wrap of `wp20Note`).
+- **wp3d-6-terrain2** (1,643 checks): the v1 root-cause fix — official layouts pair `ruin`
+  obscuring AREAS with separate `wall` vertical pieces; ruins are now LOW (rubble plate +
+  quadrant floor slabs pinned at exactly 3"/6" matching `elevationFor`, broken corner
+  columns), walls are the tall broken façades (windows, door gap, jagged top). Top-down
+  3D-vs-2D alignment verified per layout. `ruinPlan()` etc. are pure/testable.
+- **wp3d-7-troops** (95): 12 keyword/stat/faction-routed kits (terminator/gravis, power
+  armor, guard, ork/cultist, tyranid organic, necron skeletal, tau + drones, eldar, swarms,
+  bikes), 3 pose variants + sgt crest per kit (pool fan-out stays instanced).
+- **wp3d-8-vehicles** (254): 21 chassis kits (pri 20) + named-monster kit (pri 25) covering
+  every WP21_HULLS family — Rhino/Land Raider/Leman Russ/Baneblade distinct, T'au+Eldar
+  hover with anti-grav skirts, walkers/knights biped, monolith floats, AIRCRAFT on stands.
+- **wp3d-9-environment** (96): wooden table + room gradient + fog, Lambert conversion of ALL
+  packs via decorator (WeakMap-cached), hemisphere+key lighting, desktop-tier real shadows
+  (2048 PCFSoft; `wp3dPerfTier.shadows=!phone`). Integrator retuned intensities post-merge
+  (0.95/1.25) — the combined dark terrain palette crushed at the agent's values.
+- **wp3d-10-motion** (80): remote moves lift-arc-drop 450ms (idle→jump>0.5" heuristic;
+  pure `classifyMotionTick`), hover ring, dblclick camera focus, physical 3D dice via
+  `bridge.onDice` (120ms batch, ≤12 dice, values always ⊆ real rolls, face→quaternion pure).
+- **Gate**: full suite (legacy + 2,354 3D-suite checks), both smokes, live-verified on Pages
+  (master @ a29ec04, SW v5). Known cosmetics: owner-rim/selection rings don't fly with an
+  animating mini; `onDice` has no unsubscribe (inert-flag guarded).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
