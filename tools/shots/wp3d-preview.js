@@ -27,7 +27,7 @@ html,body{margin:0;background:#7f8790;}canvas{display:block;}
 <canvas id="c" width="512" height="512"></canvas>
 <script type="module">
 import * as THREE from '/vendor/three.module.min.js';
-import { buildArchetypeGeometry, buildTerrain } from '/sections/wp3d-1-geometry.js';
+import { buildArchetypeGeometry, buildTerrain, buildBoard } from '/sections/wp3d-1-geometry.js';
 
 const SM = { hi: '#5a86cc', mid: '#2a4e92', lo: '#122446' };
 const canvas = document.getElementById('c');
@@ -69,6 +69,13 @@ window.wp3dRenderArchetype = function (archetype, footprint) {
 window.wp3dRenderTerrain = function (kind, w, h, id) {
   const scene = freshScene();
   const obj = buildTerrain(kind, w, h, id);
+  scene.add(obj);
+  const camera = frame(obj);
+  renderer.render(scene, camera);
+};
+window.wp3dRenderBoard = function (w, h) {
+  const scene = freshScene();
+  const obj = buildBoard(w, h);
   scene.add(obj);
   const camera = frame(obj);
   renderer.render(scene, camera);
@@ -142,6 +149,11 @@ async function main() {
       await page.locator("#c").screenshot({ path: file });
       console.log("wrote", file);
     }
+
+    await page.evaluate(() => window.wp3dRenderBoard(24, 18));
+    const boardFile = path.join(OUT_DIR, `board-mat.png`);
+    await page.locator("#c").screenshot({ path: boardFile });
+    console.log("wrote", boardFile);
   } finally {
     await browser.close();
     server.close();
