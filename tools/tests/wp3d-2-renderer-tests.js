@@ -28,24 +28,27 @@ const fakeCanvas = () => ({ addEventListener() {}, removeEventListener() {} });
 // ---------------------------------------------------------------------------
 {
   const desktop = wp3dPerfTier({ phone: false, dpr: 2 });
-  assert(desktop.pixelRatioCap === 2 && desktop.antialias === true && desktop.labelEvery === 1,
-    "wp3dPerfTier: desktop/iPad tier");
+  assert(desktop.pixelRatioCap === 2 && desktop.antialias === true && desktop.labelEvery === 1
+    && desktop.shadows === true,
+    "wp3dPerfTier: desktop/iPad tier (shadows on)");
 
   const ipadLike = wp3dPerfTier({ phone: false, dpr: 2, memoryGB: 4 });
-  assert(ipadLike.pixelRatioCap === 2 && ipadLike.antialias === true && ipadLike.labelEvery === 1,
-    "wp3dPerfTier: iPad-like (non-phone) tier matches desktop");
+  assert(ipadLike.pixelRatioCap === 2 && ipadLike.antialias === true && ipadLike.labelEvery === 1
+    && ipadLike.shadows === true,
+    "wp3dPerfTier: iPad-like (non-phone) tier matches desktop, shadows on");
 
   const phone = wp3dPerfTier({ phone: true, dpr: 3 });
-  assert(phone.pixelRatioCap === 1.5 && phone.antialias === false && phone.labelEvery === 2,
-    "wp3dPerfTier: phone tier");
+  assert(phone.pixelRatioCap === 1.5 && phone.antialias === false && phone.labelEvery === 2
+    && phone.shadows === false,
+    "wp3dPerfTier: phone tier (shadows off)");
 
   const noInfo = wp3dPerfTier({});
-  assert(noInfo.pixelRatioCap === 2 && noInfo.antialias === true,
-    "wp3dPerfTier: missing deviceInfo fields default to desktop tier");
+  assert(noInfo.pixelRatioCap === 2 && noInfo.antialias === true && noInfo.shadows === true,
+    "wp3dPerfTier: missing deviceInfo fields default to desktop tier (shadows on)");
 
   assert(WP3D_DEGRADED_TIER.pixelRatioCap === 1 && WP3D_DEGRADED_TIER.antialias === false
-    && WP3D_DEGRADED_TIER.labelEvery === 3,
-    "WP3D_DEGRADED_TIER: matches contract's degraded tier shape");
+    && WP3D_DEGRADED_TIER.labelEvery === 3 && WP3D_DEGRADED_TIER.shadows === false,
+    "WP3D_DEGRADED_TIER: matches contract's degraded tier shape (shadows off)");
 }
 
 // ---------------------------------------------------------------------------
