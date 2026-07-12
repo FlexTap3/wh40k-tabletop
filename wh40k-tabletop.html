@@ -1016,6 +1016,43 @@ function wp11CountUnitModels(u,blockLines){
   const profs=profilesFromDb(u); // character/vehicle fallback: datasheet's own default model count
   return profs.reduce((s,p)=>s+p.count,0)||1;
 }
+/* ==== WP-IMPORT-PTS: true costing for imported lists ==== Every export format we accept
+   (GW app / BCP "(360 Points)", "(95 pts)", New Recruit "[95 pts]", and this app's own
+   bExportText) states each unit's points ON its header line, and in all of them that stated
+   number already INCLUDES the enhancement's cost (bExportText writes opt.pts+enh.c on the
+   header and repeats "+N" on the bullet; the GW app bakes it in silently — verified: all 5
+   embedded meta lists' stated unit points sum exactly to their printed totals). So: stated
+   points win, and nothing is ever added on top of them. Only when a header states no usable
+   points (0 / a future format) do we fall back to the datasheet's own cost — picked from the
+   size option matching the counted models, not blindly u.p[0] — plus the enhancement's cost
+   (explicit "+N" if printed, else matched by name in the Builder's DB.enh). */
+const WPIMP_HEADER=/^(.+?)\s*[\(\[](\d+)\s*(?:pts?|points?)[\)\]]$/i; // "(360 Points)" · "(95 pts)" · "[95 pts]"
+function wpImpSizedPts(u,size){ // datasheet cost for the size option matching the imported model count
+  if(!u||!u.p||!u.p.length) return 0;
+  const opts=u.p.map(o=>({n:+((String(o[0]).match(/(\d+)/)||[])[1]||0),c:parseInt(o[1])||0}));
+  if(!size) return opts[0].c;
+  const exact=opts.find(o=>o.n===size); if(exact) return exact.c;
+  const bigger=opts.filter(o=>o.n>=size).sort((a,b)=>a.n-b.n)[0]; if(bigger) return bigger.c;
+  return opts.slice().sort((a,b)=>b.n-a.n)[0].c; // more models than any option: charge the largest
+}
+function wpImpParseEnh(lines){ // "Enhancement: Name" / "Enhancements: Name (+10 pts)" -> {n,c|0} | null
+  for(const {text} of (lines||[])){
+    const m=String(text).match(/^Enhancements?:\s*(.+)$/i); if(!m) continue;
+    let n=m[1].trim(), c=0;
+    const cm=n.match(/\(\s*\+?\s*(\d+)\s*(?:pts?|points?)?\s*\)\s*$/i);
+    if(cm){ c=+cm[1]; n=n.slice(0,cm.index).trim(); }
+    return {n,c};
+  }
+  return null;
+}
+function wpImpEnhCost(fid,enh){ // fill a missing enhancement cost from the Builder's own DB.enh
+  if(!enh||enh.c) return enh;
+  const list=(DB.enh&&DB.enh[fid])||[];
+  const q=norm(enh.n.replace(/\s*\(upgrade\)\s*$/i,"")); // the GW app suffixes "(Upgrade)" on some enhancements
+  const hit=list.find(e=>norm(e.n)===q)||list.find(e=>norm(e.n).includes(q)||q.includes(norm(e.n)));
+  return hit?{n:enh.n,c:+hit.c||0}:enh;
+}
+/* ==== end WP-IMPORT-PTS helpers ==== */
 /* ---- army list import ---- */
 function openListImport(){
   const sel=document.getElementById("listFaction");
@@ -1041,29 +1078,43 @@ function importArmyList(){
   let importedDet="";
   try{ importedDet=wp11ParseList(text).det||""; }catch(e){ importedDet=""; }
   myList.faction=fid; myList.det=importedDet;
-  myList.importedNote=true; // pasted-list units are priced from base datasheets only — no enhancement/wargear points
   bSave();
   /* ==== end WP-IMPORTFIX (faction/detachment sync) ==== */
   const units=DB.units[fid]||[];
   const found=[], missed=[];
-  const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
+  const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*[\(\[]/i; /* ==== WP-IMPORT-PTS: bracket headers too ==== */
   let current=null;
   const flush=()=>{ if(!current) return;
     const match=matchUnit(units,current.name);
     if(match<0){ missed.push(current.name); current=null; return; }
     const size=wp11CountUnitModels(units[match],current.lines)||null; /* ==== WP-MODELFIX: models vs wargear, DB-matched ==== */
-    found.push({idx:match,size,name:units[match].n});
+    found.push({idx:match,size,name:units[match].n,pts:current.pts||0,enh:wpImpParseEnh(current.lines)}); /* ==== WP-IMPORT-PTS: carry stated points + enhancement ==== */
     current=null; };
   lines.forEach(({indent,text:l},li)=>{
     if(!l) return;
-    const um=l.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
-    if(um && !sizeRx.test(l) && li>0){ flush(); current={name:um[1],lines:[]}; return; }
+    const um=l.match(WPIMP_HEADER); /* ==== WP-IMPORT-PTS: also matches "(95 pts)" and "[95 pts]" ==== */
+    if(um && !sizeRx.test(l) && li>0){ flush(); current={name:um[1],pts:+um[2],lines:[]}; return; }
     if(current) current.lines.push({indent,text:l});
   });
   flush();
   const deploy=document.getElementById("listDeploy").checked;
   myArmy=[]; // the Army tab mirrors the imported list
-  found.forEach(f=>{ const c=addFromDb(fid,f.idx,f.size||undefined,true); if(c&&deploy) deployCard(c); });
+  /* ==== WP-IMPORT-PTS: price each imported unit truly ==== stated header points win (they
+     already include the enhancement — see the helper block above); otherwise fall back to the
+     size-matched datasheet cost plus the enhancement's cost, and count those fallbacks so
+     renderArmy can keep its "(base datasheet pts)" caveat honest. */
+  let basePriced=0;
+  found.forEach(f=>{ const c=addFromDb(fid,f.idx,f.size||undefined,true); if(!c) return;
+    const enh=wpImpEnhCost(fid,f.enh);
+    if(f.pts>0) c.pts=String(f.pts);
+    else { c.pts=String(wpImpSizedPts((DB.units[fid]||[])[f.idx],f.size)+(enh&&enh.c?enh.c:0)); basePriced++; }
+    if(enh) c.notes=(c.notes?c.notes+" — ":"")+"✦ "+enh.n+(enh.c?" (+"+enh.c+"pts)":"");
+    if(deploy) deployCard(c);
+  });
+  myList.importedNote=basePriced; bSave();                    // 0 (falsy) when every unit had stated points
+  localStorage.setItem("wh40k_army",JSON.stringify(myArmy));  // re-persist: pts/notes were stamped after addFromDb's save
+  renderArmy();
+  /* ==== end WP-IMPORT-PTS ==== */
   broadcastCards(); /* WP0: card sync on list import */
   document.getElementById("listDlg").close();
   logShared(`· <b>${esc(myName)}</b> imported a list: ${found.length} unit${found.length!==1?"s":""} matched${missed.length?", "+missed.length+" not found: "+esc(missed.join("; ")):""}`,"sys");
@@ -1158,7 +1209,7 @@ function renderArmy(){
       const pts=myArmy.reduce((s,c)=>s+(parseInt(c.pts)||0),0);
       sum.innerHTML=`<div class="card" style="margin-bottom:8px"><b>${esc(fname||"Your army")}</b>${myList.det?` · ${esc(myList.det)}`:""}<br>
         <span class="small">${myArmy.length} unit${myArmy.length!==1?"s":""} · <b style="color:var(--accent)">${pts} pts</b>
-        ${myList.importedNote?` <span class="small" style="color:var(--dim)">(base datasheet pts)</span>`:""}</span></div>`;
+        ${myList.importedNote?` <span class="small" style="color:var(--dim)">(${myList.importedNote===true?"":myList.importedNote+" unit"+(myList.importedNote===1?"":"s")+" at "}base datasheet pts)</span>`:""}</span></div>`;/* ==== WP-IMPORT-PTS: caveat only for units that fell back to datasheet pricing; legacy saves may still hold `true` ==== */
     } else sum.innerHTML="";
   }
   const el=document.getElementById("unitList"); el.innerHTML="";
@@ -4943,7 +4994,7 @@ function wp11ParseList(text){ // header parsing the way importArmyList does it
   const m0=((lines[0]||{}).text||"").match(/\((\d+)\s*points?\)/i); if(m0) total=+m0[1];
   const unitsDb=fid?(DB.units[fid]||[]):[];
   const units=[]; let cur=null;
-  const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*\(/i;
+  const sizeRx=/^(incursion|strike force|onslaught|combat patrol)\s*[\(\[]/i; /* ==== WP-IMPORT-PTS: keep in lockstep with importArmyList ==== */
   const flush=()=>{ if(!cur) return;
     const idx=matchUnit(unitsDb,cur.name);
     if(idx>=0){ cur.models=wp11CountUnitModels(unitsDb[idx],cur.lines); }
@@ -4954,7 +5005,7 @@ function wp11ParseList(text){ // header parsing the way importArmyList does it
     delete cur.lines; };
   lines.forEach(({indent,text:l},li)=>{
     if(!l) return;
-    const um=l.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
+    const um=l.match(WPIMP_HEADER); /* ==== WP-IMPORT-PTS: same header regex as importArmyList ==== */
     if(um&&!sizeRx.test(l)&&li>0){ flush(); cur={name:um[1],pts:+um[2],lines:[]}; units.push(cur); return; }
     if(cur) cur.lines.push({indent,text:l});
   });
