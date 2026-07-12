@@ -30,12 +30,15 @@
   assert(myList.faction==="SM","importArmyList() syncs myList.faction to the auto-detected fid ('"+myList.faction+"')");
   assert(myList.det==="Hammer of Avernii and Librarius Conclave",
     "importArmyList() syncs myList.det from the list's own detachment line");
-  assert(myList.importedNote===true,"importArmyList() flags myList.importedNote (base-datasheet-pts caveat)");
+  // ==== WP-IMPORT-PTS: imported units are now priced from their STATED header points (which
+  // already include enhancements), so a full GW-app export leaves NO base-datasheet fallbacks
+  // and the caveat disappears. importedNote is now a fallback COUNT (0 = all stated). ====
+  assert(myList.importedNote===0,"importArmyList() counts zero base-datasheet fallbacks for a full GW-app export");
   renderArmy();
   const summaryHtml=g("armySummary").innerHTML;
   assert(/Space Marines/.test(summaryHtml),"Army-tab summary now names the IMPORTED faction (Space Marines), not the Builder default");
   assert(/Hammer of Avernii/.test(summaryHtml),"Army-tab summary shows the imported detachment");
-  assert(/base datasheet pts/.test(summaryHtml),"Army-tab summary carries the 'base datasheet pts' caveat after a list import");
+  assert(!/base datasheet pts/.test(summaryHtml),"Army-tab summary drops the 'base datasheet pts' caveat when every unit had stated points");
 
   // (c) a manual Builder muster (bToGame) prices enhancements properly -> caveat clears
   clearTable(); myArmy=[]; myList.items=[]; myList.faction="SM"; myList.det="Anvil Siege Force"; bSave();
