@@ -46,4 +46,5 @@ node wp3d-1-geometry-tests.js
 node wp3d-2-renderer-tests.js
 node wp3d-3-labels-tests.js
 node wp3d-4-interaction-tests.js
+node wp3d-8-vehicles-tests.js
 echo "ALL SUITES PASSED"
