@@ -75,21 +75,24 @@ const WP3D_VOXELS = {
     { x: 0, y: 0.30, z: 0.35, w: 0.30, h: 0.24, d: 0.14, c: 'hi' },    // front fairing
     { x: -0.28, y: 0.16, z: -0.20, w: 0.08, h: 0.10, d: 0.20, c: 'lo' }, // exhaust L
     { x: 0.28, y: 0.16, z: -0.20, w: 0.08, h: 0.10, d: 0.20, c: 'lo' },  // exhaust R
-    { x: 0, y: 0.60, z: -0.02, w: 0.30, h: 0.26, d: 0.20, c: 'mid' },  // rider torso
-    { x: 0, y: 0.74, z: -0.02, w: 0.34, h: 0.10, d: 0.22, c: 'mid' },  // rider shoulders
-    { x: 0, y: 0.86, z: 0.00, w: 0.17, h: 0.14, d: 0.17, c: 'hi' },    // rider head
+    { x: 0, y: 0.58, z: -0.03, w: 0.32, h: 0.30, d: 0.22, c: 'mid' },  // rider torso — taller hump
+    { x: 0, y: 0.76, z: -0.03, w: 0.36, h: 0.12, d: 0.24, c: 'mid' },  // rider shoulders
+    { x: 0, y: 0.90, z: 0.02, w: 0.18, h: 0.15, d: 0.18, c: 'hi' },    // rider head
+    { x: 0, y: 1.00, z: -0.05, w: 0.06, h: 0.10, d: 0.06, c: 'hi' },   // helmet crest — extra hump read
     { x: 0, y: 0.42, z: 0.30, w: 0.44, h: 0.05, d: 0.05, c: 'hi' },    // handlebar
   ],
-  // jump infantry / aircraft: delta silhouette
+  // jump infantry / aircraft: delta silhouette, raised into a hover/flight stance — the
+  // whole mass sits elevated above the base on a thin strut, instead of hugging the ground.
   wing: [
-    { x: 0, y: 0.14, z: -0.20, w: 0.90, h: 0.10, d: 0.30, c: 'mid' },  // wing back
-    { x: 0, y: 0.18, z: 0.05, w: 0.55, h: 0.12, d: 0.30, c: 'mid' },   // wing mid
-    { x: 0, y: 0.22, z: 0.30, w: 0.16, h: 0.16, d: 0.30, c: 'hi' },    // fuselage
-    { x: 0, y: 0.22, z: 0.48, w: 0.10, h: 0.10, d: 0.10, c: 'hi' },    // nose
-    { x: 0, y: 0.32, z: 0.18, w: 0.12, h: 0.10, d: 0.14, c: 'hi' },    // cockpit
-    { x: 0, y: 0.30, z: -0.32, w: 0.06, h: 0.24, d: 0.10, c: 'lo' },   // tail fin
-    { x: -0.20, y: 0.14, z: -0.24, w: 0.10, h: 0.10, d: 0.20, c: 'lo' }, // engine L
-    { x: 0.20, y: 0.14, z: -0.24, w: 0.10, h: 0.10, d: 0.20, c: 'lo' },  // engine R
+    { x: 0, y: 0.30, z: -0.20, w: 0.90, h: 0.09, d: 0.30, c: 'mid' },  // wing back
+    { x: 0, y: 0.34, z: 0.05, w: 0.55, h: 0.11, d: 0.30, c: 'mid' },   // wing mid
+    { x: 0, y: 0.38, z: 0.30, w: 0.16, h: 0.16, d: 0.30, c: 'hi' },    // fuselage
+    { x: 0, y: 0.38, z: 0.48, w: 0.10, h: 0.10, d: 0.10, c: 'hi' },    // nose
+    { x: 0, y: 0.48, z: 0.16, w: 0.13, h: 0.11, d: 0.15, c: 'hi' },    // raised cockpit bump
+    { x: 0, y: 0.46, z: -0.32, w: 0.06, h: 0.24, d: 0.10, c: 'lo' },   // tail fin
+    { x: -0.20, y: 0.28, z: -0.24, w: 0.10, h: 0.10, d: 0.20, c: 'lo' }, // engine L
+    { x: 0.20, y: 0.28, z: -0.24, w: 0.10, h: 0.10, d: 0.20, c: 'lo' },  // engine R
+    { x: 0, y: 0.10, z: 0, w: 0.05, h: 0.22, d: 0.05, c: 'lo' },       // hover strut down to base
   ],
   // monster: hunched, big arms
   claw: [
@@ -104,17 +107,26 @@ const WP3D_VOXELS = {
     { x: 0, y: 0.96, z: 0.10, w: 0.22, h: 0.18, d: 0.20, c: 'hi' },      // head
     { x: 0, y: 0.90, z: -0.20, w: 0.10, h: 0.20, d: 0.14, c: 'lo' },     // spine spikes
   ],
-  // hull + turret + tracks
+  // hull + turret + tracks. Local-space convention: X is always the LONGER footprint axis
+  // (real vehicle data — see WP21_HULLS in wh40k-tabletop.html — always has wIn > hIn, and
+  // buildArchetypeGeometry scales local x by wIn/realW), so the hull's LENGTH runs along x
+  // and the hull's WIDTH (tracks flanking left/right) runs along z. Front = +x.
   tank: [
-    { x: -0.36, y: 0.10, z: 0, w: 0.14, h: 0.20, d: 0.80, c: 'lo' },   // track L
-    { x: 0.36, y: 0.10, z: 0, w: 0.14, h: 0.20, d: 0.80, c: 'lo' },    // track R
-    { x: 0, y: 0.16, z: 0, w: 0.66, h: 0.24, d: 0.78, c: 'mid' },      // hull lower
-    { x: 0, y: 0.36, z: -0.05, w: 0.56, h: 0.16, d: 0.60, c: 'mid' },  // hull upper
-    { x: 0, y: 0.30, z: 0.40, w: 0.50, h: 0.20, d: 0.10, c: 'hi' },    // front plate
-    { x: 0, y: 0.50, z: -0.05, w: 0.36, h: 0.14, d: 0.36, c: 'mid' },  // turret base
-    { x: 0, y: 0.60, z: -0.05, w: 0.28, h: 0.10, d: 0.28, c: 'hi' },   // turret top
-    { x: 0.06, y: 0.68, z: -0.10, w: 0.08, h: 0.06, d: 0.08, c: 'hi' }, // hatch
-    { x: 0, y: 0.55, z: 0.30, w: 0.06, h: 0.06, d: 0.55, c: 'hi' },    // barrel
+    // full-length tracks flanking the hull, taller than the hull's bottom edge
+    { x: 0, y: 0.11, z: -0.36, w: 0.92, h: 0.22, d: 0.13, c: 'lo' },   // track L
+    { x: 0, y: 0.11, z: 0.36, w: 0.92, h: 0.22, d: 0.13, c: 'lo' },    // track R
+    // thin darker belly plate — the "beveled under-box" between the tracks
+    { x: 0, y: 0.05, z: 0, w: 0.80, h: 0.07, d: 0.58, c: 'lo' },       // belly plate
+    // one long hull box (lower slab + upper superstructure, stepped back slightly)
+    { x: 0, y: 0.20, z: 0, w: 0.84, h: 0.20, d: 0.60, c: 'mid' },      // hull lower
+    { x: -0.06, y: 0.38, z: 0, w: 0.58, h: 0.16, d: 0.48, c: 'mid' },  // hull upper
+    { x: 0.42, y: 0.27, z: 0, w: 0.14, h: 0.30, d: 0.54, c: 'hi' },    // front glacis plate
+    // turret offset toward front-center (not centered — sits forward of hull midpoint)
+    { x: 0.08, y: 0.48, z: 0, w: 0.34, h: 0.16, d: 0.32, c: 'mid' },   // turret base
+    { x: 0.08, y: 0.58, z: 0, w: 0.24, h: 0.08, d: 0.24, c: 'hi' },    // turret top
+    { x: 0.00, y: 0.64, z: 0.08, w: 0.08, h: 0.06, d: 0.08, c: 'hi' }, // hatch
+    // forward-pointing barrel, long and thin, mounted off the turret front
+    { x: 0.40, y: 0.53, z: 0, w: 0.46, h: 0.05, d: 0.05, c: 'hi' },    // barrel
   ],
   // tall walker: legs + carapace
   titan: [
@@ -266,7 +278,10 @@ function wp3dRng(seed) {
 function disposeObject3D(obj) {
   obj.traverse(o => {
     if (o.geometry) o.geometry.dispose();
-    if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
+    if (o.material) {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(m => { if (m.map && m.map.dispose) m.map.dispose(); m.dispose(); });
+    }
   });
 }
 
@@ -349,7 +364,11 @@ function buildCrate(w, h, rnd) {
 function buildWall(w, h) {
   const height = 1; // fixed 1in per contract
   const group = new THREE.Object3D();
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, height, h), new THREE.MeshBasicMaterial({ color: 0x5f5028 }));
+  // Stone grey — echoes the 2D app's TERR_COLORS.wall (#44484e, a near-neutral stone tone),
+  // brightened to match this unlit palette's other terrain (ruin 0x5f6980 is scaled ~1.6x off
+  // TERR_COLORS.ruin the same way). Deliberately less blue than ruin's 0x5f6980 and nowhere
+  // near crate's warm brown 0x8a5a2e, so all three read as distinct materials on the board.
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, height, h), new THREE.MeshBasicMaterial({ color: 0x6c7178 }));
   mesh.position.set(0, height / 2, 0);
   group.add(mesh);
   group.userData.terrainHeight = height;
@@ -407,18 +426,68 @@ function buildTerrain(kind, w, h, id) {
   }
 }
 
-/* buildBoard(w,h,matCanvas?) -> board plane mesh, spans world x∈[0,w], z∈[0,h]. */
+/* Procedural battlefield-mat texture for buildBoard's default material: dark olive/canvas
+ * grit (mirrors the 2D app's wp9MatPattern base tone/fleck approach) plus faint 6-inch grid
+ * lines. Tiled at exactly 6in/tile via texture.repeat so the grid lands on true 6in
+ * intervals regardless of overall board size. Browser-only (guarded by `document` — plain
+ * node test environments have none), so buildBoard(w,h) with no matCanvas still constructs
+ * a mesh with a flat-color fallback material there. */
+function buildBoardMatTexture(w, h) {
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  try {
+    const TILE = 64; // px per 6in tile
+    const c = document.createElement('canvas');
+    if (!c.getContext) return null;
+    c.width = c.height = TILE;
+    const g = c.getContext('2d');
+    if (!g || !g.createImageData || !g.putImageData) return null;
+    const img = g.createImageData(TILE, TILE);
+    const rnd = wp3dRng(wp3dHash('wp3d-board-mat-v1'));
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 34 + rnd() * 12, fleck = rnd();
+      img.data[i] = v + (fleck < 0.05 ? 12 : 0);         // R
+      img.data[i + 1] = v + 4 + (fleck < 0.05 ? 9 : 0);   // G — pushed up for an olive cast
+      img.data[i + 2] = Math.max(0, v - 6);               // B — pulled down: dark canvas/olive
+      img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    // faint 6in grid lines at the tile edges — tiling repeats them across the whole board
+    g.strokeStyle = 'rgba(205,212,190,0.15)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(0, 0.5); g.lineTo(TILE, 0.5);
+    g.moveTo(0.5, 0); g.lineTo(0.5, TILE);
+    g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    if (THREE.RepeatWrapping) tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(Math.max(1, w / 6), Math.max(1, h / 6));
+    tex.needsUpdate = true;
+    return tex;
+  } catch (e) { return null; }
+}
+
+/* buildBoard(w,h,matCanvas?) -> board plane mesh, spans world x∈[0,w], z∈[0,h]. When no
+ * matCanvas is supplied and a DOM is available, generates the procedural mat texture above;
+ * otherwise falls back to a flat dark olive color (also the plain-node/no-DOM path). */
 function buildBoard(w, h, matCanvas) {
   const geo = new THREE.PlaneGeometry(w, h);
-  geo.rotateX(Math.PI / 2);   // local (x,y,0) -> world (x,0,y): matches world.z = state.y
+  // local (x,y,0) -> world (x,0,y): matches world.z = state.y. NOTE: rotateX(+PI/2) would
+  // point the plane's front face (PlaneGeometry's default +Z normal) down at -Y — invisible
+  // (backface-culled) from the app's actual camera rig, which sits ABOVE the board looking
+  // down (createCameraRig's polar angle keeps cos(polar)>0, i.e. positive Y). rotateX(-PI/2)
+  // points the front face up at +Y instead, toward that camera.
+  geo.rotateX(-Math.PI / 2);
   geo.translate(w / 2, 0, h / 2);
   let material;
-  if (matCanvas) {
-    const tex = matCanvas.isTexture ? matCanvas : new THREE.CanvasTexture(matCanvas);
+  const provided = matCanvas || buildBoardMatTexture(w, h);
+  if (provided) {
+    const tex = provided.isTexture ? provided : new THREE.CanvasTexture(provided);
     if (THREE.RepeatWrapping) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; }
-    material = new THREE.MeshBasicMaterial({ map: tex });
+    // DoubleSide belt-and-suspenders: keeps the board visible even if a future camera pose
+    // ever dips below the board plane (e.g. a low-angle inspect view).
+    material = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
   } else {
-    material = new THREE.MeshBasicMaterial({ color: 0x2b3026 });
+    material = new THREE.MeshBasicMaterial({ color: 0x2b3026, side: THREE.DoubleSide });
   }
   const mesh = new THREE.Mesh(geo, material);
   mesh.userData.isBoard = true;
@@ -542,6 +611,11 @@ function createSceneSync(THREE, scene, bridge) {
   const terrainById = new Map(); // id -> {obj, sig}
   const objectiveById = new Map(); // id -> {obj}
   const dzEntries = [null, null];
+  let boardEntry = null; // {obj, sig} — buildBoard() was never wired into the WP3D-5
+  // orchestrator (wh40k-3d.js only sets scene.background, never calls buildBoard), which is
+  // why the board plane read as flat near-black: there was no floor mesh at all. createSceneSync
+  // already receives `scene` and gets `state.board={w,h}` on every tick(), so it's the natural
+  // (and in-contract — WP3D-1 owns scene sync) place to build/keep the board plane in sync.
   let lastState = { tokens: [], terrain: [], objectives: [], dz: [] };
 
   const sharedMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -570,6 +644,16 @@ function createSceneSync(THREE, scene, bridge) {
       if (pointInRotatedRect(t.x, t.y, cx, cz, g.w, g.h, g.rot || 0)) return t.lvl * 3;
     }
     return 0;
+  }
+
+  function syncBoard(board) {
+    const w = (board && board.w) || 60, h = (board && board.h) || 44;
+    const sig = w + 'x' + h;
+    if (boardEntry && boardEntry.sig === sig) return;
+    if (boardEntry) { scene.remove(boardEntry.obj); disposeObject3D(boardEntry.obj); }
+    const obj = buildBoard(w, h);
+    scene.add(obj);
+    boardEntry = { obj, sig };
   }
 
   function syncTerrain(list) {
@@ -629,6 +713,7 @@ function createSceneSync(THREE, scene, bridge) {
 
   function tick(state) {
     lastState = state || lastState;
+    syncBoard(state && state.board);
     const tokens = (state && state.tokens) || [];
     const tokenById = new Map();
     for (const t of tokens) tokenById.set(t.id, t);
@@ -737,6 +822,7 @@ function createSceneSync(THREE, scene, bridge) {
     archPools.clear();
     rimPool.dispose();
     selectionPool.dispose();
+    if (boardEntry) { scene.remove(boardEntry.obj); disposeObject3D(boardEntry.obj); boardEntry = null; }
     for (const [, entry] of terrainById) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
     terrainById.clear();
     for (const [, entry] of objectiveById) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
