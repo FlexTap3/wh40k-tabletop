@@ -2288,7 +2288,13 @@ window.WP3D={
   wp21BaseFor,
   tokDragBegin, tokDragMove, tokDragCommit,
   ruler: ()=>ruler, /* ==== WP3D-5 ==== additive: lets the 3D HUD mirror the tape measure */
+  onDice: (cb)=>{ wp3dDiceCbs.push(cb); }, /* ==== WP3D-v2 ==== additive: 3D dice mirror real rolls */
 };
+/* ==== WP3D-v2 ==== dice tap — append-only wrap of wp20Note (the hook d6() already calls
+   for every die on this screen); zero behaviour change when no 3D listener registered. */
+const wp3dDiceCbs=[];
+const wp3dOrigWp20Note=wp20Note;
+wp20Note=function(r){ wp3dOrigWp20Note(r); for(const cb of wp3dDiceCbs){ try{cb(r);}catch(e){} } };
 /* ---- (f) draw() wrap — append-only. window.wp3dOnDraw is defined by the 3D module once
    loaded; undefined (module never loaded, or toggled off) is a no-op, i.e. zero behaviour
    change for anyone who never touches the wp3d checkbox. ---- */

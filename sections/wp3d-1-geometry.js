@@ -218,39 +218,51 @@ const geometryCache = new Map();
  * height, bakes palette.hi/mid/lo as vertex colors, adds a thin base disc (circle/oval
  * footprints) or hull plate (rect footprints) tinted darker than lo. Cached by
  * (archetype|footprint-bucket|palette). */
-function buildArchetypeGeometry(archetype, footprint, palette) {
-  const key = archetype + '|' + footprintBucketKey(footprint) + '|' + paletteKeyOf(palette);
-  const cached = geometryCache.get(key);
-  if (cached) return cached;
-
-  const table = WP3D_VOXELS[archetype] || WP3D_VOXELS.fallback;
-  const targetH = ARCHETYPE_HEIGHTS[archetype] || ARCHETYPE_HEIGHTS.fallback;
+/* voxelsToGeometry(table, footprint, palette, targetH, opts) — the reusable core: scales a
+ * voxel box table to a real footprint + target height (inches), bakes hi/mid/lo (plus any
+ * extra named tints in opts.tints, e.g. {steel:'#889'}) as vertex colors, and appends the
+ * base disc/hull plate unless opts.noBase. Kit packs build on this instead of reinventing. */
+function voxelsToGeometry(table, footprint, palette, targetH, opts) {
+  opts = opts || {};
   const { w: realW, d: realD } = footprintDims(footprint);
-
   const hi = new THREE.Color(palette.hi || '#9aa0a8');
   const mid = new THREE.Color(palette.mid || '#6b7178');
   const lo = new THREE.Color(palette.lo || '#42464c');
-  const colorFor = c => (c === 'hi' ? hi : c === 'lo' ? lo : mid);
+  const tints = {};
+  for (const k in (opts.tints || {})) tints[k] = new THREE.Color(opts.tints[k]);
+  const colorFor = c => (c === 'hi' ? hi : c === 'lo' ? lo : c === 'mid' ? mid : (tints[c] || mid));
 
   const parts = table.map(b => {
     const g = new THREE.BoxGeometry(b.w * realW, b.h * targetH, b.d * realD);
+    if (b.ry) g.rotateY(b.ry);
     g.translate(b.x * realW, b.y * targetH, b.z * realD);
     return { geometry: g, color: colorFor(b.c) };
   });
 
-  const baseColor = { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
-  let baseGeo;
-  const isRound = footprint && (footprint.shape === 'c' || footprint.oval);
-  if (isRound) {
-    baseGeo = new THREE.CylinderGeometry(0.5, 0.5, BASE_THICKNESS, BASE_SEGMENTS);
-    baseGeo.scale(realW, 1, realD);
-  } else {
-    baseGeo = new THREE.BoxGeometry(realW, BASE_THICKNESS, realD);
+  if (!opts.noBase) {
+    const baseColor = { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
+    let baseGeo;
+    const isRound = footprint && (footprint.shape === 'c' || footprint.oval);
+    if (isRound) {
+      baseGeo = new THREE.CylinderGeometry(0.5, 0.5, BASE_THICKNESS, BASE_SEGMENTS);
+      baseGeo.scale(realW, 1, realD);
+    } else {
+      baseGeo = new THREE.BoxGeometry(realW, BASE_THICKNESS, realD);
+    }
+    baseGeo.translate(0, BASE_THICKNESS / 2, 0);
+    parts.push({ geometry: baseGeo, color: baseColor });
   }
-  baseGeo.translate(0, BASE_THICKNESS / 2, 0);
-  parts.push({ geometry: baseGeo, color: baseColor });
 
-  const merged = mergeGeometries(parts);
+  return mergeGeometries(parts);
+}
+
+function buildArchetypeGeometry(archetype, footprint, palette) {
+  const key = archetype + '|' + footprintBucketKey(footprint) + '|' + paletteKeyOf(palette);
+  const cached = geometryCache.get(key);
+  if (cached) return cached;
+  const table = WP3D_VOXELS[archetype] || WP3D_VOXELS.fallback;
+  const targetH = ARCHETYPE_HEIGHTS[archetype] || ARCHETYPE_HEIGHTS.fallback;
+  const merged = voxelsToGeometry(table, footprint, palette, targetH);
   geometryCache.set(key, merged);
   return merged;
 }
@@ -273,6 +285,43 @@ function wp3dRng(seed) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/* ---------------------------------------------------------------------------------------
+ * WP3D-v2 registries — external content packs (troop kits, vehicle kits, terrain packs,
+ * environment) plug in here so they live in their own section files and never edit this one.
+ *
+ * Mini kit: { id, priority, match(token,bridge)→bool, key(token)→string variant bucket,
+ *            build(ctx, token, footprint, palette)→BufferGeometry (merged, vertex-colored) }
+ *   ctx = { THREE, bridge, hash: wp3dHash, rng: wp3dRng, mergeGeometries, voxelsToGeometry }.
+ *   Highest priority match wins; falls back to the built-in archetype tables. key() MUST
+ *   capture every token property build() depends on — pooling/instancing groups by it.
+ * Terrain builder: registerTerrainBuilder(kind, fn) overrides buildTerrain for that kind;
+ *   fn(ctx, kind, w, h, id) → Object3D (local space, origin = footprint center, y=0 ground).
+ * Material/decorator: the environment pack may replace the shared pool material (e.g. for
+ *   lit shading) and decorate every scene object (e.g. shadow flags) without owning pools.
+ * ------------------------------------------------------------------------------------- */
+const MINI_KITS = [];
+function registerMiniKit(kit) {
+  MINI_KITS.push(kit);
+  MINI_KITS.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+}
+function kitFor(bridge, token) {
+  for (const k of MINI_KITS) {
+    let m = false; try { m = !!k.match(token, bridge); } catch (e) {}
+    if (m) return k;
+  }
+  return null;
+}
+const TERRAIN_BUILDERS = new Map();
+function registerTerrainBuilder(kind, fn) { TERRAIN_BUILDERS.set(kind, fn); }
+let poolMaterialFactory = null;   // (THREE) => Material   (default: unlit vertex-color Basic)
+function setPoolMaterialFactory(fn) { poolMaterialFactory = fn; }
+let meshDecorator = null;         // (object3D, role: 'tokens'|'terrain'|'board') => void
+function setMeshDecorator(fn) { meshDecorator = fn; }
+function decorate(obj, role) { if (meshDecorator) { try { meshDecorator(obj, role); } catch (e) {} } }
+function kitCtx(bridge) {
+  return { THREE, bridge, hash: wp3dHash, rng: wp3dRng, mergeGeometries, voxelsToGeometry };
 }
 
 function disposeObject3D(obj) {
@@ -415,6 +464,12 @@ function buildGenericBlock(w, h) {
  * requires a 4th arg beyond the 3-arg signature literally shown; defaults to 0 so a 3-arg
  * call still works (deterministic, just not per-terrain-distinct). */
 function buildTerrain(kind, w, h, id) {
+  const override = TERRAIN_BUILDERS.get(kind);
+  if (override) {
+    const obj = override({ THREE, hash: wp3dHash, rng: wp3dRng, mergeGeometries, voxelsToGeometry }, kind, w, h, id);
+    if (obj) return obj;
+    // an override returning falsy falls through to the built-in look
+  }
   const rnd = wp3dRng(wp3dHash(id == null ? 0 : id));
   switch (kind) {
     case 'ruin': return buildRuin(w, h, rnd);
@@ -652,6 +707,7 @@ function createSceneSync(THREE, scene, bridge) {
     if (boardEntry && boardEntry.sig === sig) return;
     if (boardEntry) { scene.remove(boardEntry.obj); disposeObject3D(boardEntry.obj); }
     const obj = buildBoard(w, h);
+    decorate(obj, 'board');
     scene.add(obj);
     boardEntry = { obj, sig };
   }
@@ -665,6 +721,7 @@ function createSceneSync(THREE, scene, bridge) {
       if (!entry || entry.sig !== sig) {
         if (entry) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
         const obj = buildTerrain(t.kind, t.w, t.h, t.id);
+        decorate(obj, 'terrain');
         scene.add(obj);
         entry = { obj, sig };
         terrainById.set(t.id, entry);
@@ -718,15 +775,17 @@ function createSceneSync(THREE, scene, bridge) {
     const tokenById = new Map();
     for (const t of tokens) tokenById.set(t.id, t);
 
-    // ---- group tokens into (archetype, palette, footprint-bucket) pools ----
+    // ---- group tokens into (kit-variant | archetype, palette, footprint-bucket) pools ----
     const groups = new Map();
     for (const t of tokens) {
       const archetype = resolveArchetype(bridge, t);
       const { key: fid, palette } = resolvePalette(bridge, t);
       const fp = footprintOf(t);
-      const poolKey = archetype + '|' + fid + '|' + footprintBucketKey(fp);
+      const kit = kitFor(bridge, t);
+      const variant = kit && kit.key ? String(kit.key(t)) : '';
+      const poolKey = (kit ? 'K:' + kit.id + ':' + variant : archetype) + '|' + fid + '|' + footprintBucketKey(fp);
       let g = groups.get(poolKey);
-      if (!g) { g = { archetype, palette, footprint: fp, tokens: [] }; groups.set(poolKey, g); }
+      if (!g) { g = { archetype, palette, footprint: fp, tokens: [], kit, rep: t }; groups.set(poolKey, g); }
       g.tokens.push(t);
     }
     for (const poolKey of Array.from(archPools.keys())) {
@@ -735,8 +794,13 @@ function createSceneSync(THREE, scene, bridge) {
     for (const [poolKey, g] of groups) {
       let pool = archPools.get(poolKey);
       if (!pool) {
-        const geometry = buildArchetypeGeometry(g.archetype, g.footprint, g.palette);
-        pool = createInstancedPool(THREE, geometry, sharedMaterial, false);
+        let geometry = null;
+        if (g.kit) {
+          try { geometry = g.kit.build(kitCtx(bridge), g.rep, g.footprint, g.palette); } catch (e) { geometry = null; }
+        }
+        if (!geometry) geometry = buildArchetypeGeometry(g.archetype, g.footprint, g.palette);
+        pool = createInstancedPool(THREE, geometry, poolMaterialFactory ? poolMaterialFactory(THREE) : sharedMaterial, false);
+        decorate(pool.mesh, 'tokens');
         scene.add(pool.mesh);
         archPools.set(poolKey, pool);
       }
@@ -844,4 +908,13 @@ export {
   buildDZ,
   buildObjectiveMarker,
   createSceneSync,
+  /* ==== WP3D-v2 plug-in surface (content packs register here) ==== */
+  registerMiniKit,
+  registerTerrainBuilder,
+  setPoolMaterialFactory,
+  setMeshDecorator,
+  voxelsToGeometry,
+  mergeGeometries,
+  wp3dHash,
+  wp3dRng,
 };

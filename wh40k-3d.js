@@ -11,6 +11,22 @@ import { wp3dPerfTier, WP3D_DEGRADED_TIER, createRenderer, createCameraRig,
          createLoop, createFpsGovernor, observeResize } from './sections/wp3d-2-renderer.js';
 import { createLabelLayer } from './sections/wp3d-3-labels.js';
 import { createInteraction } from './sections/wp3d-4-interaction.js';
+/* ==== WP3D-v2 content packs ==== registered/created below; each lives in its own file. */
+import { register as registerTerrainPack } from './sections/wp3d-6-terrain2.js';
+import { register as registerTroopKits } from './sections/wp3d-7-troops.js';
+import { register as registerVehicleKits } from './sections/wp3d-8-vehicles.js';
+import { createEnvironment } from './sections/wp3d-9-environment.js';
+import { createMotion } from './sections/wp3d-10-motion.js';
+
+let packsRegistered = false;
+function registerPacks() {
+  if (packsRegistered) return;
+  packsRegistered = true;
+  // Vehicles register after troops but carry higher priority (name-specific beats keyword).
+  try { registerTerrainPack(); } catch (e) {}
+  try { registerTroopKits(); } catch (e) {}
+  try { registerVehicleKits(); } catch (e) {}
+}
 
 let bridge = null, canvasEl = null, ctx = null, running = false, dirty = true, labelEvery = 1;
 
@@ -45,9 +61,12 @@ function build() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#101216'); // matches the app's table-surround tone
 
+  registerPacks();
   const r = createRenderer(THREE, canvasEl, tier);
   const rig = createCameraRig(THREE, canvasEl, board);
   const sceneSync = createSceneSync(THREE, scene, bridge);
+  // Environment installs its material factory/decorator BEFORE the first sceneSync tick.
+  const env = createEnvironment(THREE, scene, board, tier, r.renderer);
 
   const wrap = canvasEl.parentElement;
   let labelDiv = document.getElementById('wp3dLabels');
@@ -59,6 +78,7 @@ function build() {
   }
   const labels = createLabelLayer(labelDiv, bridge);
   const interaction = createInteraction(canvasEl, bridge, rig, sceneSync);
+  const motion = createMotion({ THREE, scene, rig, sceneSync, bridge, canvas: canvasEl, renderer: r.renderer });
 
   const sizeTo = (w, h) => {
     r.setSize(w, h);
@@ -81,6 +101,7 @@ function build() {
     rig.update(dtMs);
     const s = bridge.state();
     if (dirty) { sceneSync.tick(s); dirty = false; }
+    motion.tick(dtMs, s);
     labels.tick(rig, s, extras(s));
     r.renderer.render(scene, rig.camera);
   });
@@ -90,12 +111,14 @@ function build() {
   r.onContextLost(() => { loop.stop(); });
   r.onContextRestored(() => { rebuild(); });
 
-  ctx = { scene, r, rig, sceneSync, labels, interaction, loop, ro, labelDiv, governor };
+  ctx = { scene, r, rig, sceneSync, labels, interaction, motion, env, loop, ro, labelDiv, governor };
 }
 
 function teardown() {
   if (!ctx) return;
   try { ctx.loop.stop(); } catch (e) {}
+  try { ctx.motion.dispose(); } catch (e) {}
+  try { ctx.env.dispose(); } catch (e) {}
   try { ctx.interaction.dispose(); } catch (e) {}
   try { ctx.labels.dispose(); } catch (e) {}
   try { ctx.sceneSync.dispose(); } catch (e) {}

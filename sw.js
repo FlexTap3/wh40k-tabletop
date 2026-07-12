@@ -1,6 +1,6 @@
 /* WH40k Tabletop service worker — offline shell caching.
    Bump CACHE when you ship a new wh40k-tabletop.html so clients pull the update. */
-const CACHE = 'wh40k-tabletop-v4';
+const CACHE = 'wh40k-tabletop-v5';
 const SHELL = [
   './',
   './index.html',
@@ -15,6 +15,11 @@ const SHELL = [
   './sections/wp3d-2-renderer.js',
   './sections/wp3d-3-labels.js',
   './sections/wp3d-4-interaction.js',
+  './sections/wp3d-6-terrain2.js',
+  './sections/wp3d-7-troops.js',
+  './sections/wp3d-8-vehicles.js',
+  './sections/wp3d-9-environment.js',
+  './sections/wp3d-10-motion.js',
   './vendor/three.module.min.js'
 ];
 

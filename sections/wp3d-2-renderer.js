@@ -11,18 +11,20 @@
 // ---------------------------------------------------------------------------
 /**
  * @param {{phone?:boolean, dpr?:number, memoryGB?:number}} deviceInfo
- * @returns {{pixelRatioCap:number, antialias:boolean, labelEvery:number}}
+ * @returns {{pixelRatioCap:number, antialias:boolean, labelEvery:number, shadows:boolean}}
  */
 export function wp3dPerfTier(deviceInfo) {
   const d = deviceInfo || {};
-  if (d.phone) return { pixelRatioCap: 1.5, antialias: false, labelEvery: 2 };
-  return { pixelRatioCap: 2, antialias: true, labelEvery: 1 };
+  // shadows: !phone (WP3D-v2 immersion pass) — real shadow maps are desktop/iPad-tier only;
+  // phones skip shadow-map rendering entirely (see createRenderer below).
+  if (d.phone) return { pixelRatioCap: 1.5, antialias: false, labelEvery: 2, shadows: false };
+  return { pixelRatioCap: 2, antialias: true, labelEvery: 1, shadows: true };
 }
 
 // The FPS governor's downgrade target (contract: "degraded (set by governor)").
 // Exported as a convenience constant for the integrator's onDowngrade handler;
 // not part of the frozen call signatures, purely additive.
-export const WP3D_DEGRADED_TIER = { pixelRatioCap: 1, antialias: false, labelEvery: 3 };
+export const WP3D_DEGRADED_TIER = { pixelRatioCap: 1, antialias: false, labelEvery: 3, shadows: false };
 
 // ---------------------------------------------------------------------------
 // 2. createRenderer
@@ -30,7 +32,7 @@ export const WP3D_DEGRADED_TIER = { pixelRatioCap: 1, antialias: false, labelEve
 /**
  * @param {typeof import('../vendor/three.module.min.js')} THREE
  * @param {HTMLCanvasElement} canvas
- * @param {{pixelRatioCap:number, antialias:boolean}} tier
+ * @param {{pixelRatioCap:number, antialias:boolean, shadows?:boolean}} tier
  * @returns {{renderer:any, setSize:(w:number,h:number)=>void, onContextLost:(cb:Function)=>void, onContextRestored:(cb:Function)=>void, dispose:()=>void}}
  */
 export function createRenderer(THREE, canvas, tier) {
@@ -46,8 +48,12 @@ export function createRenderer(THREE, canvas, tier) {
     (typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1),
     tier.pixelRatioCap
   ));
-  // No shadow maps.
-  renderer.shadowMap.enabled = false;
+  // Shadow maps: desktop/iPad-tier only (tier.shadows, WP3D-v2 immersion pass). Soft PCF so
+  // token/terrain shadow edges aren't jagged at the board's normal viewing distances.
+  renderer.shadowMap.enabled = !!tier.shadows;
+  if (renderer.shadowMap.enabled && THREE.PCFSoftShadowMap != null) {
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  }
   // sRGB output (r170 API name).
   if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
