@@ -32,11 +32,11 @@
   "marginToAi": 10,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 1,
+    "held1": 0,
     "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 549,
+  "runtimeMs": 572,
   "findings": {
     "total": 0,
     "critical": 0,
@@ -47,16 +47,16 @@
   "aiTotalShots": 106,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 755,
-    "lostByAi": -181,
-    "diff": 936,
+    "killedByAi": 1452,
+    "lostByAi": -543,
+    "diff": 1995,
     "s1Models": [
       34,
-      21
+      9
     ],
     "s2Models": [
       22,
-      24
+      28
     ]
   }
 }

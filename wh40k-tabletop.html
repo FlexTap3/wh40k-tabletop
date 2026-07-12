@@ -2287,6 +2287,7 @@ window.WP3D={
   get WP21_HULLS(){ return WP21_HULLS; }, // const declared later in the file (TDZ) — lazy getter
   wp21BaseFor,
   tokDragBegin, tokDragMove, tokDragCommit,
+  ruler: ()=>ruler, /* ==== WP3D-5 ==== additive: lets the 3D HUD mirror the tape measure */
 };
 /* ---- (f) draw() wrap — append-only. window.wp3dOnDraw is defined by the 3D module once
    loaded; undefined (module never loaded, or toggled off) is a no-op, i.e. zero behaviour

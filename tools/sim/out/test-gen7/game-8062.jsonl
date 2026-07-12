@@ -21,12 +21,12 @@
 {"gen":8062,"round":1,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
 {"gen":8062,"round":1,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
 {"gen":8062,"round":1,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Preacher","weapon":"Heavy bolter","dist":16.9,"rng":36,"melee":false}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Preacher","weapon":"Hunter-killer missile","dist":16.9,"rng":48,"melee":false}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Javelin missile launcher – frag","dist":13.8,"rng":36,"melee":false}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Javelin missile launcher – krak","dist":13.8,"rng":36,"melee":false}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Lascannon","dist":13.8,"rng":48,"melee":false}
-{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Multi-melta","dist":13.8,"rng":18,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Preacher","weapon":"Heavy bolter","dist":16.8,"rng":36,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Preacher","weapon":"Hunter-killer missile","dist":16.8,"rng":48,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Javelin missile launcher – frag","dist":13.7,"rng":36,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Javelin missile launcher – krak","dist":13.7,"rng":36,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Lascannon","dist":13.7,"rng":48,"melee":false}
+{"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Javelin Attack Speeder","tgt":"Repressor","weapon":"Multi-melta","dist":13.7,"rng":18,"melee":false}
 {"gen":8062,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Land Raider Redeemer","tgt":"Repressor","weapon":"Hunter-killer missile","dist":36.2,"rng":48,"melee":false}
 {"gen":8062,"round":1,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":0,"aiShots":7,"s1LostToAi":1,"cp1":3,"cp2":3,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
 {"gen":8062,"round":2,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
@@ -156,7 +156,7 @@
 {"gen":8062,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Redemptor Dreadnought","tgt":"Death Cult Assassins","weapon":"Twin storm bolter","dist":23.4,"rng":24,"melee":false}
 {"gen":8062,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Land Raider Redeemer","tgt":"Death Cult Assassins","weapon":"Hunter-killer missile","dist":30.3,"rng":48,"melee":false}
 {"gen":8062,"round":4,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":18,"s1LostToAi":5,"cp1":9,"cp2":9,"vp1":25,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
-{"gen":8062,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Death Cult Assassins","dice":[5,3],"ld":7,"pass":true}
+{"gen":8062,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Death Cult Assassins","dice":[2,3],"ld":7,"pass":false}
 {"gen":8062,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
 {"gen":8062,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"9ux95cj","unit":"Paragon Warsuits","moved":0,"why":"holds position"}
 {"gen":8062,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"bd6tx0r","unit":"Exorcist","moved":10,"cap":10,"why":"→ Obj 5","fromX":47.8,"fromY":29.7,"toX":37.9,"toY":28.7}
@@ -181,7 +181,7 @@
 {"gen":8062,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Paragon Warsuits","target":"Dreadnought Drop Pod","weapon":"Paragon storm bolters","shooters":1,"dist":9.5,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
 {"gen":8062,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Paragon Warsuits","target":"Dreadnought Drop Pod","weapon":"Bolt pistol","shooters":1,"dist":9.5,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
 {"gen":8062,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
-{"gen":8062,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Exorcist","target":"Tarantula Sentry Battery","need":9.3,"roll":5,"made":false}
+{"gen":8062,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Exorcist","target":"Tarantula Sentry Battery","need":9.3,"roll":8,"made":false}
 {"gen":8062,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Paragon Warsuits","target":"Dreadnought Drop Pod","need":9.5,"roll":8,"made":false}
 {"gen":8062,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
 {"gen":8062,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}

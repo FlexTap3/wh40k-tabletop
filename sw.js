@@ -1,13 +1,21 @@
 /* WH40k Tabletop service worker — offline shell caching.
    Bump CACHE when you ship a new wh40k-tabletop.html so clients pull the update. */
-const CACHE = 'wh40k-tabletop-v3';
+const CACHE = 'wh40k-tabletop-v4';
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon-180.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  /* ==== WP3D ==== 3D-view module + sections + vendored three.js, pre-cached so the
+     installed PWA can toggle 3D offline even if it was never used online. */
+  './wh40k-3d.js',
+  './sections/wp3d-1-geometry.js',
+  './sections/wp3d-2-renderer.js',
+  './sections/wp3d-3-labels.js',
+  './sections/wp3d-4-interaction.js',
+  './vendor/three.module.min.js'
 ];
 
 self.addEventListener('install', (e) => {
