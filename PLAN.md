@@ -647,6 +647,39 @@ tests see unchecked boxes, so the section is dormant under the suite.
   pixel pass (desktop+phone, two factions mustered, leader/pip/glyph detail
   shots, toggles-off baseline) via `tools/shots/wpv-shots.js`.
 
+### WP3D — Optional 3D view (Tabletop-Simulator style)  [XL, 7 agents] — SHIPPED (2026-07-12)
+
+Opt-in 3D lens over the same game state; 2D stays default + source of truth. Setup
+toggle `#wp3d` (`localStorage["wh40k_3d"]`, default OFF), disabled on `file://` or
+no WebGL2 (`wp3dAvailable()`); dynamic-import refusal on `file:` means the emailed
+copy structurally can't load it. Toggle off ⇒ 2D pixel-identical (Playwright-diffed).
+- **Files**: `wh40k-3d.js` (orchestrator, lazy `import()` from `wp3dToggle()`), four
+  section modules in `sections/wp3d-{1..4}-*.js` (geometry/renderer/labels/interaction),
+  `vendor/three.module.min.js` (pinned r170, MIT LICENSE alongside) — all Pages-only
+  assets, all in the SW SHELL (CACHE v4) so the installed PWA gets 3D offline.
+- **In the core file** (only the WP3D-0 section): the Setup toggle, `#board3d` canvas
+  (`#boardwrap.mode3d` swap), the `window.WP3D` bridge (THE app↔module contract; the
+  bridge-shape test `wp3d-bridge-tests.js` is the contract's enforcement), an
+  append-only `draw` wrap (`window.wp3dOnDraw` no-op until loaded), and the
+  behavior-preserving extraction `tokDragBegin/tokDragMove/tokDragCommit` — one drag
+  pipeline, two callers (2D pointer handlers + 3D raycaster), so move caps, coherency
+  /terrain snap-back, structured-movement locks and `op({k:"tok~"})` P2P sync apply to
+  3D moves by construction. Zero new op kinds.
+- **Minis**: procedural voxel archetypes (`WP3D_VOXELS`, keyword-routed via
+  `wpvGlyphFor`), real 2D footprints (dmm/`WP21_HULLS`), faction palettes baked as
+  vertex colors, InstancedMesh pools ⇒ near-constant draw calls at 300 tokens.
+  Terrain heights are INVENTED per kind (no height data in state; ruin lvl ≈ 3"/floor,
+  display only — LoS stays 2D area-based per §3). Camera = hand-rolled orbit rig
+  (client-local, never synced). HUD = pooled projected DOM labels.
+- **Verified**: full run_all.sh (31 legacy + 5 new suites) · `tools/shots/wp3d-smoke.js`
+  (real toggle-on renders 122-token board; toggle-off pixel-identity) ·
+  `tools/shots/wp3d-p2p-smoke.js` (host 3D drag converges on guest; orbit-on-empty
+  moves nothing; +30" drag snaps back; rejoin resyncs) · voxel/geometry suites are
+  plain-node, no GPU. Headless WebGL2 works on default Playwright chromium
+  (SwiftShader; spike: `tools/shots/wp3d-webgl-spike.js`).
+- **Owed**: real-device iPhone/iPad perf pass (Safari remote inspector) and a live
+  two-human 3D playtest; deploy needs Paul (`ALLOW_PUBLIC_PUSH=1`).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
