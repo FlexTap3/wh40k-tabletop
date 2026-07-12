@@ -6569,9 +6569,22 @@ const WP21_HULLS=[
   [/goliath (rockgrinder|truck)/, {wIn:5.5,hIn:3.5}],
   [/drop pod/,                    {dmm:140}],
   [/attack bike|\bbike\b|outrider/, {wIn:3.55,hIn:2.05,oval:true}], // 90×52mm oval
-  [/devilfish|hammerhead/,        {wIn:7.0,hIn:4.5}],
+  // sky ray + longstrike ride the devilfish chassis; audit 2026-07-12 found them
+  // (and the added entries below through carnodon) minting W-tier circles.
+  [/devilfish|hammerhead|sky ?ray|longstrike/, {wIn:7.0,hIn:4.5}],
+  [/piranha|tetra/,               {wIn:4.7,hIn:2.6}],
+  [/land speeder|javelin attack speeder|darkshroud/, {wIn:3.7,hIn:2.5}],
   [/wave serpent|\bfalcon\b|fire prism|night spinner|warp hunter|firestorm(?! redoubt)/, {wIn:6.3,hIn:4.0}],
-  [/^raider$|tantalus/,           {wIn:7.3,hIn:3.2}],
+  // ^cobra$/^scorpion$ anchored: "Greater Brass Scorpion" (walker) must not match.
+  [/^cobra$|^scorpion$/,          {wIn:9.0,hIn:4.5}],
+  [/^lynx$/,                      {wIn:6.0,hIn:3.2}],
+  [/^raider$|ynnari raider|tantalus|ravager/, {wIn:7.3,hIn:3.2}],
+  [/^reaper$/,                    {wIn:5.5,hIn:2.8}],
+  [/plagueburst crawler/,         {wIn:5.5,hIn:3.6}],
+  [/terrax/,                      {wIn:4.5,hIn:3.0}],
+  [/lord of skulls/,              {wIn:7.0,hIn:5.0}],
+  [/coronus/,                     {wIn:6.5,hIn:3.5}],
+  [/carnodon/,                    {wIn:5.0,hIn:3.5}],
   [/^venom$|starweaver|voidweaver/, {wIn:4.7,hIn:2.4}],
   [/ghost ark|doomsday ark/,      {wIn:6.7,hIn:3.5}],
   [/annihilation barge|command barge/, {wIn:5.3,hIn:3.2}],
