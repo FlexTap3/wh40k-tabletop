@@ -18,8 +18,12 @@ const MAT_TILE_IN = 6;       // wood-grain texture tile size, matches the board 
 // See installLights() for the NdotL reasoning: a 40deg key means even the brightest
 // directly-lit face only reaches ~sin(40)-cos(40) of full intensity, so these sums stay
 // comfortably under a 1.0 combined exposure on the hottest faces.
-const HEMI_SKY = 0xcfe0f5, HEMI_GROUND = 0x4a3626, HEMI_INTENSITY = 0.45;
-const KEY_COLOR = 0xfff0d8, KEY_INTENSITY = 0.85, KEY_ELEVATION_DEG = 40;
+/* Integrator retune (WP3D-5): the original 0.45/0.85 was calibrated against the old bright
+   fallback board; combined with the v2 terrain pack's darker stone palette the whole table
+   crushed to murk. Raised for a warm well-lit game-room read — verified by render vs the
+   faction-color fidelity check (hue ratios stay ~true, values brighten). */
+const HEMI_SKY = 0xcfe0f5, HEMI_GROUND = 0x6a5340, HEMI_INTENSITY = 0.95;
+const KEY_COLOR = 0xfff0d8, KEY_INTENSITY = 1.25, KEY_ELEVATION_DEG = 48;
 // Camera rig's default azimuth is PI/4 (see wp3d-2-renderer.js DEFAULT_AZIMUTH); offset the
 // key light off that so it reads as a room lamp, not a headlamp glued to the viewer.
 const KEY_AZIMUTH = Math.PI / 4 + 0.35;
