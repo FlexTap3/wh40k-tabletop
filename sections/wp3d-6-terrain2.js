@@ -694,8 +694,9 @@ function wallMesh(ctx, plan) {
 }
 
 function buildWall(ctx, kind, w, h, id) {
-  const pairing = pairingFor(ctx.piece, ctx.all);
-  return wallMesh(ctx, wallPlan(id, w, h, pairing));
+  // WP3D-v4b: a defence line is ALWAYS a low barricade on a flat footprint — never a tall
+  // paired façade (that v3 "building" behaviour doesn't belong in the flat 11th-ed terrain).
+  return barricadeMesh(ctx, barricadePlan(id, w, h));
 }
 
 /* =========================================================================================
