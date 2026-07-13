@@ -67,8 +67,8 @@ function serve() {
   check(await page.evaluate(() => typeof wp3dAvailable === "function" && wp3dAvailable()),
     "wp3dAvailable() is true over http with WebGL2");
 
-  // Toggle 3D on via the real checkbox path.
-  await page.evaluate(() => { const el = document.getElementById("wp3d"); el.checked = true; return wp3dToggle(); });
+  // Toggle 3D on via the real mode path (v3: explicit full mode; PiP has its own smoke).
+  await page.evaluate(() => wp3dSetMode("full"));
   await page.waitForFunction(() => typeof window.wp3dOnDraw === "function", null, { timeout: 15000 });
   check(true, "module lazy-loaded; wp3dOnDraw installed");
   check(await page.evaluate(() => document.getElementById("boardwrap").classList.contains("mode3d")),
@@ -83,7 +83,7 @@ function serve() {
   check(buf3d.length > 20000, `board3d screenshot is contentful (${buf3d.length} bytes PNG)`);
 
   // Toggle OFF and verify clean teardown + 2D untouched (byte-diff vs pre-3D baseline).
-  await page.evaluate(() => { const el = document.getElementById("wp3d"); el.checked = false; return wp3dToggle(); });
+  await page.evaluate(() => wp3dSetMode("off"));
   check(await page.evaluate(() => !document.getElementById("boardwrap").classList.contains("mode3d")),
     "mode3d removed on toggle-off");
   await page.waitForTimeout(200);

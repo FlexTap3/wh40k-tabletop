@@ -17,6 +17,10 @@ import { register as registerTroopKits } from './sections/wp3d-7-troops.js';
 import { register as registerVehicleKits } from './sections/wp3d-8-vehicles.js';
 import { createEnvironment } from './sections/wp3d-9-environment.js';
 import { createMotion } from './sections/wp3d-10-motion.js';
+/* ==== WP3D-v3 packs ==== */
+import { createModes } from './sections/wp3d-11-modes.js';
+import { createBattlecam } from './sections/wp3d-12-battlecam.js';
+import { createExtras } from './sections/wp3d-13-extras.js';
 
 let packsRegistered = false;
 function registerPacks() {
@@ -85,6 +89,15 @@ function build() {
     if (rig.camera) { rig.camera.aspect = w / Math.max(1, h); rig.camera.updateProjectionMatrix(); }
     dirty = true;
   };
+
+  /* ==== WP3D-v3: mode manager + battle-cam + extras (P2/P3/P4 own their section files;
+     this wiring region is owned by P2 for mode-manager needs only). ==== */
+  const modes = createModes({ THREE, canvas: canvasEl, rendererCtl: r, rig, labels, interaction,
+    sceneSync, motion, bridge, tier, sizeTo });
+  const battlecam = createBattlecam({ THREE, scene, rig, sceneSync, motion, bridge, modes });
+  const extrasPack = createExtras({ THREE, canvas: canvasEl, renderer: r.renderer, rig, scene,
+    sceneSync, motion, bridge, container: wrap });
+  /* ==== end WP3D-v3 wiring ==== */
   const ro = observeResize(wrap, (w, h) => sizeTo(w, h));
   sizeTo(wrap.clientWidth || 800, wrap.clientHeight || 600);
 
@@ -102,6 +115,9 @@ function build() {
     const s = bridge.state();
     if (dirty) { sceneSync.tick(s); dirty = false; }
     motion.tick(dtMs, s);
+    modes.tick(dtMs, s);
+    battlecam.tick(dtMs, s);
+    extrasPack.tick(dtMs, s);
     labels.tick(rig, s, extras(s));
     r.renderer.render(scene, rig.camera);
   });
@@ -111,12 +127,15 @@ function build() {
   r.onContextLost(() => { loop.stop(); });
   r.onContextRestored(() => { rebuild(); });
 
-  ctx = { scene, r, rig, sceneSync, labels, interaction, motion, env, loop, ro, labelDiv, governor };
+  ctx = { scene, r, rig, sceneSync, labels, interaction, motion, env, modes, battlecam, extrasPack, loop, ro, labelDiv, governor };
 }
 
 function teardown() {
   if (!ctx) return;
   try { ctx.loop.stop(); } catch (e) {}
+  try { ctx.extrasPack.dispose(); } catch (e) {}
+  try { ctx.battlecam.dispose(); } catch (e) {}
+  try { ctx.modes.dispose(); } catch (e) {}
   try { ctx.motion.dispose(); } catch (e) {}
   try { ctx.env.dispose(); } catch (e) {}
   try { ctx.interaction.dispose(); } catch (e) {}
@@ -158,4 +177,11 @@ export function stop() {
     ctx.loop.stop();
     ctx.labelDiv.style.display = 'none';
   }
+}
+
+/* ==== WP3D-v3 ==== called by the HTML's wp3dSetMode after the boardwrap class flip; the
+   mode manager owns the canvas-rect resize + per-mode behavior. */
+export function setMode(mode) {
+  if (!ctx) return;
+  try { ctx.modes.setMode(mode); } catch (e) {}
 }

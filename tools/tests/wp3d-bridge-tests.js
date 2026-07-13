@@ -8,7 +8,9 @@
     "wpvGlyphFor","wpvSideFid","WPV_FACTIONS","WP21_HULLS","wp21BaseFor",
     "tokDragBegin","tokDragMove","tokDragCommit",
     "ruler" /* ==== WP3D-5 ==== additive getter so the 3D HUD mirrors the tape measure */,
-    "onDice" /* ==== WP3D-v2 ==== additive dice-roll tap for the 3D dice */];
+    "onDice" /* ==== WP3D-v2 ==== additive dice-roll tap for the 3D dice */,
+    "onAttackStaged" /* ==== WP3D-v3 ==== battle-cam tap (wp3Stage wrap) */,
+    "onRemoteDice" /* ==== WP3D-v3 ==== opponent's transient {t:"dice"} broadcasts */];
   assert(typeof window!=="undefined" && !!window.WP3D, "window.WP3D exists");
   const gotKeys=Object.keys(window.WP3D).sort(), wantKeys=[...EXPECTED_KEYS].sort();
   assert(gotKeys.length===wantKeys.length && gotKeys.every((k,i)=>k===wantKeys[i]),

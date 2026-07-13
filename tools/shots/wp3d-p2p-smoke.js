@@ -124,8 +124,8 @@ function serve() {
   const guestTok0 = await guest.evaluate(() => state.tokens.length);
   check(guestTok0 === nTok, `guest received host army via {t:state} (guest tokens=${guestTok0}, host=${nTok})`);
 
-  // ---- (3) Host toggles 3D on via the real checkbox path ----
-  await host.evaluate(() => { const el = document.getElementById("wp3d"); el.checked = true; return wp3dToggle(); });
+  // ---- (3) Host toggles 3D on via the real mode API (v3: explicit full mode) ----
+  await host.evaluate(() => wp3dSetMode("full"));
   await host.waitForFunction(() => typeof window.wp3dOnDraw === "function", null, { timeout: 15000 });
   check(await host.evaluate(() => document.getElementById("boardwrap").classList.contains("mode3d")),
     "host: 3D module loaded, boardwrap has .mode3d");

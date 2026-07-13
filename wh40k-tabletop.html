@@ -75,6 +75,15 @@ canvas{display:block; width:100%; height:100%; cursor:default}
 #board3d{display:none}
 #boardwrap.mode3d #board{display:none}
 #boardwrap.mode3d #board3d{display:block}
+/* ==== WP3D-v3 ==== PiP: the SAME #board3d canvas as a corner inset; 2D stays visible and
+   fully interactive underneath. pointer-events scoped to the inset only. */
+#boardwrap.mode3d-pip #board{display:block}
+#boardwrap.mode3d-pip #board3d{display:block; position:absolute; right:10px; bottom:10px;
+  width:340px; height:220px; z-index:6; border:1px solid #59511f; border-radius:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.6); background:#101216}
+#boardwrap.mode3d-pip #wp3dLabels{display:none !important}
+#tool-3d .wp3dBadge{position:absolute; right:1px; bottom:0; font-size:8px; color:#e8c34a; font-weight:700}
+/* ==== end WP3D-v3 ==== */
 /* ==== end WP3D-0 ==== */
 #toolbar{position:absolute; top:8px; left:8px; display:flex; flex-direction:column; gap:4px}
 #toolbar button{width:36px; height:32px; font-size:15px; background:rgba(22,19,23,.88); backdrop-filter:blur(4px); border-color:#3e3840; box-shadow:0 2px 6px rgba(0,0,0,.45)}
@@ -441,6 +450,9 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <button id="tool-attack" title="Attack: click your unit, then the enemy unit" onclick="setTool('attack')">⚔</button>
       <!-- ==== end WP15 ==== -->
       <button title="Zoom to fit" onclick="fitView()">⤢</button>
+      <!-- ==== WP3D-v3 ==== one-click 3D: cycles Off → PiP → Full (hotkey 3) -->
+      <button id="tool-3d" style="position:relative" title="3D view (3) — cycles Off / picture-in-picture / full" onclick="wp3dCycle()">🎲<span class="wp3dBadge" id="wp3dBadge"></span></button>
+      <!-- ==== end WP3D-v3 ==== -->
     </div>
     <!-- ==== WP3: inspector ==== -->
     <div id="inspector" style="display:none"></div>
@@ -738,6 +750,10 @@ function onMsg(m){
     /* ==== WP18 ==== P2P defender allocation: rolled damage handed over as a transient direct message (like "ruler" — never in state, lost on reconnect) */
     case "dmg": if(typeof wp18OnDmg==="function") wp18OnDmg(m); break; /* SEC: every field coerced/capped inside wp18OnDmg */
     /* ==== end WP18 ==== */
+    /* ==== WP3D-v3 ==== transient shared dice (like "ruler": never in state, lost on reconnect).
+       SEC: values coerced to 1-6 ints, capped at 40. */
+    case "dice": { const vals=(Array.isArray(m.vals)?m.vals:[]).slice(0,40).map(v=>Math.max(1,Math.min(6,Math.floor(+v)||1))); if(vals.length&&typeof wp3dRemoteDiceCbs!=="undefined"){ for(const cb of wp3dRemoteDiceCbs){ try{cb(vals);}catch(e){} } } } break;
+    /* ==== end WP3D-v3 ==== */
   }
 }
 /* ops mutate state identically on both ends */
@@ -2247,32 +2263,68 @@ function wp3dInit(){
    effects; this is the one deliberate deviation from a literal wpv* clone, documented per the
    packet brief). First toggle-on imports+inits the module; later toggle-ons reuse it (start()). */
 let wp3dModule=null;
-async function wp3dToggle(){
-  wp3dSave();
-  const el=document.getElementById("wp3d");
-  const on=el?!!el.checked:false;
+/* ==== WP3D-v3 ==== tri-state mode: "off" | "pip" | "full". wh40k_3d stays the on/off
+   master (checkbox + existing tests untouched); wh40k_3d_mode remembers the last NON-off
+   mode so the checkbox and the toolbar 🎲 cycle round-trip cleanly. Phone gets Off/Full
+   only (PiP inset is too small to be useful there). */
+function wp3dLastMode(){ try{ const m=localStorage.getItem("wh40k_3d_mode"); return (m==="full"||m==="pip")?m:"pip"; }catch(e){ return "pip"; } }
+function wp3dCurMode(){
   const wrap=document.getElementById("boardwrap");
-  if(on){
-    try{
-      if(!wp3dModule){
-        wp3dModule=await import("./wh40k-3d.js");
-        wp3dModule.init(document.getElementById("board3d"),window.WP3D);
-      } else if(typeof wp3dModule.start==="function"){
-        wp3dModule.start();
-      }
-      if(wrap) wrap.classList.add("mode3d");
-      draw();
-    }catch(e){
-      logSys("3D view couldn't load ("+(e&&e.message||e)+") — staying on the 2D board.");
-      if(el) el.checked=false;
-      wp3dSave();
-    }
-  } else {
-    if(wrap) wrap.classList.remove("mode3d");
+  if(!wrap) return "off";
+  return wrap.classList.contains("mode3d")?"full":(wrap.classList.contains("mode3d-pip")?"pip":"off");
+}
+function wp3dBadge(){
+  const b=document.getElementById("wp3dBadge");
+  if(b){ const m=wp3dCurMode(); b.textContent=(m==="full"?"3D":(m==="pip"?"PiP":"")); }
+}
+async function wp3dSetMode(mode){
+  const el=document.getElementById("wp3d"), wrap=document.getElementById("boardwrap");
+  const phone=document.documentElement.classList.contains("phone");
+  if(mode==="pip"&&phone) mode="full";
+  if(mode!=="off"&&!wp3dAvailable()) mode="off";
+  if(mode==="off"){
+    if(wrap){ wrap.classList.remove("mode3d"); wrap.classList.remove("mode3d-pip"); }
     if(wp3dModule && typeof wp3dModule.stop==="function") wp3dModule.stop();
-    draw();
+    if(el){ el.checked=false; } wp3dSave(); wp3dBadge(); draw(); return;
+  }
+  try{
+    if(!wp3dModule){
+      wp3dModule=await import("./wh40k-3d.js");
+      wp3dModule.init(document.getElementById("board3d"),window.WP3D);
+    } else if(typeof wp3dModule.start==="function"){
+      wp3dModule.start();
+    }
+    if(wrap){
+      wrap.classList.toggle("mode3d",mode==="full");
+      wrap.classList.toggle("mode3d-pip",mode==="pip");
+    }
+    if(typeof wp3dModule.setMode==="function") wp3dModule.setMode(mode);
+    try{ localStorage.setItem("wh40k_3d_mode",mode); }catch(e){}
+    if(el){ el.checked=true; } wp3dSave(); wp3dBadge(); draw();
+  }catch(e){
+    logSys("3D view couldn't load ("+(e&&e.message||e)+") — staying on the 2D board.");
+    if(wrap){ wrap.classList.remove("mode3d"); wrap.classList.remove("mode3d-pip"); }
+    if(el){ el.checked=false; } wp3dSave(); wp3dBadge();
   }
 }
+function wp3dCycle(){
+  const m=wp3dCurMode();
+  const phone=document.documentElement.classList.contains("phone");
+  wp3dSetMode(m==="off"?(phone?"full":"pip"):(m==="pip"?"full":"off"));
+}
+async function wp3dToggle(){
+  /* Setup checkbox: Off <-> last non-off mode (the checkbox stays the on/off master). */
+  const el=document.getElementById("wp3d");
+  wp3dSetMode(el&&el.checked?wp3dLastMode():"off");
+}
+/* hotkey 3 — same own-listener + form-guard idiom as the app's other key handlers */
+window.addEventListener("keydown",(e)=>{
+  if(e.key!=="3"||e.metaKey||e.ctrlKey||e.altKey) return;
+  const tn=(e.target&&e.target.tagName)||"";
+  if(tn==="INPUT"||tn==="TEXTAREA"||tn==="SELECT") return;
+  wp3dCycle();
+});
+/* ==== end WP3D-v3 (mode plumbing) ==== */
 /* ---- (e) window.WP3D bridge — THE WHOLE contract between the app and wh40k-3d.js.
    Downstream WPs should mock exactly this shape when testing against it in isolation.
    Deviations from the packet-brief literal shape: WP21_HULLS is a getter (TDZ, see note
@@ -2289,12 +2341,42 @@ window.WP3D={
   tokDragBegin, tokDragMove, tokDragCommit,
   ruler: ()=>ruler, /* ==== WP3D-5 ==== additive: lets the 3D HUD mirror the tape measure */
   onDice: (cb)=>{ wp3dDiceCbs.push(cb); }, /* ==== WP3D-v2 ==== additive: 3D dice mirror real rolls */
+  /* ==== WP3D-v3 ==== additive: battle-cam + shared-dice taps */
+  onAttackStaged: (cb)=>{ wp3dAtkCbs.push(cb); },
+  onRemoteDice: (cb)=>{ wp3dRemoteDiceCbs.push(cb); },
 };
 /* ==== WP3D-v2 ==== dice tap — append-only wrap of wp20Note (the hook d6() already calls
    for every die on this screen); zero behaviour change when no 3D listener registered. */
 const wp3dDiceCbs=[];
+/* ==== WP3D-v3 ==== shared dice: batch this screen's real rolls (150ms window) and send a
+   TRANSIENT {t:"dice"} message (the ephemeral "ruler" pattern — never an op, never in
+   state; old peers ignore unknown message types since onMsg has no default case). */
+const wp3dRemoteDiceCbs=[];
+let wp3dDiceBatch=null, wp3dDiceTimer=null;
+function wp3dDiceSend(r){
+  if(!wp3dDiceBatch) wp3dDiceBatch=[];
+  if(wp3dDiceBatch.length<40) wp3dDiceBatch.push(r);
+  if(wp3dDiceTimer) clearTimeout(wp3dDiceTimer);
+  wp3dDiceTimer=setTimeout(()=>{
+    const vals=wp3dDiceBatch; wp3dDiceBatch=null; wp3dDiceTimer=null;
+    try{ if(typeof conn!=="undefined"&&conn&&conn.open) send({t:"dice",vals}); }catch(e){}
+  },150);
+}
 const wp3dOrigWp20Note=wp20Note;
-wp20Note=function(r){ wp3dOrigWp20Note(r); for(const cb of wp3dDiceCbs){ try{cb(r);}catch(e){} } };
+wp20Note=function(r){ wp3dOrigWp20Note(r); for(const cb of wp3dDiceCbs){ try{cb(r);}catch(e){} } wp3dDiceSend(r); };
+/* ==== WP3D-v3 ==== battle-cam tap: append-only wrap of wp3Stage (covers BOTH the two-click
+   ⚔ flow and the inspector flow). Fires only when the stage wasn't blocked; passes token
+   ids (may be null — consumers must guard). */
+const wp3dAtkCbs=[];
+const wp3dOrigWp3Stage=wp3Stage;
+wp3Stage=function(ctx0,wi,tgtTok){
+  const res=wp3dOrigWp3Stage(ctx0,wi,tgtTok);
+  if(res!==false){
+    const aId=(ctx0&&ctx0.tok&&ctx0.tok.id)||null, tId=(tgtTok&&tgtTok.id)||null;
+    for(const cb of wp3dAtkCbs){ try{cb(aId,tId);}catch(e){} }
+  }
+  return res;
+};
 /* ---- (f) draw() wrap — append-only. window.wp3dOnDraw is defined by the 3D module once
    loaded; undefined (module never loaded, or toggled off) is a no-op, i.e. zero behaviour
    change for anyone who never touches the wp3d checkbox. ---- */
