@@ -740,7 +740,7 @@ function createSceneSync(THREE, scene, bridge) {
     for (const t of list) {
       seen.add(t.id);
       let entry = terrainById.get(t.id);
-      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + pairKeys.get(t.id);
+      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + (t.shape || '') + (t.tc || 0) + '|' + pairKeys.get(t.id);
       if (!entry || entry.sig !== sig) {
         if (entry) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
         const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, list);
