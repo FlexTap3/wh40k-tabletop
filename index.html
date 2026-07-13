@@ -2745,8 +2745,10 @@ function losUnitVs(msA,msB,prep,coverKw){
   // Unit-level: B is visible if ANY sampled model pair is visible.
   // Cover (documented approximation): a visible pair had sight lines clipped by an obscuring
   // area, or (coverKw: target has INFANTRY/BEASTS/SWARM) a target model's centre is inside one.
-  // Returns {vis,cover,dist(edge-to-edge),ai,bi} — ai/bi = closest pair indices.
-  let vis=false, cover=false, dist=Infinity, ai=0, bi=0;
+  // Returns {vis,cover,dist(edge-to-edge),ai,bi,vai,vbi} — ai/bi = closest pair (used to explain a
+  // BLOCKED result); vai/vbi = the first pair that actually SEES (so the 👁 overlay draws the sightline
+  // that grants visibility, not a nearer blocked pair whose line would cut straight through a ruin).
+  let vis=false, cover=false, dist=Infinity, ai=0, bi=0, vai=-1, vbi=-1;
   for(let j=0;j<msB.length;j++) for(let i=0;i<msA.length;i++){
     const d=Math.hypot(msA[i].x-msB[j].x,msA[i].y-msB[j].y)-(msA[i].r||0)-(msB[j].r||0);
     if(d<dist){ dist=d; ai=i; bi=j; }
@@ -2756,13 +2758,13 @@ function losUnitVs(msA,msB,prep,coverKw){
     const ig=(msA[i].lvl||0)>=1; // WP5 hook: raised models see over low (wall) areas; lvl absent → 0
     for(let j=0;j<msB.length;j++){
       const r=losPair(msA[i],msB[j],prep,ig);
-      if(r.vis){ vis=true; if(r.part) cover=true; }
+      if(r.vis){ vis=true; if(vai<0){ vai=i; vbi=j; } if(r.part) cover=true; }
       if(vis&&cover) break outer;
     }
   }
   if(vis&&!cover&&coverKw)
     cover=msB.some(b=>prep.some(p=>geomPointInRect(b.x,b.y,p.t)));
-  return {vis,cover,dist:Math.max(0,dist),ai,bi};
+  return {vis,cover,dist:Math.max(0,dist),ai,bi,vai:vai<0?ai:vai,vbi:vbi<0?bi:vbi};
 }
 /* WP4-GEOM-END */
 let losSrc=null; // unit id currently observed with the 👁 tool
@@ -2852,7 +2854,8 @@ function drawLos(){
     if(res.vis && toks.every(t=>t.hid) && res.dist>15){ res.vis=false; note="hidden"; }
     if(!res.vis){ col="#ff5050"; if(note!=="hidden") note="no LoS"; }
     else if(res.cover){ col="#e8b23a"; note="cover"; }
-    const a=src[res.ai]||src[0], b=toks[res.bi]||toks[0];
+    const ia=res.vis?res.vai:res.ai, ib=res.vis?res.vbi:res.bi; // draw the seeing pair when visible, the closest pair when blocked
+    const a=src[ia]||src[0], b=toks[ib]||toks[0];
     const [ax,ay]=px(a.x,a.y),[bx2,by2]=px(b.x,b.y);
     ctx.strokeStyle=col; ctx.lineWidth=1.6; if(!res.vis) ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx2,by2); ctx.stroke(); ctx.setLineDash([]);
@@ -2867,8 +2870,7 @@ function drawLos(){
 /* ==== end WP4 ==== */
 
 /* ==== WP5: terrain physicality (collision + floors) ==== */
-const KW_ENTER_RUINS=["INFANTRY","BEASTS","BEAST","SWARM"];           // may end a move inside ruin footprints
-const KW_FLOORS=["INFANTRY","BEASTS","BEAST","SWARM","FLY"];          // may climb ruin floors
+const KW_ENTER_RUINS=["INFANTRY","BEASTS","BEAST","SWARM"];           // may end a move inside ruin footprints — and, being able to be there, may climb its floors
 const WP5_NAMES={wall:"low wall",crate:"container",ruin:"ruin footprint (needs INFANTRY/BEASTS/SWARM)"};
 function wp5Enforce(){
   // Own toggle, default ON — impassable terrain is physics, not a house rule
@@ -2911,20 +2913,33 @@ function wp5DeployWarn(toks){
   const n=toks.filter(t=>wp5Illegal(t)).length;
   if(n) logSys("⚠ "+n+" deployed model(s) landed on impassable terrain — drag them clear.");
 }
+function ruinMaxLvl(ter){
+  // How many UPPER floors a ruin actually renders, derived from its footprint size — this MUST
+  // stay in sync with the storey thresholds in sections/wp3d-6-terrain2.js (longSide>=9 builds
+  // slabs at y=3 AND y=6 → 2 upper floors; >=6.5 builds y=3 only → 1; smaller = 1-storey stub,
+  // no upper floor). Keeps the rules layer from offering a floor the 3D building has no slab for
+  // (a model set above the top slab would otherwise float in mid-air).
+  const longSide=Math.max(ter.w||0,ter.h||0);
+  return longSide>=9?2:longSide>=6.5?1:0;
+}
 function cycleFloor(){
-  // F cycles floor level 0→1→2→3→0 on selected models; ruins only, right keywords only.
+  // F cycles floor level 0→…→maxLvl→0 on selected models; ruins only, INFANTRY/BEASTS/SWARM only.
+  // maxLvl comes from the ruin's own size (ruinMaxLvl) so we never send a model to a non-existent floor.
   const toks=state.tokens.filter(t=>sel.has(t.id));
-  if(!toks.length){ logSys("Select models first, then press F to cycle their floor level (0–3)."); return; }
-  const ups=[]; let denied=0, maxStep=0;
+  if(!toks.length){ logSys("Select models first, then press F to cycle their floor level."); return; }
+  const ups=[]; let denied=0, noFloor=0, maxStep=0;
   toks.forEach(t=>{
-    const okKw=!(t.kw&&t.kw.length)||tokKw(t).some(k=>KW_FLOORS.includes(k)); // kw unknown → allow
-    const inRuin=state.terrain.some(ter=>ter.kind==="ruin"&&geomPointInRect(t.x,t.y,ter));
-    if(!okKw||!inRuin){ denied++; return; }
-    const nl=((t.lvl||0)+1)%4;
-    maxStep=Math.max(maxStep,Math.abs(nl-(t.lvl||0)));
+    const okKw=!(t.kw&&t.kw.length)||tokKw(t).some(k=>KW_ENTER_RUINS.includes(k)); // kw unknown → allow
+    const ruin=state.terrain.find(ter=>ter.kind==="ruin"&&geomPointInRect(t.x,t.y,ter));
+    if(!okKw||!ruin){ denied++; return; }
+    const maxLvl=ruinMaxLvl(ruin);
+    if(maxLvl<1){ noFloor++; return; }                 // single-storey ruin: no upper floor to climb
+    const cur=t.lvl||0, nl=cur>=maxLvl?0:cur+1;
+    maxStep=Math.max(maxStep,Math.abs(nl-cur));
     ups.push({id:t.id,lvl:nl});
   });
-  if(denied) logSys(denied+" model(s) can't change floors — needs INFANTRY/BEASTS/SWARM/FLY and the model inside a ruin footprint.");
+  if(denied) logSys(denied+" model(s) can't change floors — needs INFANTRY/BEASTS/SWARM and the model inside a ruin footprint.");
+  if(noFloor) logSys(noFloor+" model(s) are on a single-storey ruin — it has no upper floor to climb.");
   if(!ups.length) return;
   op({k:"tok~",toks:ups});
   if(drag&&drag.mode==="tokens") drag.lvlExtra=(drag.lvlExtra||0)+3*maxStep; // WP2 hook: move readout adds drag.lvlExtra inches
