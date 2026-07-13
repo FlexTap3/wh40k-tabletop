@@ -1198,7 +1198,8 @@ function loadLayout(){
   while(state.objectives.length) op({k:"obj-",id:state.objectives[0].id});
   const sx=state.board.w/60, sy=state.board.h/44;
   const locked=name.startsWith("Official");
-  L.t.forEach(f=>op({k:"ter+",ter:{id:uid(),kind:f.kind,x:f.x*sx,y:f.y*sy,w:f.w*sx,h:f.h*sy,rot:f.rot||0,locked}}));
+  L.t.forEach(f=>op({k:"ter+",ter:{id:uid(),kind:f.kind,x:f.x*sx,y:f.y*sy,w:f.w*sx,h:f.h*sy,rot:f.rot||0,locked,
+    ...(f.shape?{shape:f.shape,tc:f.tc||0}:{})}})); /* WP3D-v4: preserve 11th-ed triangle footprint fields */
   L.o.forEach(([x,y])=>op({k:"obj+",obj:{id:uid(),x:x*sx,y:y*sy}}));
   op({k:"dz",dz:(L.dz||[]).map(poly=>poly.map(([x,y])=>[x*sx,y*sy]))});
   op({k:"mission",mission:{name,m:L.m||""}});
