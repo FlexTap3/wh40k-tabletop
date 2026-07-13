@@ -405,9 +405,11 @@ function ruinMesh(ctx, plan) {
  * elevationFor contract). Right-angle TRIANGLE footprints (piece.shape==='tri', piece.tc =
  * right-angle corner) get a triangular-prism plate and walls on the two axis-aligned legs.
  * ======================================================================================= */
-// WP3D-v4b: matched to GW's official flat "Terrain Area Footprints" — rusty deck + tan rubble.
-const PLATE_H = 0.16, PLATE_COL = '#5f4d2c', GRATE_COL = '#3a3a33';
-const RUBBLE_COL = '#b8965a', RUBBLE_HI = '#d3ba82', GIRDER_COL = '#4b4a3f';
+// WP3D-v5: rusty riveted deck + pale cream crushed-rockcrete rubble + steel girders (matched to
+// GW's official Terrain Area Set photos), with ruined 2-storey building shells on ruin footprints.
+const PLATE_H = 0.16, PLATE_COL = '#6f4f2e', GRATE_COL = '#33332c';
+const RUBBLE_COL = '#cdbd93', RUBBLE_HI = '#e2d6b4', GIRDER_COL = '#565c62';
+const BONE_WALL = '#b7ab8e';
 function pointInTri(px, pz, t) {
   const [a, b, c] = t, d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
   if (d === 0) return true;
@@ -483,6 +485,46 @@ function scaleTri(pts, k) {
   const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, cz = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
   return pts.map(p => [cx + (p[0] - cx) * k, cz + (p[1] - cz) * k]);
 }
+// A ruined GOTHIC building WALL along one leg: a bone-rockcrete shell split into segments of
+// varying height (broken/bombed top), with tall lancet WINDOW openings at each storey and bone
+// PILASTERS (columns) framing the bays. No hazard trim. H = full wall height (storeys @3").
+function ruinWallLeg(THREE, leg, H, rnd, parts) {
+  const horiz = Math.abs(leg.x1 - leg.x0) > Math.abs(leg.z1 - leg.z0);
+  const len = Math.hypot(leg.x1 - leg.x0, leg.z1 - leg.z0);
+  if (len < 0.8) return PLATE_H;
+  const cx = (leg.x0 + leg.x1) / 2, cz = (leg.z0 + leg.z1) / 2;
+  const inx = horiz ? 0 : (cx > 0 ? -1 : 1) * BLD_WALL_TK / 2;   // inset inward so the wall sits on the deck
+  const inz = horiz ? (cz > 0 ? -1 : 1) * BLD_WALL_TK / 2 : 0;
+  const at = t => [leg.x0 + (leg.x1 - leg.x0) * t, leg.z0 + (leg.z1 - leg.z0) * t];
+  const box = (px, pz, alongLen, thick, y0, y1, col) => {
+    const g = new THREE.BoxGeometry(horiz ? alongLen : thick, Math.max(0.02, y1 - y0), horiz ? thick : alongLen);
+    g.translate(px + inx, (y0 + y1) / 2, pz + inz);
+    parts.push({ geometry: g, colorHex: col });
+  };
+  const nSeg = Math.max(2, Math.round(len / 1.5)), seg = len / nSeg;
+  let top = PLATE_H;
+  for (let i = 0; i < nSeg; i++) {
+    if (rnd() < 0.1) continue;                                   // a collapsed gap in the wall
+    const segH = H * (0.66 + rnd() * 0.34), [px, pz] = at((i + 0.5) / nSeg);
+    box(px, pz, seg * 0.98, BLD_WALL_TK, PLATE_H, PLATE_H + segH, BONE_WALL);
+    top = Math.max(top, PLATE_H + segH);
+  }
+  // storey window rows: sill heights ~0.6 above each floor level (0, 3, 6)
+  const rows = [PLATE_H + 0.6]; if (H >= 4.5) rows.push(PLATE_H + 3.3); if (H >= 7.5) rows.push(PLATE_H + 6.3);
+  const nWin = Math.max(1, Math.floor(len / 1.7));
+  for (let i = 0; i < nWin; i++) {
+    const [px, pz] = at((i + 0.5) / nWin);
+    for (const wy of rows) { if (wy + 1.6 > PLATE_H + H) continue;
+      box(px, pz, 0.5, BLD_WALL_TK + 0.08, wy, wy + 1.5, WINDOW_COL);   // tall lancet opening (dark recess)
+    }
+  }
+  // bone pilasters framing every bay (incl. the two leg ends = corner columns) — the gothic cue
+  for (let i = 0; i <= nWin; i++) {
+    const [px, pz] = at(i / nWin);
+    box(px, pz, 0.34, BLD_WALL_TK + 0.06, PLATE_H, top, BONE_WALL);
+  }
+  return top;
+}
 function buildRuin(ctx, kind, w, h, id) {
   const { THREE } = ctx;
   const shape = ctx.piece && ctx.piece.shape, tc = ctx.piece && ctx.piece.tc;
@@ -527,8 +569,39 @@ function buildRuin(ctx, kind, w, h, id) {
     g.rotateY(rnd() * Math.PI); g.translate(x, PLATE_H + 0.12 + rnd() * 0.25, z);
     parts.push({ geometry: g, colorHex: GIRDER_COL });
   }
+  // ruined BUILDING shell rising from the footprint: 2-storey bone-rockcrete walls with window
+  // bays along an L-corner (rect) or the two right-angle legs (triangle). Small footprints get a
+  // shorter 1-storey stub. The flat deck + rubble below still reads as the official footprint card.
+  // Storey count from footprint size: large ruins are 3-storey gothic ruins (like the WTC set),
+  // medium are 2-storey, the smallest are a 1-storey corner ruin.
+  const longSide = Math.max(w, h);
+  const H = longSide >= 9 ? 8.5 : longSide >= 6.5 ? 5 : 3.4;
+  const legs = wallLegs(hw, hh, shape, tc, rnd);
+  for (const leg of legs) maxTop = Math.max(maxTop, ruinWallLeg(THREE, leg, H, rnd, parts));
+  // UPPER FLOORS: partial platforms tucked into the walled corner with TOP faces pinned to exactly
+  // y=3 (and y=6 on 3-storey ruins) — the elevationFor contract stands lvl-1/2 models there — plus
+  // a full-height support column. Small 1-storey ruins get no upper floor.
+  const slabMeshes = [];
+  if (H >= 4.5 && legs.length) {
+    const cx0 = legs[0].x0, cz0 = legs[0].z0, sgx = cx0 > 0 ? -1 : 1, sgz = cz0 > 0 ? -1 : 1;
+    const slabW = Math.min(w * 0.6, w - 0.5), slabD = Math.min(h * 0.6, h - 0.5);
+    const scx = cx0 + sgx * slabW / 2, scz = cz0 + sgz * slabD / 2;
+    if (slabW > 1 && slabD > 1 && inFoot(scx, scz) && inFoot(cx0 + sgx * (slabW - 0.2), cz0 + sgz * (slabD - 0.2))) {
+      const sThick = 0.35, floors = H >= 7.5 ? [3, 6] : [3];
+      for (const fy of floors) {
+        const sg = new THREE.BoxGeometry(slabW, sThick, slabD); sg.translate(scx, fy - sThick / 2, scz);
+        const sm = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: BONE_WALL }));
+        sm.userData.isSlab = true; sm.userData.slabTopY = fy;
+        slabMeshes.push(sm); maxTop = Math.max(maxTop, fy);
+      }
+      const colH = maxTop;   // full-height gothic support column at the floors' inner corner
+      const cg = new THREE.BoxGeometry(0.46, colH, 0.46); cg.translate(cx0 + sgx * (slabW - 0.3), PLATE_H + colH / 2, cz0 + sgz * (slabD - 0.3));
+      parts.push({ geometry: cg, colorHex: BONE_WALL });
+    }
+  }
   group.add(mergedMesh(ctx, parts));
-  group.userData.terrainHeight = maxTop; // flat footprint — low, no floors
+  for (const sm of slabMeshes) group.add(sm);
+  group.userData.terrainHeight = maxTop;
   group.userData.builtBy = 'wp3d-6-terrain2';
   return group;
 }
