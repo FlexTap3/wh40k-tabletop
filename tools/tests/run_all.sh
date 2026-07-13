@@ -52,4 +52,5 @@ node wp3d-8-vehicles-tests.js
 node wp3d-9-environment-tests.js
 node wp3d-10-motion-tests.js
 node wp3d-11-modes-tests.js
+node wp3d-12-battlecam-tests.js
 echo "ALL SUITES PASSED"

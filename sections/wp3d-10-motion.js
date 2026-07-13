@@ -86,6 +86,61 @@
  *    target, tumble via a fixed per-die random axis/speed for the first 75% of the 700ms
  *    flight, then slerp into the exact landing quaternion for the last 25%) is fake physics
  *    per the brief — no collision/overlap solving against tokens or terrain.
+ *
+ * 6. EVENTS (WP3D-v3, additive). createMotion returns `on(evt, cb) -> unsubscribe()`, a tiny
+ *    Map<evt, Set<cb>> emitter (no external dep). Three events, fired from the exact spots
+ *    the underlying state transition is detected, so consumers never have to re-derive it:
+ *      - 'remotemove' {tokenIds:[...]} — fired once per tick (batched) with every token that
+ *        classifyMotionTick() judged a REMOTE JUMP this tick (see note 1), even if that
+ *        particular token didn't get an animation slot (MAX_CONCURRENT_ANIM cap) — the event
+ *        is about "a remote move happened", not "a tween is playing", since P2's auto-frame
+ *        consumer needs to know about the commit regardless of whether it's visually tweened.
+ *      - 'tweenland' {tokenId} — fired the instant a single token's lift-arc-drop finishes
+ *        (pose.done, i.e. elapsed >= MOTION_ARC_MS+SQUASH_MS), once per landing.
+ *      - 'diceland' {count, mine} — fired once per physical dice throw, the moment the dice
+ *        stop tumbling and settle onto the table (elapsed crosses DICE_THROW_MS, i.e. the
+ *        START of the DICE_REST_MS hold) — not at final fade-out, since "settle" is the
+ *        landing thump, which is what an audio consumer (P4) wants to time a clatter to.
+ *        `mine` distinguishes an own throw (bridge.onDice) from a shared/remote one
+ *        (bridge.onRemoteDice, note 7 below).
+ *
+ * 7. SHARED DICE (WP3D-v3). bridge.onRemoteDice(vals) fires once per OPPONENT throw with the
+ *    full (already batched app-side, ≤40) array of real rolled values — no local re-batching
+ *    needed, unlike note 5's own-roll path. The throw reuses the exact same choreography
+ *    (startDiceThrow), just tagged `mine:false`, which routes it onto `remoteDiceMaterial`
+ *    instead of `diceMaterial` — a SECOND shared MeshBasicMaterial (same shared dieGeometry,
+ *    per the "one extra tinted material is fine" allowance) whose `.color` is a wash of white
+ *    toward the OPPONENT side's rim color (`opponentRimHex(mySide)`, side 1=red #c03d3d /
+ *    side 2=blue #3d7ec0 — "opponent side = 3-mySide"), recomputed on every remote throw so a
+ *    reconnect/side-reassignment is never stale. Because the body's vertex color is warm
+ *    ivory and the pips' vertex color is near-black, multiplying either by a mostly-white
+ *    tint (DICE_TINT_WASH of the way to the rim hue) shifts the body toward the
+ *    opponent color while the near-black pips stay effectively near-black regardless —
+ *    "subtle wash, pips stay dark and readable" without needing separate pip geometry/UVs.
+ *    Own and remote throws still share ONE `diceThrow` slot (a fresh throw of either kind
+ *    clears whatever's currently in flight) — the same simplification the pre-existing
+ *    own-throw code already had (a second own roll clears the first); true simultaneous
+ *    own+remote throws are a v-next nicety, not required by the contract.
+ *
+ * 8. RING-FOLLOW (WP3D-v3). While a token is mid lift-arc-drop, its owner-rim/selection rings
+ *    (`sceneSync.ringMeshesFor(tokenId)`, re-queried every tick since slot indices shift as
+ *    the instanced ring pools' live counts change) would otherwise sit at the token's OLD,
+ *    un-lifted ground position for the whole ~510ms tween — sceneSync only rewrites ring
+ *    transforms on a state-DIRTY tick, and a remote move's tween runs across many ticks with
+ *    no further state changes (see note 1), so the ring matrix sceneSync wrote right when the
+ *    jump landed in state stays put until something overwrites it. applyRingFollow() does
+ *    that overwrite: for each (mesh, slot) hit, it decomposes the CURRENT matrix (scale +
+ *    quaternion kept verbatim — a ring's footprint scale and yaw never animate, only its
+ *    position) and composes a new one with x/z = the token's animated x/y and
+ *    y = elevationFor(t) + pose.lift + <that ring's own tiny fixed y-offset>. That offset
+ *    (rim +0.02", selection +0.03" in wp3d-1-geometry.js) isn't otherwise exposed, so it's
+ *    derived once per animation, per ring-mesh-identity, the FIRST tick that ring is seen —
+ *    at that instant sceneSync's last dirty-tick write is still un-lifted, so
+ *    `decomposed.y - elevationFor(t)` IS exactly the offset — and cached on the animation
+ *    record thereafter (re-deriving it every tick from a matrix WE wrote last frame would
+ *    double-count the lift). Ring pool mesh IDENTITY (rim pool vs selection pool) is stable
+ *    across ticks even though the per-token SLOT within a pool is not, which is what makes
+ *    caching by `mesh` safe.
  * ------------------------------------------------------------------------------------- */
 import { mergeGeometries } from './wp3d-1-geometry.js';
 
@@ -150,6 +205,27 @@ export const DICE_FADE_MS = 300;
 export const DIE_HALF = 0.32;
 export const DIE_BEVEL = 0.07;
 export const DIE_SPAWN_HEIGHT_IN = 9;
+
+/* ---------------------------------------------------------------------------------------
+ * 2b. Shared-dice identity (WP3D-v3) — pure, no THREE. See design note 7.
+ * ------------------------------------------------------------------------------------- */
+export const RIM_RED_HEX = '#c03d3d';
+export const RIM_BLUE_HEX = '#3d7ec0';
+const SIDE_RIM_HEX = { 1: RIM_RED_HEX, 2: RIM_BLUE_HEX };
+/* 0=no tint, 1=full paint. 0.55 chosen by visual iteration: at 0.32 the wash, multiplied
+   over the warm-ivory vertex color, was imperceptible in the actual render (the die read as
+   plain ivory); 0.55 reads as a clearly-cool/warm "their dice" body while staying far from
+   full rim-color paint, and the near-black pips stay dark/readable regardless (multiplying
+   near-black by any wash ≈ near-black). */
+export const DICE_TINT_WASH = 0.55;
+
+/* opponentRimHex(mySide) -> the hex color of the side that ISN'T mySide ("opponent side =
+   3-mySide"). Any input other than exactly 2 is treated as side 1 (so an unset/unknown
+   mySide still resolves to a sane, deterministic opponent color rather than throwing). */
+export function opponentRimHex(mySide) {
+  const side = mySide === 2 ? 2 : 1;
+  return SIDE_RIM_HEX[3 - side];
+}
 
 /* createDiceBatcher({windowMs}) -> {push(value,t), ready(t), flush(), peek()}
  * Pure w.r.t. time: the caller supplies `t` (real clock) so this is deterministically
@@ -256,6 +332,22 @@ export function createMotion(deps) {
   const _pos = new THREE.Vector3(), _quat = new THREE.Quaternion(), _euler = new THREE.Euler();
   const _scl = new THREE.Vector3(1, 1, 1), _mat4 = new THREE.Matrix4();
   const _camDir = new THREE.Vector3();
+  const _ringMat4 = new THREE.Matrix4();
+  const _ringPos = new THREE.Vector3(), _ringQuat = new THREE.Quaternion(), _ringScl = new THREE.Vector3();
+
+  // ---- event emitter (WP3D-v3, design note 6): Map<evt, Set<cb>>; on() returns unsubscribe ----
+  const listeners = new Map();
+  function on(evt, cb) {
+    let set = listeners.get(evt);
+    if (!set) { set = new Set(); listeners.set(evt, set); }
+    set.add(cb);
+    return () => { const s = listeners.get(evt); if (s) s.delete(cb); };
+  }
+  function emit(evt, payload) {
+    const set = listeners.get(evt);
+    if (!set || !set.size) return;
+    for (const cb of Array.from(set)) { try { cb(payload); } catch (e) {} }
+  }
 
   function footprintHalfExtentsFor(t) {
     if (t.shape === 'c') { const d = (t.dmm || 32) / 25.4; return { hx: d / 2, hz: d / 2 }; }
@@ -277,23 +369,50 @@ export function createMotion(deps) {
   const lastKnown = new Map();   // tokenId -> {x,y,rot,streak}
   const activeMoves = new Map(); // tokenId -> {start,end,elapsed}
 
-  function applyAnimatedPose(t, pose, meshes) {
-    const hit = findTokenSlot(meshes, t.id);
-    if (!hit) return;
+  /* applyRingFollow(t, pose, el, anim) — see design note 8. Re-asserts every ring instance
+     tracking token t (owner-rim + selection) to fly WITH the animated mesh. */
+  function applyRingFollow(t, pose, el, anim) {
+    if (!sceneSync.ringMeshesFor) return;
+    const rings = sceneSync.ringMeshesFor(t.id);
+    if (!rings.length) return;
+    if (!anim.ringOffsetY) anim.ringOffsetY = new Map();
+    for (const hit of rings) {
+      const mesh = hit.mesh, slot = hit.slot;
+      if (!mesh.getMatrixAt) continue;
+      mesh.getMatrixAt(slot, _ringMat4);
+      _ringMat4.decompose(_ringPos, _ringQuat, _ringScl);
+      let offsetY = anim.ringOffsetY.get(mesh);
+      if (offsetY == null) {
+        offsetY = _ringPos.y - el; // captured once, un-lifted (see design note 8)
+        anim.ringOffsetY.set(mesh, offsetY);
+      }
+      _ringPos.set(pose.x, el + pose.lift + offsetY, pose.y);
+      _ringMat4.compose(_ringPos, _ringQuat, _ringScl);
+      mesh.setMatrixAt(slot, _ringMat4);
+      if (mesh.instanceMatrix) mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  function applyAnimatedPose(t, pose, meshes, anim) {
     const el = sceneSync.elevationFor ? sceneSync.elevationFor(t) : 0;
-    _pos.set(pose.x, el + pose.lift, pose.y);
-    _quat.setFromEuler(_euler.set(0, -(pose.rot || 0) * Math.PI / 180, 0));
-    _scl.set(pose.scaleXZ, pose.scaleY, pose.scaleXZ);
-    _mat4.compose(_pos, _quat, _scl);
-    hit.mesh.setMatrixAt(hit.slot, _mat4);
-    hit.mesh.instanceMatrix.needsUpdate = true;
-    _scl.set(1, 1, 1);
+    const hit = findTokenSlot(meshes, t.id);
+    if (hit) {
+      _pos.set(pose.x, el + pose.lift, pose.y);
+      _quat.setFromEuler(_euler.set(0, -(pose.rot || 0) * Math.PI / 180, 0));
+      _scl.set(pose.scaleXZ, pose.scaleY, pose.scaleXZ);
+      _mat4.compose(_pos, _quat, _scl);
+      hit.mesh.setMatrixAt(hit.slot, _mat4);
+      hit.mesh.instanceMatrix.needsUpdate = true;
+      _scl.set(1, 1, 1);
+    }
+    applyRingFollow(t, pose, el, anim);
   }
 
   function processRemoteMoves(dtMs, state) {
     const tokens = (state && state.tokens) || [];
     const seen = new Set();
     let meshes = null; // lazily fetched only if something is actually animating
+    const jumpedIds = []; // WP3D-v3: batched 'remotemove' payload, see design note 6
     for (const t of tokens) {
       seen.add(t.id);
       const lk = lastKnown.get(t.id);
@@ -302,12 +421,16 @@ export function createMotion(deps) {
       } else {
         const dist = Math.hypot(t.x - lk.x, t.y - lk.y);
         const cls = classifyMotionTick(lk.streak, dist);
-        if (cls.isRemoteJump && (activeMoves.has(t.id) || activeMoves.size < MAX_CONCURRENT_ANIM)) {
-          activeMoves.set(t.id, {
-            start: { x: lk.x, y: lk.y, rot: lk.rot },
-            end: { x: t.x, y: t.y, rot: t.rot || 0 },
-            elapsed: 0,
-          });
+        if (cls.isRemoteJump) {
+          jumpedIds.push(t.id);
+          if (activeMoves.has(t.id) || activeMoves.size < MAX_CONCURRENT_ANIM) {
+            activeMoves.set(t.id, {
+              start: { x: lk.x, y: lk.y, rot: lk.rot },
+              end: { x: t.x, y: t.y, rot: t.rot || 0 },
+              elapsed: 0,
+              ringOffsetY: null,
+            });
+          }
         }
         lk.x = t.x; lk.y = t.y; lk.rot = t.rot || 0; lk.streak = cls.nextStreak;
       }
@@ -316,13 +439,14 @@ export function createMotion(deps) {
         anim.elapsed += dtMs;
         const pose = tweenRemoteMove(anim.start, anim.end, anim.elapsed);
         if (!meshes) meshes = sceneSync.pickMeshes ? sceneSync.pickMeshes() : [];
-        applyAnimatedPose(t, pose, meshes);
-        if (pose.done) activeMoves.delete(t.id);
+        applyAnimatedPose(t, pose, meshes, anim);
+        if (pose.done) { activeMoves.delete(t.id); emit('tweenland', { tokenId: t.id }); }
       }
     }
     for (const id of Array.from(lastKnown.keys())) {
       if (!seen.has(id)) { lastKnown.delete(id); activeMoves.delete(id); }
     }
+    if (jumpedIds.length) emit('remotemove', { tokenIds: jumpedIds });
   }
 
   // =======================================================================================
@@ -430,13 +554,33 @@ export function createMotion(deps) {
   // =======================================================================================
   const dieGeometry = buildDieGeometry(THREE);
   const diceMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true });
+  /* WP3D-v3 shared dice (design note 7): a second material sharing the same geometry, tinted
+     toward the OPPONENT side's rim color. Recomputed on every remote throw via
+     refreshRemoteDiceTint() so it always reflects the current bridge.mySide(). */
+  const remoteDiceMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true });
+  const _tintColor = new THREE.Color();
+  function refreshRemoteDiceTint() {
+    const mySide = bridge.mySide ? bridge.mySide() : 1;
+    _tintColor.set('#ffffff').lerp(new THREE.Color(opponentRimHex(mySide)), DICE_TINT_WASH);
+    remoteDiceMaterial.color.copy(_tintColor);
+  }
+  refreshRemoteDiceTint();
   const diceBatcher = createDiceBatcher();
-  let diceThrow = null; // {startedAt, dice:[{value,mesh,spawn,land,seed,restQuat}]}
+  let diceThrow = null; // {startedAt, dice:[{value,mesh,spawn,land,seed,restQuat}], mine, landed}
 
   bridge.onDice((v) => {
     if (disposed || typeof v !== 'number') return;
     diceBatcher.push(v, nowMs());
   });
+  if (bridge.onRemoteDice) {
+    bridge.onRemoteDice((vals) => {
+      if (disposed || !Array.isArray(vals) || !vals.length) return;
+      const rolls = vals.filter((v) => typeof v === 'number' && v >= 1 && v <= 6);
+      if (!rolls.length) return;
+      refreshRemoteDiceTint();
+      startDiceThrow(rolls, nowMs(), false);
+    });
+  }
 
   function clearDice() {
     if (diceThrow) for (const d of diceThrow.dice) scene.remove(d.mesh);
@@ -449,15 +593,17 @@ export function createMotion(deps) {
     return [b.w / 2, b.h / 2];
   }
 
-  function startDiceThrow(rolls, t) {
+  function startDiceThrow(rolls, t, mine) {
     clearDice();
     const shown = selectDiceSubset(rolls, DICE_CAP);
     const spawnXZ = (rig.screenToBoard && rig.screenToBoard(0.55, -0.55)) || boardCenterFallback();
     const landCenter = (rig.screenToBoard && rig.screenToBoard(0, 0)) || spawnXZ;
     const GOLDEN_ANGLE = 2.399963229728653;
+    const material = mine ? diceMaterial : remoteDiceMaterial;
     const dice = shown.map((value, i) => {
-      const mesh = new THREE.Mesh(dieGeometry, diceMaterial);
+      const mesh = new THREE.Mesh(dieGeometry, material);
       mesh.userData.dieValue = value; // testability hook + easy debugging; not read internally
+      mesh.userData.dieMine = mine;
       scene.add(mesh);
       const r = 0.6 + 0.55 * Math.sqrt(i);
       const theta = i * GOLDEN_ANGLE;
@@ -471,15 +617,15 @@ export function createMotion(deps) {
       const restQuat = quaternionForFaceUp(THREE, value, seed.yaw);
       return { value, mesh, spawn: spawnXZ, land, seed, restQuat };
     });
-    diceThrow = { startedAt: t, dice };
-    diceMaterial.opacity = 1;
+    diceThrow = { startedAt: t, dice, mine, landed: false };
+    material.opacity = 1;
   }
 
   function processDiceBatch() {
     const t = nowMs();
     if (diceBatcher.ready(t)) {
       const rolls = diceBatcher.flush();
-      if (rolls.length) startDiceThrow(rolls, t);
+      if (rolls.length) startDiceThrow(rolls, t, true);
     }
   }
 
@@ -489,7 +635,12 @@ export function createMotion(deps) {
     const elapsed = nowMs() - diceThrow.startedAt;
     const total = DICE_THROW_MS + DICE_REST_MS + DICE_FADE_MS;
     if (elapsed >= total) { clearDice(); return; }
-    diceMaterial.opacity = elapsed > DICE_THROW_MS + DICE_REST_MS
+    if (!diceThrow.landed && elapsed >= DICE_THROW_MS) {
+      diceThrow.landed = true;
+      emit('diceland', { count: diceThrow.dice.length, mine: diceThrow.mine });
+    }
+    const activeMat = diceThrow.mine ? diceMaterial : remoteDiceMaterial;
+    activeMat.opacity = elapsed > DICE_THROW_MS + DICE_REST_MS
       ? 1 - clamp01((elapsed - DICE_THROW_MS - DICE_REST_MS) / DICE_FADE_MS)
       : 1;
     const ALIGN_START = 0.75;
@@ -526,6 +677,12 @@ export function createMotion(deps) {
       processDiceBatch();
       processDiceThrow();
     },
+    on, // WP3D-v3: on(evt, cb) -> unsubscribe(); events 'remotemove'|'tweenland'|'diceland'
+    /* _debug — WP3D-v3 test/inspection hook (documented, intentionally minimal): exposes the
+       live diceThrow record so behavioral/E2E tests (page.evaluate) can assert tint/identity
+       without reaching into module-private closure state any other way. Not part of the
+       frozen tick/dispose contract; do not build production behavior on it. */
+    _debug: { diceThrow: () => diceThrow, activeMoves: () => activeMoves },
     dispose() {
       disposed = true;
       canvas.removeEventListener('pointermove', onPointerMove);
@@ -537,9 +694,11 @@ export function createMotion(deps) {
       clearDice();
       dieGeometry.dispose();
       diceMaterial.dispose();
+      remoteDiceMaterial.dispose();
       lastKnown.clear();
       activeMoves.clear();
       focusAnim = null;
+      listeners.clear();
     },
   };
 }
