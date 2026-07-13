@@ -776,6 +776,25 @@ lines). Paul chose REPLACE (11th-ed layouts become the standard set). Board stay
   visual gate rendered 1A/5B/8C/11C in 2D+3D. LIVE at flextap3.github.io/wh40k-tabletop
   (master @ 6148e6c, SW v8), live-verified (16 pieces, 2 triangles, 6 defence lines, no errors).
 
+### WP3D-v4b — CORRECTION: match GW's OFFICIAL "Terrain Area Footprints" — SHIPPED (2026-07-13)
+
+Paul rejected v4 ("you don't know what 11th-ed terrain is; objectives aren't on the terrain").
+Root cause: v4's shapes/sizes were right but the LOOK was invented (clean bone 2-storey
+buildings) from rumor sites. Pulled GW's OFFICIAL doc (assets.warhammer-community.com
+`eng_12-06_warhammer40000_terrainareafootprints...pdf`): a terrain-area footprint is a **FLAT
+battle-damaged deck** — rusty riveted rockcrete/metal plating + crushed-rockcrete rubble
+spilling over torn edges + scattered girder debris, laid flat. Not tall buildings.
+- **Look rebuilt** (2D `wp9Plate`/`wp9Rubble`/`wp9Ruin`/`wp9Wall`; 3D `buildRuin`): flat rusty
+  deck (box or triangular prism) + low tan rubble mounds (clamped inside the footprint) +
+  tilted girders; `terrainHeight ~1`, no floors/walls/windows. Defence lines = low rusted
+  barricades (`buildWall` ALWAYS barricades now — the v3 tall paired-façade path is dead for
+  flat terrain; that bug shipped tall buildings on v9 and was fixed in v10).
+- **Objectives ON terrain** (`tools/gen-layouts11e-obj.py`): layouts regenerated with a
+  rectangular footprint anchored on every objective (240/240 covered). `layouts11e-tests.js`
+  now asserts objective coverage (via the app's own `geomPointInRect`).
+- Live at flextap3.github.io/wh40k-tabletop (master @ fb196fe, SW v10); full gate + 3 smokes
+  green; live-verified (objectives covered, no console errors, flat footprints, no tall walls).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
