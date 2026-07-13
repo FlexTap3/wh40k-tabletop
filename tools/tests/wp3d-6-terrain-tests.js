@@ -63,27 +63,16 @@
   }
 
   // ==================================================================
-  console.log("== pairing routing: wall E of ruin -> facade facing W ==");
+  console.log("== wall next to a ruin STILL barricades (no tall facade in flat 11th-ed terrain) ==");
   {
     // ruin footprint x:[0,11], wall footprint x:[11,13] (touching, wall is EAST of the ruin)
     const ruin = { id: "ru", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
     const wall = { id: "wa", kind: "wall", x: 11, y: 0, w: 2, h: 7, rot: 0 };
-    const all = [ruin, wall];
-    const wallObj = buildTerrain("wall", 2, 7, "wa", wall, all);
-    assert(wallObj.userData.facadeSide === "W", "wall east of the ruin faces its clean facade WEST, toward the ruin (got " + wallObj.userData.facadeSide + ")");
+    const wallObj = buildTerrain("wall", 2, 7, "wa", wall, [ruin, wall]);
+    assert(wallObj.userData.barricade === true, "wall adjacent to a ruin routes to barricade, not facade");
+    assert(wallObj.userData.facadeSide === undefined, "adjacent wall has no facadeSide (never a tall building)");
     const th = wallObj.userData.terrainHeight;
-    assert(th >= 4 - 1e-6 && th <= 6 + 1e-6, "paired wall (facade mode) terrainHeight " + th.toFixed(2) + " in [4,6]");
-
-    // and the mirror: wall WEST of the ruin faces EAST
-    const wall2 = { id: "wa2", kind: "wall", x: -2, y: 0, w: 2, h: 7, rot: 0 };
-    const wallObj2 = buildTerrain("wall", 2, 7, "wa2", wall2, [ruin, wall2]);
-    assert(wallObj2.userData.facadeSide === "E", "wall west of the ruin faces its clean facade EAST, toward the ruin (got " + wallObj2.userData.facadeSide + ")");
-
-    // and north/south
-    const ruin2 = { id: "ru2", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
-    const wallN = { id: "wn", kind: "wall", x: 0, y: -2, w: 11, h: 2, rot: 0 };
-    const wallNObj = buildTerrain("wall", 11, 2, "wn", wallN, [ruin2, wallN]);
-    assert(wallNObj.userData.facadeSide === "S", "wall north of the ruin faces its clean facade SOUTH, toward the ruin (got " + wallNObj.userData.facadeSide + ")");
+    assert(th >= 1.5 - 1e-6 && th <= 2.5 + 1e-6, "adjacent wall stays a LOW barricade (" + th.toFixed(2) + " in [1.5,2.5])");
   }
 
   // ==================================================================
@@ -221,7 +210,7 @@
   }
 
   // ==================================================================
-  console.log("== wall: facade height within [4,6] (paired mode) ==");
+  console.log("== wall: 11th-ed defence line is ALWAYS a low barricade, even next to a ruin ==");
   {
     const pairedRuin = { id: "pr", kind: "ruin", x: -20, y: -20, w: 11, h: 7, rot: 0 };
     for (const [w, h] of FOOTPRINTS.wall) {
@@ -230,10 +219,11 @@
       for (let i = 0; i < 10; i++) {
         const obj = buildTerrain("wall", w, h, "wall-h-" + w + "x" + h + "-" + i, piece, all);
         const th = obj.userData.terrainHeight;
-        assert(th >= 4 - 1e-6 && th <= 6 + 1e-6, "paired wall " + w + "x" + h + " #" + i + " terrainHeight " + th.toFixed(2) + " in [4,6]");
+        assert(th >= 1.5 - 1e-6 && th <= 2.5 + 1e-6, "wall " + w + "x" + h + " #" + i + " next to a ruin stays a LOW barricade (" + th.toFixed(2) + " in [1.5,2.5])");
       }
     }
-    // wallPlan itself (facade mode): every non-gap column's height is in [4,6]
+    // wallPlan still SUPPORTS facade mode as a pure function (retained), even though buildWall
+    // no longer uses it: every non-gap column's height is in [4,6]
     const facadePairing = { ruins: [{ id: "ru", w: 11, h: 7, lx: 0, lz: 6, dist: 6, side: "S" }], walls: [] };
     const plan = wallPlan("wall-plan-1", 2, 11, facadePairing);
     assert(plan.mode === "facade", "wallPlan with a ruin neighbor returns facade mode");
@@ -284,10 +274,12 @@
     const wall = { id: "dw", kind: "wall", x: 11, y: 0, w: 2, h: 7, rot: 0 };
     const g1 = buildTerrain("wall", 2, 7, "dw", wall, [ruin, wall]);
     const g2 = buildTerrain("wall", 2, 7, "dw", wall, [ruin, wall]);
-    assert(serializeGeo(g1) === serializeGeo(g2), "same id + same neighbor arrangement => identical wall geometry");
-    const wallMoved = { id: "dw", kind: "wall", x: 20, y: 20, w: 2, h: 7, rot: 0 }; // far away, no longer touching the ruin
+    assert(serializeGeo(g1) === serializeGeo(g2), "same id + same footprint => identical wall geometry");
+    const wallMoved = { id: "dw", kind: "wall", x: 20, y: 20, w: 2, h: 7, rot: 0 }; // moved far from the ruin
     const g3 = buildTerrain("wall", 2, 7, "dw", wallMoved, [ruin, wallMoved]);
-    assert(serializeGeo(g1) !== serializeGeo(g3), "moving the wall out of pairing range (barricade instead of facade) changes its geometry");
+    // WP3D-v4b: walls are always barricades (neighbor-independent), so moving away no longer
+    // changes the geometry — it's purely a function of id + footprint dims.
+    assert(serializeGeo(g1) === serializeGeo(g3), "defence-line geometry is neighbor-independent (always a barricade)");
   }
 
   // ==================================================================
