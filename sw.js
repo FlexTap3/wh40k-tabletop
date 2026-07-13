@@ -1,6 +1,6 @@
 /* WH40k Tabletop service worker — offline shell caching.
    Bump CACHE when you ship a new wh40k-tabletop.html so clients pull the update. */
-const CACHE = 'wh40k-tabletop-v7';
+const CACHE = 'wh40k-tabletop-v8';
 const SHELL = [
   './',
   './index.html',
