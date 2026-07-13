@@ -1810,7 +1810,7 @@ function wp9Hatch(col){ // diagonal-line pattern for DZ shading
    buildings. wp9Plate draws that deck; wp9Ruin = the heavy-rubble footprint itself. */
 function wp9Rubble(cx,cy,r,rnd){ // pale crushed-rockcrete rubble CLUSTER (GW "popcorn" look)
   ctx.fillStyle="rgba(20,16,10,.22)"; ctx.beginPath(); ctx.arc(cx+r*.12,cy+r*.15,r*.98,0,7); ctx.fill(); // soft shadow
-  const nb=Math.max(6,Math.round(r*1.1));
+  const nb=Math.max(6,Math.round((r/view.s)*15)); // count from WORLD radius so RNG stream is zoom-invariant (bits stay fixed, only scale)
   for(let i=0;i<nb;i++){
     const a=rnd()*6.283, rr=Math.sqrt(rnd())*r, bx=cx+Math.cos(a)*rr, by=cy+Math.sin(a)*rr, br=Math.max(1.5,r*(0.14+rnd()*0.2));
     ctx.beginPath(); const m=5; for(let j=0;j<m;j++){ const aa=j/m*6.283+rnd()*.5, cr=br*(0.7+rnd()*0.5), x=bx+Math.cos(aa)*cr, y=by+Math.sin(aa)*cr; j?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.closePath();
