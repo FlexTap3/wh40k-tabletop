@@ -13,8 +13,10 @@
   const M = await import('../../sections/wp3d-10-motion.js');
   const {
     createMotion, classifyMotionTick, tweenRemoteMove, createDiceBatcher, selectDiceSubset,
-    quaternionForFaceUp, DIE_FACE_NORMALS, buildDieGeometry,
+    quaternionForFaceUp, DIE_FACE_NORMALS, buildDieGeometry, opponentRimHex,
+    RIM_RED_HEX, RIM_BLUE_HEX, DICE_TINT_WASH,
     JUMP_THRESHOLD_IN, MOTION_ARC_MS, SQUASH_MS, LIFT_HEIGHT_IN, DICE_CAP, MAX_CONCURRENT_ANIM,
+    DICE_THROW_MS, DICE_REST_MS,
   } = M;
 
   // =========================================================================================
@@ -185,11 +187,16 @@
       _matrices: matrices,
     };
   }
-  function makeSceneSync(meshes, elevationMap) {
+  // ringsByToken: optional { tokenId: [{mesh,slot}, ...] | () => [{mesh,slot}, ...] } — a
+  // function value lets a test simulate a slot SHIFT between ticks (re-query-each-frame check).
+  function makeSceneSync(meshes, elevationMap, ringsByToken) {
     return {
       pickMeshes() { return meshes; },
       tokenAt(hit) { return hit && hit.tokenId != null ? hit.tokenId : null; },
       elevationFor(t) { return (elevationMap && elevationMap[t.id]) || 0; },
+      ringMeshesFor: ringsByToken
+        ? (tokenId) => { const e = ringsByToken[tokenId]; return typeof e === 'function' ? e() : (e || []); }
+        : undefined,
     };
   }
   function makeRig(hits) {
@@ -202,12 +209,25 @@
     };
   }
   function makeBridge(mySide, tokens, board) {
-    let diceCb = null;
+    let diceCb = null, remoteDiceCb = null;
     return {
       state() { return { tokens, board: board || { w: 60, h: 44 } }; },
       mySide() { return mySide; },
       onDice(cb) { diceCb = cb; },
+      onRemoteDice(cb) { remoteDiceCb = cb; },
       _fireDice(v) { if (diceCb) diceCb(v); },
+      _fireRemoteDice(vals) { if (remoteDiceCb) remoteDiceCb(vals); },
+    };
+  }
+  // Bare instanced-ring-mesh mock: getMatrixAt/setMatrixAt over a Map<slot, Matrix4>, seeded
+  // with an initial matrix per slot (simulating sceneSync's last dirty-tick write).
+  function makeRingMesh(seed) {
+    const matrices = new Map(seed || []);
+    return {
+      getMatrixAt(slot, out) { const m = matrices.get(slot); if (m) out.copy(m); else out.identity(); },
+      setMatrixAt(slot, m) { matrices.set(slot, m.clone()); },
+      instanceMatrix: { needsUpdate: false },
+      _matrices: matrices,
     };
   }
 
@@ -401,6 +421,198 @@
     } finally {
       performance.now = realNow;
     }
+  }
+
+  // =========================================================================================
+  console.log('== WP3D-v3: on(evt,cb) event emitter — add/fire/remove, remotemove/tweenland/diceland ==');
+  {
+    const scene = makeScene();
+    const canvas = makeCanvas();
+    const rig = makeRig([]);
+    const tok = { id: 'tEv', owner: 1, x: 5, y: 5, rot: 0, shape: 'c', dmm: 32 };
+    const poolMesh = makePoolMesh(['tEv']);
+    const sceneSync = makeSceneSync([poolMesh]);
+    const bridge = makeBridge(1, [tok]);
+    const motion = createMotion({ THREE, scene, rig, sceneSync, bridge, canvas, renderer: {} });
+
+    // ---- add + fire ----
+    let remoteMoveCount = 0, lastPayload = null;
+    const unsub = motion.on('remotemove', (p) => { remoteMoveCount++; lastPayload = p; });
+    motion.tick(16, bridge.state()); // baseline sighting, no jump yet
+    assert(remoteMoveCount === 0, 'on("remotemove"): not fired before any jump is classified');
+
+    tok.x = 20; tok.y = 5; // committed remote jump (15")
+    motion.tick(16, bridge.state());
+    assert(remoteMoveCount === 1, 'on("remotemove"): fires once the tick a jump is classified');
+    assert(Array.isArray(lastPayload.tokenIds) && lastPayload.tokenIds.length === 1 && lastPayload.tokenIds[0] === 'tEv',
+      'remotemove payload: {tokenIds:[...]} names the jumped token');
+
+    // ---- remove (unsubscribe) ----
+    unsub();
+    for (let i = 0; i < 40; i++) motion.tick(16, bridge.state()); // let the first tween finish
+    tok.x = 45; tok.y = 5; // a second, independent jump
+    motion.tick(16, bridge.state());
+    assert(remoteMoveCount === 1, 'on(): returned unsubscribe() stops further callbacks (count unchanged on a later jump)');
+
+    // ---- tweenland: fires once, at squash-end, with the landed tokenId ----
+    const landed = [];
+    motion.on('tweenland', (p) => landed.push(p.tokenId));
+    tok.x = 70; tok.y = 5; // fresh jump
+    motion.tick(16, bridge.state());
+    assert(landed.length === 0, 'tweenland: not fired mid-flight');
+    motion.tick(600, bridge.state()); // elapsed well past MOTION_ARC_MS+SQUASH_MS (510ms total)
+    assert(landed.length === 1 && landed[0] === 'tEv', 'tweenland: fires once, naming the token, exactly when its tween completes');
+    motion.tick(16, bridge.state()); // idle now — no further landings
+    assert(landed.length === 1, 'tweenland: does not re-fire for an idle token on subsequent ticks');
+
+    // ---- diceland: fires once per throw, at SETTLE (crossing DICE_THROW_MS), not at spawn ----
+    const diceEvents = [];
+    motion.on('diceland', (p) => diceEvents.push(p));
+    const realNow = performance.now.bind(performance);
+    let fakeT = 5000;
+    performance.now = () => fakeT;
+    try {
+      bridge._fireDice(3); bridge._fireDice(4); // own throw, 2 dice
+      motion.tick(16, bridge.state());
+      assert(diceEvents.length === 0, 'diceland: not fired while the batch window is still open');
+      fakeT += 121; // batch closes -> throw starts
+      motion.tick(16, bridge.state());
+      assert(diceEvents.length === 0, 'diceland: not fired at throw START (dice are still tumbling)');
+      fakeT += DICE_THROW_MS - 2;
+      motion.tick(16, bridge.state());
+      assert(diceEvents.length === 0, 'diceland: still not fired just short of DICE_THROW_MS');
+      fakeT += 4; // now past DICE_THROW_MS -> settled
+      motion.tick(16, bridge.state());
+      assert(diceEvents.length === 1, 'diceland: fires exactly once when the throw settles');
+      assert(diceEvents[0].count === 2 && diceEvents[0].mine === true,
+        'diceland payload: {count, mine:true} for an own throw (bridge.onDice)');
+      motion.tick(16, bridge.state()); // still resting — must not re-fire
+      assert(diceEvents.length === 1, 'diceland: does not re-fire while the throw is merely resting/fading');
+
+      // a REMOTE throw (bridge.onRemoteDice) settling reports mine:false
+      bridge._fireRemoteDice([1, 2, 3]);
+      fakeT += DICE_THROW_MS + 1;
+      motion.tick(16, bridge.state());
+      assert(diceEvents.length === 2 && diceEvents[1].mine === false && diceEvents[1].count === 3,
+        'diceland payload: {count, mine:false} for a remote throw (bridge.onRemoteDice)');
+    } finally {
+      performance.now = realNow;
+    }
+
+    motion.dispose();
+  }
+
+  // =========================================================================================
+  console.log('== WP3D-v3: shared dice — remote tint selection (mine vs theirs) + side color mapping ==');
+  {
+    // ---- pure side-color mapping, no THREE/scene needed ----
+    assert(opponentRimHex(1) === RIM_BLUE_HEX, 'opponentRimHex(mySide=1): opponent is side 2 -> BLUE rim (#3d7ec0)');
+    assert(opponentRimHex(2) === RIM_RED_HEX, 'opponentRimHex(mySide=2): opponent is side 1 -> RED rim (#c03d3d)');
+    assert(opponentRimHex(undefined) === RIM_BLUE_HEX, 'opponentRimHex(mySide unset): deterministic fallback (treated as side 1 -> BLUE)');
+
+    const scene = makeScene();
+    const canvas = makeCanvas();
+    const rig = makeRig([]);
+    const bridge = makeBridge(1, []); // mySide=1 -> opponent (mine:false) dice should wash toward BLUE
+    const motion = createMotion({ THREE, scene, rig, sceneSync: makeSceneSync([]), bridge, canvas, renderer: {} });
+    const baseline = scene.added.length; // hover ring only
+
+    const realNow = performance.now.bind(performance);
+    let fakeT = 9000;
+    performance.now = () => fakeT;
+    try {
+      // ---- remote throw: spawns immediately (already batched app-side), tagged + tinted ----
+      bridge._fireRemoteDice([2, 5, 6]);
+      motion.tick(16, bridge.state());
+      const remoteMeshes = scene.added.slice(baseline);
+      assert(remoteMeshes.length === 3, 'remote throw: spawns physical dice immediately (no re-batching of an already-batched burst)');
+      assert(remoteMeshes.every((m) => m.userData.dieMine === false), 'remote dice: every mesh tagged dieMine:false ("theirs")');
+      const remoteMat = remoteMeshes[0].material;
+      assert(remoteMeshes.every((m) => m.material === remoteMat), 'remote dice: all share ONE tinted material instance');
+
+      const expected = new THREE.Color('#ffffff').lerp(new THREE.Color(RIM_BLUE_HEX), DICE_TINT_WASH);
+      assert(near(remoteMat.color.r, expected.r, 1e-5) && near(remoteMat.color.g, expected.g, 1e-5) && near(remoteMat.color.b, expected.b, 1e-5),
+        'remote dice material color = white washed toward the OPPONENT rim color by DICE_TINT_WASH');
+      assert(!(near(remoteMat.color.r, 1, 1e-4) && near(remoteMat.color.g, 1, 1e-4) && near(remoteMat.color.b, 1, 1e-4)),
+        'remote dice material is a REAL tint, not plain white/ivory (a no-op would fail the "distinct" requirement)');
+
+      // ---- own throw afterward: distinct material, tagged dieMine:true ("mine") ----
+      fakeT += 4000; // clear the remote throw's rest+fade window naturally
+      bridge._fireDice(1); bridge._fireDice(1);
+      fakeT += 121;
+      motion.tick(16, bridge.state());
+      const ownMeshes = scene.added.slice(baseline).filter((m) => m.userData.dieMine === true);
+      assert(ownMeshes.length === 2, 'own throw after a remote one: spawns fresh own-tagged dice');
+      assert(ownMeshes.every((m) => m.material !== remoteMat), 'own dice ("mine") use a DIFFERENT material instance than the remote/tinted one');
+      assert(ownMeshes.every((m) => m.material.vertexColors === true), 'own dice material is still the shared vertex-colored ivory pool material');
+
+      motion.dispose();
+    } finally {
+      performance.now = realNow;
+    }
+  }
+
+  // =========================================================================================
+  console.log('== WP3D-v3: ring-follow — rings fly WITH an animating token (translation replaced, scale/quat kept) ==');
+  {
+    const scene = makeScene();
+    const canvas = makeCanvas();
+    const rig = makeRig([]);
+    const tok = { id: 'tR', owner: 1, x: 5, y: 5, rot: 30, shape: 'c', dmm: 32 };
+    const poolMesh = makePoolMesh(['tR']);
+
+    // Ring mesh mock pre-seeded with a matrix at slot 0 simulating sceneSync's last dirty-tick
+    // write: position (5, 0.02, 5) [el=0 + the rim ring's own tiny 0.02" offset], a non-trivial
+    // footprint scale, and a non-identity yaw quaternion — all of which ring-follow must
+    // preserve exactly, replacing only the translation.
+    const ringQuat0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -30 * Math.PI / 180, 0));
+    const ringScale0 = new THREE.Vector3(0.7, 1, 0.7);
+    const seedMat = new THREE.Matrix4().compose(new THREE.Vector3(5, 0.02, 5), ringQuat0, ringScale0);
+    const ringMesh = makeRingMesh([[0, seedMat]]);
+    let ringSlot = 0;
+    const sceneSync = makeSceneSync([poolMesh], { tR: 0 }, { tR: () => [{ mesh: ringMesh, slot: ringSlot }] });
+    const bridge = makeBridge(1, [tok]);
+    const motion = createMotion({ THREE, scene, rig, sceneSync, bridge, canvas, renderer: {} });
+
+    motion.tick(16, bridge.state()); // baseline sighting — no jump yet, ring untouched
+    assert(ringMesh._matrices.get(0) === seedMat, 'ring-follow: baseline tick does not touch the ring (no animation active)');
+
+    tok.x = 15; tok.y = 5; // remote jump of 10"
+    motion.tick(16, bridge.state()); // elapsed=16ms into the tween
+    {
+      const m = ringMesh._matrices.get(0);
+      const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+      m.decompose(p, q, s);
+      assert(near(s.x, 0.7, 1e-6) && near(s.z, 0.7, 1e-6), 'ring-follow: scale is preserved exactly across the re-composed matrix');
+      assert(near(q.x, ringQuat0.x, 1e-6) && near(q.y, ringQuat0.y, 1e-6) && near(q.z, ringQuat0.z, 1e-6) && near(q.w, ringQuat0.w, 1e-6),
+        'ring-follow: quaternion (yaw) is preserved exactly, unchanged from sceneSync\'s last write');
+      assert(!near(p.x, 5, 1e-6), 'ring-follow: translation IS replaced (ring x has moved off its pre-jump position)');
+    }
+
+    // ---- simulate a SLOT SHIFT (0 -> 3): ring-follow must re-query ringMeshesFor every tick
+    // and write to whichever slot it reports THIS tick, not a cached one from a prior tick.
+    ringMesh._matrices.set(3, new THREE.Matrix4().compose(new THREE.Vector3(5, 0.02, 5), ringQuat0, ringScale0));
+    ringSlot = 3;
+    motion.tick(209, bridge.state()); // elapsed=225ms — mid-flight, should be airborne
+    {
+      assert(!ringMesh._matrices.has(4) && ringMesh._matrices.has(3), 'ring-follow: re-queried this tick, wrote into the NEW slot (3)');
+      const m = ringMesh._matrices.get(3);
+      const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+      m.decompose(p, q, s);
+      assert(p.y > 0.5, 'ring-follow: mid-flight the ring is airborne too (y includes the animated lift)');
+      assert(near(s.x, 0.7, 1e-6), 'ring-follow: scale still preserved after the slot shift (cached by mesh identity, not slot)');
+    }
+
+    motion.tick(300, bridge.state()); // elapsed=525ms — animation done, landed
+    {
+      const m = ringMesh._matrices.get(3);
+      const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+      m.decompose(p, q, s);
+      assert(near(p.x, 15, 1e-3) && near(p.z, 5, 1e-3), 'ring-follow: landed at the exact committed x/z, matching the main mesh');
+      assert(near(p.y, 0.02, 1e-3), 'ring-follow: landed back at exactly its own tiny y-offset (0.02"), lift fully settled');
+    }
+
+    motion.dispose();
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
