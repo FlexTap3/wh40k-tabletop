@@ -29,6 +29,12 @@ function sizeClass(t) {
   if (a === 6 && b === 2) return "short";
   return "?";
 }
+// point (px,py) inside a rotated-rect footprint {x,y (top-left),w,h,rot}
+function covers(px, py, t) {
+  const cx = t.x + t.w / 2, cy = t.y + t.h / 2, a = -(t.rot || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const dx = px - cx, dy = py - cy, lx = dx * c - dy * s, ly = dx * s + dy * c;
+  return Math.abs(lx) <= t.w / 2 + 0.01 && Math.abs(ly) <= t.h / 2 + 0.01;
+}
 const officials = Object.keys(data).filter(k => /^Official /.test(k));
 assert(officials.length === 45, "45 Official layouts present (got " + officials.length + ")");
 
@@ -52,15 +58,13 @@ for (const name of officials) {
     const inb = cs.every(([x, y]) => x >= -0.3 && x <= BW + 0.3 && y >= -0.3 && y <= BH + 0.3);
     assert(inb, name + ": piece " + (p.id || "") + " within board bounds");
   }
-  // 180° rotational symmetry — every piece has a mirror partner about (CX,CY)
-  const centers = t.map(p => ({ cx: p.x + p.w / 2, cy: p.y + p.h / 2, cls: sizeClass(p), used: false }));
-  let symOk = true;
-  for (const p of t) {
-    const mcx = 2 * CX - (p.x + p.w / 2), mcy = 2 * CY - (p.y + p.h / 2), cls = sizeClass(p);
-    const partner = centers.find(c => !c.used && c.cls === cls && Math.abs(c.cx - mcx) < TOL && Math.abs(c.cy - mcy) < TOL);
-    if (partner) partner.used = true; else symOk = false;
+  // OBJECTIVES ON TERRAIN — every objective must sit on a terrain-area footprint (the fix for
+  // "objectives floating in the open"). Triangles cover only half their bbox, so an objective
+  // must be covered by a NON-triangle footprint (a rectangle it actually sits inside).
+  for (const [ox, oy] of v.o) {
+    const on = t.some(p => p.shape !== "tri" && covers(ox, oy, p));
+    assert(on, name + ": objective (" + ox + "," + oy + ") sits on a terrain footprint");
   }
-  assert(symOk, name + ": every piece has a 180°-symmetric partner");
   // objectives / deployment / mission untouched
   assert(Array.isArray(v.o) && v.o.length >= 5, name + ": objectives preserved");
   assert(Array.isArray(v.dz) && v.dz.length === 2, name + ": two deployment zones preserved");

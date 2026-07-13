@@ -118,49 +118,51 @@
   }
 
   // ==================================================================
-  // WP3D-v4: buildRuin now produces an 11th-edition BUILDING (footprint plate + L-walls +
-  // floor slabs @3/6), not the v3 slab-on-columns. (ruinPlan/pairingFor still exist and are
-  // exercised by the pure-function tests below; they no longer drive buildRuin's output.)
-  console.log("== 11th-ed building: footprint plate + floor slabs @3/6 ==");
+  // WP3D-v4b: buildRuin now produces a FLAT 11th-ed terrain-area FOOTPRINT (rusty deck + low
+  // crushed-rockcrete rubble + scattered girders), matched to GW's official "Terrain Area
+  // Footprints" — not tall buildings. (ruinPlan/pairingFor still exist and are exercised by the
+  // pure-function tests below; they no longer drive buildRuin's output.)
+  console.log("== 11th-ed footprint: flat rusty deck + low rubble, no floors ==");
   {
     const ruin = { id: "rc", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
     const obj = buildTerrain("ruin", 11, 7, "rc", ruin, [ruin]);
     assert(obj.userData.builtBy === "wp3d-6-terrain2", "buildRuin tags builtBy");
-    assert(obj.userData.terrainHeight === 3 || obj.userData.terrainHeight === 6,
-      "11th-ed building terrainHeight is exactly 3 or 6, got " + obj.userData.terrainHeight);
+    assert(obj.userData.terrainHeight > 0 && obj.userData.terrainHeight <= 1.5,
+      "flat footprint terrainHeight is LOW (<=1.5), got " + obj.userData.terrainHeight);
     let sawPlate = false, sawSlab = false;
     obj.traverse(o => {
       if (o.isMesh && o.material && o.material.side === 2 /* THREE.DoubleSide */) {
         o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
-        if (bb.min.y > -0.01 && bb.max.y < 0.5) sawPlate = true; // thin ground footprint plate
+        if (bb.min.y > -0.01 && bb.max.y < 0.5) sawPlate = true; // thin ground deck plate
       }
-      if (o.userData && o.userData.isSlab) {
-        sawSlab = true;
-        assert(o.userData.slabTopY === 3 || o.userData.slabTopY === 6, "floor slab top exactly 3 or 6, got " + o.userData.slabTopY);
-      }
+      if (o.userData && o.userData.isSlab) sawSlab = true;
     });
-    assert(sawPlate, "11th-ed building has a thin ground footprint plate (DoubleSide)");
-    assert(sawSlab, "11th-ed building has at least one floor slab @3/6");
+    assert(sawPlate, "footprint has a thin ground deck plate (DoubleSide)");
+    assert(!sawSlab, "flat footprint has NO raised floor slabs");
+    // all geometry stays within the footprint (+/-0.2in) — rubble is clamped, not spilling
+    const bb = new THREE.Box3().setFromObject(obj);
+    assert(bb.min.x >= -5.5 - 0.2 - 1e-6 && bb.max.x <= 5.5 + 0.2 + 1e-6, "footprint geometry within bounds (x)");
+    assert(bb.min.z >= -3.5 - 0.2 - 1e-6 && bb.max.z <= 3.5 + 0.2 + 1e-6, "footprint geometry within bounds (z)");
   }
 
   // ==================================================================
-  console.log("== 11th-ed TRIANGLE footprint building ==");
+  console.log("== 11th-ed TRIANGLE footprint (flat) ==");
   {
     const tri = { id: "tt", kind: "ruin", x: 0, y: 0, w: 8, h: 11.5, rot: 0, shape: "tri", tc: 1 };
     let obj, threw = false;
     try { obj = buildTerrain("ruin", 8, 11.5, "tt", tri, [tri]); } catch (e) { threw = true; }
-    assert(!threw, "triangle building builds without throwing");
-    assert(obj.userData.terrainHeight === 6, "large (8x11.5) triangle building reaches the 6\" roof");
+    assert(!threw, "triangle footprint builds without throwing");
+    assert(obj.userData.terrainHeight > 0 && obj.userData.terrainHeight <= 1.5, "triangle footprint terrainHeight is LOW");
     let checkedPlate = false;
     obj.traverse(o => {
       if (o.isMesh && o.material && o.material.side === 2) {
         o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
         assert(bb.min.x >= -4.001 && bb.max.x <= 4.001 && bb.min.z >= -5.751 && bb.max.z <= 5.751,
-          "triangle plate stays within the rectangular footprint bounds");
+          "triangle deck plate stays within the rectangular footprint bounds");
         checkedPlate = true;
       }
     });
-    assert(checkedPlate, "triangle plate mesh found");
+    assert(checkedPlate, "triangle deck plate mesh found");
   }
 
   // ==================================================================
@@ -178,24 +180,10 @@
     assert(sawL1 > 0, "at least one seed produced an L1 (y=3) slab across 60 tries");
     assert(sawL2 > 0, "at least one seed produced an L2 (y=6) slab across 60 tries");
     assert(sawBoth, "at least one seed produced BOTH slabs across 60 tries");
+    // NOTE: ruinPlan (above) is retained/pure but NO LONGER drives buildRuin — the v4b flat
+    // footprint emits no raised floor slabs, so the old buildTerrain slab-mesh check is dropped.
 
-    // bounding-box check of the actual slab sub-meshes (not just the plan numbers)
-    let checkedSlabMeshes = 0;
-    for (let i = 0; i < 30; i++) {
-      const obj = buildTerrain("ruin", 11, 7, "ruin-slab-" + i);
-      obj.traverse(o => {
-        if (!o.userData || !o.userData.isSlab) return;
-        o.geometry.computeBoundingBox();
-        const bb = o.geometry.boundingBox;
-        checkedSlabMeshes++;
-        assert(near(bb.max.y, o.userData.slabTopY, 0.001), "slab mesh bounding-box top == " + o.userData.slabTopY + " (got " + bb.max.y.toFixed(3) + ")");
-        assert(bb.min.y < o.userData.slabTopY, "slab has nonzero thickness (min.y < top)");
-      });
-    }
-    assert(checkedSlabMeshes > 0, "at least one slab sub-mesh was found and bounding-box checked");
-
-    // same invariant holds when PAIRED (facade-anchored slabs) — the elevationFor contract
-    // (lvl*3) doesn't care whether the ruin is open rubble or a corner building.
+    // ruinPlan slab-top invariant also holds when PAIRED (pure-function check).
     const ruin = { id: "rp", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
     const wall = { id: "wp", kind: "wall", x: 11, y: 0, w: 2, h: 7, rot: 0 };
     for (let i = 0; i < 20; i++) {
