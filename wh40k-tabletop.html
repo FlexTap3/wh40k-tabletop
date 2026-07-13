@@ -1803,47 +1803,84 @@ function wp9Hatch(col){ // diagonal-line pattern for DZ shading
   }catch(e){ return wp9HatchCache[col]=null; }
 }
 // Each wp9<Kind> draws in local terrain space: origin = feature centre, already rotated; w/h in px.
+/* ==== WP3D-v4 (11th-ed) ==== The defining element of 11th-edition tournament terrain is the
+   FOOTPRINT PLATE: a flat light-rockcrete floor (cracked tiles + drainage grates) that marks
+   the terrain area; scenery sits ON it. wp9Plate draws that base under every 11th-ed piece. */
+function wp9Plate(w,h,seed){
+  const rnd=wp9Rng(seed), s=view.s, L=-w/2,T=-h/2,R=w/2,B=h/2;
+  ctx.fillStyle=wp9LinGrad(L,T,R,B,[[0,"#b8b2a0"],[1,"#9c9683"]],"#a8a28f");
+  ctx.fillRect(L,T,w,h);
+  // cracked-tile grid — faint, slightly jittered so it reads as broken rockcrete not a chessboard
+  ctx.strokeStyle="rgba(58,54,46,.28)"; ctx.lineWidth=1;
+  const tile=Math.max(6,s*1.05);
+  for(let x=L+tile;x<R-1;x+=tile){ const jx=x+(rnd()-.5)*2.2; ctx.beginPath(); ctx.moveTo(jx,T); ctx.lineTo(jx+(rnd()-.5)*3,B); ctx.stroke(); }
+  for(let y=T+tile;y<B-1;y+=tile){ const jy=y+(rnd()-.5)*2.2; ctx.beginPath(); ctx.moveTo(L,jy); ctx.lineTo(R,jy+(rnd()-.5)*3); ctx.stroke(); }
+  // drainage grates — a couple of dark barred rectangles
+  const ng=1+(Math.min(w,h)>s*4?1:0);
+  for(let g=0;g<ng;g++){
+    const gw=Math.min(w*.5,s*(1.4+rnd()*1.1)), gh=Math.min(h*.5,s*(0.6+rnd()*0.5));
+    const gx=(rnd()-.5)*(w-gw-s*.6), gy=(rnd()-.5)*(h-gh-s*.6);
+    ctx.fillStyle="rgba(34,31,27,.78)"; ctx.fillRect(gx-gw/2,gy-gh/2,gw,gh);
+    ctx.strokeStyle="rgba(120,114,99,.5)"; ctx.lineWidth=1;
+    for(let bx=gx-gw/2+2.5;bx<gx+gw/2;bx+=3){ ctx.beginPath(); ctx.moveTo(bx,gy-gh/2+1); ctx.lineTo(bx,gy+gh/2-1); ctx.stroke(); }
+  }
+  // scattered grime + rubble flecks
+  for(let i=0;i<4;i++){ ctx.fillStyle="rgba(48,44,36,.10)"; const bx=(rnd()-.5)*w*.9, by=(rnd()-.5)*h*.9, br=s*(.45+rnd()*.9); ctx.beginPath(); ctx.arc(bx,by,br,0,7); ctx.fill(); }
+  // footprint boundary (rules-relevant) — clean dark edge
+  ctx.strokeStyle="rgba(28,26,22,.55)"; ctx.lineWidth=1.5; ctx.strokeRect(L,T,w,h);
+}
+// Alternating black/yellow hazard band along the long axis — used for defence lines + wall/stair trim.
+function wp9HazardBand(x,y,w,h,horiz,s){
+  const seg=Math.max(4,s*.5), len=horiz?w:h;
+  for(let p=0;p<len;p+=seg){
+    ctx.fillStyle=(Math.floor(p/seg)%2===0)?"#e2b23c":"#1b1813";
+    if(horiz) ctx.fillRect(x+p,y,Math.min(seg,len-p),h);
+    else ctx.fillRect(x,y+p,w,Math.min(seg,len-p));
+  }
+  ctx.strokeStyle="#6a6f76"; ctx.lineWidth=1.2; ctx.strokeRect(x,y,w,h); // steel frame
+  ctx.fillStyle="rgba(255,250,230,.32)"; // lit top lip
+  if(horiz) ctx.fillRect(x,y,w,Math.max(1,h*.18)); else ctx.fillRect(x,y,Math.max(1,w*.18),h);
+}
+/* 11th-ed BUILDING: footprint plate + an L-shaped 2-storey ruin (bone/grey walls with window
+   bays, an inset upper-floor slab, a hazard-striped base trim). Reads as a tournament building
+   from top-down, not loose rubble. */
 function wp9Ruin(w,h,seed){
-  const rnd=wp9Rng(seed), s=view.s;
-  ctx.fillStyle=wp9LinGrad(-w/2,-h/2,w/2,h/2,[[0,"#2c3036"],[1,"#212429"]],"#26292f");
-  ctx.fillRect(-w/2,-h/2,w,h);
-  const hat=wp9Hatch("rgba(255,255,255,.04)");
-  if(hat){ ctx.fillStyle=hat; ctx.fillRect(-w/2,-h/2,w,h); }
-  wpvRuinFloor(w,h); /* ==== WP-VISUALS ==== brick floor under the wall slabs (toggle-gated) */
-  ctx.strokeStyle="rgba(140,150,175,.3)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
-  ctx.strokeRect(-w/2,-h/2,w,h); ctx.setLineDash([]); // area footprint boundary (rules-relevant)
-  const th=Math.max(3.5,s*.34);
-  const edges=[[-w/2,-h/2,w,0],[w/2,-h/2,0,h],[w/2,h/2,-w,0],[-w/2,h/2,0,-h]];
-  for(const [ex,ey,dx,dy] of edges){
-    const len=Math.hypot(dx,dy), ux=dx/len, uy=dy/len; let pos=len*.03;
-    while(pos<len*.97){
-      const seg=Math.min(s*(1.2+rnd()*2.2),len*.97-pos);
-      if(rnd()>.32){ // wall piece; gaps elsewhere = blown-out sections
-        const x0=ex+ux*pos+ -uy*th*.5, y0=ey+uy*pos+ ux*th*.5;
-        // shadow under the wall, then the wall slab, then its lit top edge
-        ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.lineWidth=th+2; ctx.lineCap="butt";
-        ctx.beginPath(); ctx.moveTo(x0+1,y0+1.5); ctx.lineTo(x0+ux*seg+1,y0+uy*seg+1.5); ctx.stroke();
-        ctx.strokeStyle="#78829a"; ctx.lineWidth=th;
-        ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0+ux*seg,y0+uy*seg); ctx.stroke();
-        ctx.strokeStyle="rgba(215,225,245,.5)"; ctx.lineWidth=Math.max(1.2,th*.28);
-        ctx.beginPath(); ctx.moveTo(x0-ux*0+ -uy*th*.32,y0+ux*th*.32); ctx.lineTo(x0+ux*seg-uy*th*.32,y0+uy*seg+ux*th*.32); ctx.stroke();
-      } else if(seg>s*.5 && rnd()<.65){ // rubble in the gap
-        const gx=ex+ux*(pos+seg*.5)-uy*th*.4, gy=ey+uy*(pos+seg*.5)+ux*th*.4;
-        ctx.fillStyle="rgba(150,160,185,.4)";
-        for(let d=0;d<4;d++){ ctx.beginPath(); ctx.arc(gx+(rnd()-.5)*s*.6,gy+(rnd()-.5)*s*.6,Math.max(1.2,s*.1*(0.6+rnd())),0,7); ctx.fill(); }
-      }
-      pos+=seg+s*(0.3+rnd()*1.0);
-    }
+  const rnd=wp9Rng(seed), s=view.s, L=-w/2,T=-h/2,R=w/2,B=h/2, big=Math.min(w,h)>s*4;
+  wp9Plate(w,h,seed);
+  const th=Math.max(3.5,Math.min(Math.min(w,h)*.20,s*.55));
+  const corner=Math.floor(rnd()*4); // which corner the L wraps: 0 TL,1 TR,2 BR,3 BL
+  // inset upper-floor slab (the "2nd storey" read) on larger ruins, drawn under the walls
+  if(big){
+    const ins=th*1.0;
+    ctx.fillStyle="rgba(210,204,188,.42)"; ctx.fillRect(L+ins,T+ins,w-2*ins,h-2*ins);
+    ctx.strokeStyle="rgba(120,114,98,.55)"; ctx.lineWidth=1; ctx.strokeRect(L+ins,T+ins,w-2*ins,h-2*ins);
+    // upper-floor joist hints
+    ctx.strokeStyle="rgba(120,114,98,.28)";
+    for(let jx=L+ins+s*1.2;jx<R-ins;jx+=s*1.2){ ctx.beginPath(); ctx.moveTo(jx,T+ins); ctx.lineTo(jx,B-ins); ctx.stroke(); }
   }
-  if(Math.min(w,h)>s*4){ // interior wall stubs for larger ruins
-    for(let k=0;k<2;k++){
-      const ix=(rnd()-.5)*w*.5, iy=(rnd()-.5)*h*.5, il=Math.min(w,h)*(.2+rnd()*.22), horiz=rnd()<.5;
-      ctx.strokeStyle="rgba(0,0,0,.4)"; ctx.lineWidth=th+1.5;
-      ctx.beginPath(); ctx.moveTo(ix+1,iy+1.5); ctx.lineTo(ix+(horiz?il:0)+1,iy+(horiz?0:il)+1.5); ctx.stroke();
-      ctx.strokeStyle="#5f6980"; ctx.lineWidth=th;
-      ctx.beginPath(); ctx.moveTo(ix,iy); ctx.lineTo(ix+(horiz?il:0),iy+(horiz?0:il)); ctx.stroke();
-    }
+  function wallStrip(x,y,ww,hh,horiz){
+    ctx.fillStyle="rgba(0,0,0,.30)"; ctx.fillRect(x+1.6,y+1.6,ww,hh); // drop shadow
+    ctx.fillStyle=wp9LinGrad(x,y,x,y+hh,[[0,"#d8d2c0"],[1,"#b6b09e"]],"#cbc5b2"); ctx.fillRect(x,y,ww,hh);
+    ctx.fillStyle="rgba(26,26,32,.82)"; // window bays punched through
+    const bay=Math.max(s*1.05,9), gap=bay*.55;
+    if(horiz){ for(let bx=x+bay*.55;bx<x+ww-bay*.6;bx+=bay+gap) ctx.fillRect(bx,y+hh*.24,bay*.62,hh*.52); }
+    else { for(let by=y+bay*.55;by<y+hh-bay*.6;by+=bay+gap) ctx.fillRect(x+ww*.24,by,ww*.52,bay*.62); }
+    ctx.fillStyle="rgba(246,241,224,.5)"; // lit outer top edge
+    if(horiz) ctx.fillRect(x,y,ww,Math.max(1.2,hh*.16)); else ctx.fillRect(x,y,Math.max(1.2,ww*.16),hh);
   }
+  const walls=[
+    [[L,T,w,th,true],[L,T,th,h,false]],        // TL
+    [[L,T,w,th,true],[R-th,T,th,h,false]],      // TR
+    [[L,B-th,w,th,true],[R-th,T,th,h,false]],   // BR
+    [[L,B-th,w,th,true],[L,T,th,h,false]],      // BL
+  ][corner];
+  for(const wl of walls) wallStrip(wl[0],wl[1],wl[2],wl[3],wl[4]);
+  // hazard-striped base trim along the inner face of the horizontal wall
+  const hw=walls[0], trimH=Math.max(2,s*.22), trimY=(corner<2)?hw[1]+hw[3]:hw[1]-trimH;
+  wp9HazardBand(hw[0],trimY,hw[2],trimH,true,s);
+  // aquila-block accent on big ruins (abstract, never a GW sculpt)
+  if(big && rnd()<.7){ const ax=(rnd()-.5)*w*.3, ay=(rnd()-.5)*h*.3, ar=s*.5;
+    ctx.fillStyle="rgba(70,58,40,.7)"; ctx.fillRect(ax-ar,ay-ar*.5,ar*2,ar); }
 }
 function wp9Wood(w,h,seed){
   const rnd=wp9Rng(seed), s=view.s;
@@ -1874,20 +1911,18 @@ function wp9Crate(w,h,seed){
   [[-w/2,-h/2],[w/2-cp,-h/2],[-w/2,h/2-cp],[w/2-cp,h/2-cp]].forEach(([cx2,cy2])=>ctx.fillRect(cx2,cy2,cp,cp));
   wpvCrateDetail(w,h); /* ==== WP-VISUALS ==== corrugation highlights + door seams (toggle-gated) */
 }
+/* 11th-ed DEFENCE LINE: a thin footprint plate carrying a hazard-striped barricade band along
+   its long axis (the long/short line-of-sight blockers of the tournament set). */
 function wp9Wall(w,h,seed){
-  const s=view.s;
-  ctx.fillStyle=wp9LinGrad(0,-h/2,0,h/2,[[0,"#6d5c31"],[1,"#544719"]],"#5f5028");
-  ctx.fillRect(-w/2,-h/2,w,h);
-  ctx.strokeStyle="rgba(0,0,0,.32)"; ctx.lineWidth=1; // segment joints
-  const step=Math.max(4,s*1.0);
-  if(w>=h){ for(let x=-w/2+step;x<w/2;x+=step){ ctx.beginPath(); ctx.moveTo(x,-h/2); ctx.lineTo(x,h/2); ctx.stroke(); } }
-  else { for(let y=-h/2+step;y<h/2;y+=step){ ctx.beginPath(); ctx.moveTo(-w/2,y); ctx.lineTo(w/2,y); ctx.stroke(); } }
-  ctx.strokeStyle="rgba(240,225,180,.22)"; ctx.lineWidth=Math.max(1.5,s*.12); // lit top edge
-  ctx.beginPath();
-  if(w>=h){ ctx.moveTo(-w/2+1,-h/2+ctx.lineWidth*.5); ctx.lineTo(w/2-1,-h/2+ctx.lineWidth*.5); }
-  else { ctx.moveTo(-w/2+ctx.lineWidth*.5,-h/2+1); ctx.lineTo(-w/2+ctx.lineWidth*.5,h/2-1); }
-  ctx.stroke();
-  ctx.strokeStyle="#8a744a"; ctx.lineWidth=1.5; ctx.strokeRect(-w/2,-h/2,w,h);
+  const s=view.s, horiz=w>=h;
+  wp9Plate(w,h,seed);
+  const bt=Math.max(3,Math.min(Math.min(w,h)*.62,s*.42)); // barricade band thickness
+  if(horiz){ const by=-bt/2; ctx.fillStyle="rgba(0,0,0,.30)"; ctx.fillRect(-w/2+1.6,by+1.6,w,bt); wp9HazardBand(-w/2,by,w,bt,true,s); }
+  else { const bx=-bt/2; ctx.fillStyle="rgba(0,0,0,.30)"; ctx.fillRect(bx+1.6,-h/2+1.6,bt,h); wp9HazardBand(bx,-h/2,bt,h,false,s); }
+  // end posts
+  ctx.fillStyle="#5b6068";
+  if(horiz){ ctx.fillRect(-w/2-1,-bt*.7,3,bt*1.4); ctx.fillRect(w/2-2,-bt*.7,3,bt*1.4); }
+  else { ctx.fillRect(-bt*.7,-h/2-1,bt*1.4,3); ctx.fillRect(-bt*.7,h/2-2,bt*1.4,3); }
   wpvWallEdge(w,h); /* ==== WP-VISUALS ==== bold blocking-line edge (toggle-gated) */
 }
 function wp9Crater(w,h,seed){
@@ -1899,9 +1934,7 @@ function wp9Crater(w,h,seed){
   ctx.strokeStyle="#5b4d54"; ctx.lineWidth=2; ctx.stroke();
   ctx.strokeStyle="rgba(0,0,0,.4)"; ctx.lineWidth=4; ctx.globalAlpha=.4; ctx.stroke(); ctx.globalAlpha=1;
 }
-function wp9Terrain(t,w,h){
-  const seed=wp9Hash(t.id);
-  if(Math.min(w,h)<=7){ ctx.fillStyle=TERR_COLORS[t.kind]||"#3a4250"; ctx.fillRect(-w/2,-h/2,w,h); return; }
+function wp9DrawKind(t,w,h,seed){
   switch(t.kind){
     case "ruin": wp9Ruin(w,h,seed); break;
     case "wood": wp9Wood(w,h,seed); break;
@@ -1910,6 +1943,25 @@ function wp9Terrain(t,w,h){
     case "crater": wp9Crater(w,h,seed); break;
     default: ctx.fillStyle=TERR_COLORS[t.kind]||"#3a4250"; ctx.fillRect(-w/2,-h/2,w,h);
   }
+}
+/* ==== WP3D-v4 ==== 11th-ed pieces include right-angle TRIANGLE footprints (t.shape==="tri",
+   t.tc = right-angle corner 0 TL/1 TR/2 BR/3 BL). We clip the kind render to the triangle;
+   RULES keep the rectangular bounding footprint (LoS/placement unchanged — documented). */
+function wp9TriPts(w,h,tc){
+  const L=-w/2,T=-h/2,R=w/2,B=h/2;
+  return [[[L,T],[R,T],[L,B]],[[L,T],[R,T],[R,B]],[[R,T],[R,B],[L,B]],[[L,T],[L,B],[R,B]]][tc||0];
+}
+function wp9Terrain(t,w,h){
+  const seed=wp9Hash(t.id);
+  if(t.shape==="tri"){
+    const p=wp9TriPts(w,h,t.tc);
+    ctx.save(); ctx.beginPath(); ctx.moveTo(p[0][0],p[0][1]); ctx.lineTo(p[1][0],p[1][1]); ctx.lineTo(p[2][0],p[2][1]); ctx.closePath(); ctx.clip();
+    wp9DrawKind(t,w,h,seed); ctx.restore();
+    ctx.strokeStyle="rgba(28,26,22,.55)"; ctx.lineWidth=1.5; // hypotenuse + legs
+    ctx.beginPath(); ctx.moveTo(p[0][0],p[0][1]); ctx.lineTo(p[1][0],p[1][1]); ctx.lineTo(p[2][0],p[2][1]); ctx.closePath(); ctx.stroke();
+    return;
+  }
+  wp9DrawKind(t,w,h,seed);
 }
 const WP9_P1={hi:"#e07a6a",mid:"#b23a34",lo:"#5f1e1a"}, WP9_P2={hi:"#74aade",mid:"#3a72ae",lo:"#1c3d63"};
 /* ==== end WP9 ==== */

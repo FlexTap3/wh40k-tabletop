@@ -398,9 +398,122 @@ function ruinMesh(ctx, plan) {
   return group;
 }
 
+/* =========================================================================================
+ * WP3D-v4 — 11th-EDITION TOURNAMENT BUILDING.  Replaces the v3 slab-on-columns ruin.
+ * A terrain area is a flat light-rockcrete FOOTPRINT PLATE with an L-shaped 2-storey ruin on
+ * it (bone walls, window rows at two levels, an upper-floor slab @3" + roof @6" keeping the
+ * elevationFor contract). Right-angle TRIANGLE footprints (piece.shape==='tri', piece.tc =
+ * right-angle corner) get a triangular-prism plate and walls on the two axis-aligned legs.
+ * ======================================================================================= */
+const PLATE_H = 0.16, PLATE_COL = '#b4ae9c', GRATE_COL = '#2a2723';
+const BLD_WALL_H = 6, BLD_WALL_TK = 0.42, BLD_STOREY = 3, WINDOW_COL = '#20222a';
+
+// Right-angle triangular prism (indexed) from local xz points p0,p1,p2 between y0..y1. pts are
+// re-ordered to CCW-from-above so the top face normal points +y (never back-face-culled).
+function triPrism(THREE, ptsIn, y0, y1) {
+  let [a, b, c] = ptsIn;
+  const area = (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+  const pts = area > 0 ? [a, b, c] : [a, c, b]; // want CCW in xz (area<0 in y-up when normal is +y)
+  const v = [];
+  for (const p of pts) v.push(p[0], y0, p[1]);
+  for (const p of pts) v.push(p[0], y1, p[1]);
+  const idx = [3, 4, 5, 2, 1, 0, 0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 2, 0, 3, 2, 3, 5];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function footPoly(hw, hh, shape, tc) {
+  if (shape !== 'tri') return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  return [
+    [[-hw, -hh], [hw, -hh], [-hw, hh]],
+    [[-hw, -hh], [hw, -hh], [hw, hh]],
+    [[hw, -hh], [hw, hh], [-hw, hh]],
+    [[-hw, -hh], [-hw, hh], [hw, hh]],
+  ][tc || 0];
+}
+// Two axis-aligned wall legs. Triangle: the two right-angle legs. Rect: an L at one corner.
+function wallLegs(hw, hh, shape, tc, rnd) {
+  if (shape === 'tri') {
+    const poly = footPoly(hw, hh, 'tri', tc);
+    const rv = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]][tc || 0];
+    const others = poly.filter(p => !(p[0] === rv[0] && p[1] === rv[1]));
+    return others.map(o => ({ x0: rv[0], z0: rv[1], x1: o[0], z1: o[1] }));
+  }
+  const corner = Math.floor(rnd() * 4);
+  const C = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  const v = C[corner], a = C[(corner + 1) % 4], b = C[(corner + 3) % 4];
+  return [{ x0: v[0], z0: v[1], x1: a[0], z1: a[1] }, { x0: v[0], z0: v[1], x1: b[0], z1: b[1] }];
+}
+function wallLegParts(THREE, leg, parts) {
+  const horiz = Math.abs(leg.x1 - leg.x0) > Math.abs(leg.z1 - leg.z0);
+  const len = Math.hypot(leg.x1 - leg.x0, leg.z1 - leg.z0);
+  const cx = (leg.x0 + leg.x1) / 2, cz = (leg.z0 + leg.z1) / 2;
+  // inset inward (toward origin) so the wall sits on the plate, not hanging off the edge
+  const inx = horiz ? 0 : (cx > 0 ? -1 : 1) * BLD_WALL_TK / 2;
+  const inz = horiz ? (cz > 0 ? -1 : 1) * BLD_WALL_TK / 2 : 0;
+  const g = new THREE.BoxGeometry(horiz ? len : BLD_WALL_TK, BLD_WALL_H, horiz ? BLD_WALL_TK : len);
+  g.translate(cx + inx, PLATE_H + BLD_WALL_H / 2, cz + inz);
+  parts.push({ geometry: g, colorHex: WALL_PAL.facade });
+  const nWin = Math.max(1, Math.floor(len / 1.6));
+  for (let i = 0; i < nWin; i++) {
+    const t = (i + 0.5) / nWin, px = leg.x0 + (leg.x1 - leg.x0) * t, pz = leg.z0 + (leg.z1 - leg.z0) * t;
+    for (const wy of [1.4, 4.2]) {
+      const gg = new THREE.BoxGeometry(horiz ? 0.7 : BLD_WALL_TK + 0.05, 1.1, horiz ? BLD_WALL_TK + 0.05 : 0.7);
+      gg.translate(px + inx, PLATE_H + wy, pz + inz);
+      parts.push({ geometry: gg, colorHex: WINDOW_COL });
+    }
+  }
+  // hazard-striped base trim along the leg's inner face (along-axis vs cross-axis centers must
+  // match the leg orientation, else the stripe is flung off the piece)
+  const alongC = horiz ? cx : cz, crossC = horiz ? (cz + inz) : (cx + inx);
+  const stripe = hazardStripeParts(THREE, horiz, alongC, len * 0.96, crossC, 0.06, PLATE_H, PLATE_H + 0.16);
+  for (const p of stripe) parts.push(p);
+}
+function scaleTri(pts, k) {
+  const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, cz = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+  return pts.map(p => [cx + (p[0] - cx) * k, cz + (p[1] - cz) * k]);
+}
 function buildRuin(ctx, kind, w, h, id) {
-  const pairing = pairingFor(ctx.piece, ctx.all);
-  return ruinMesh(ctx, ruinPlan(id, w, h, { walls: pairing.walls }));
+  const { THREE } = ctx;
+  const shape = ctx.piece && ctx.piece.shape, tc = ctx.piece && ctx.piece.tc;
+  const rnd = rngFor('ruin11', id);
+  const hw = w / 2, hh = h / 2, big = Math.max(w, h) >= 6;
+  const group = new THREE.Object3D();
+  const parts = [];
+  // FOOTPRINT PLATE (separate DoubleSide mesh so a triangle plate never back-face-culls)
+  const plateGeo = shape === 'tri'
+    ? triPrism(THREE, footPoly(hw, hh, 'tri', tc), 0, PLATE_H)
+    : (() => { const g = new THREE.BoxGeometry(w, PLATE_H, h); g.translate(0, PLATE_H / 2, 0); return g; })();
+  group.add(new THREE.Mesh(plateGeo, new THREE.MeshBasicMaterial({ color: PLATE_COL, side: THREE.DoubleSide })));
+  // drainage grates flush on the plate
+  for (let i = 0; i < 2; i++) {
+    const gw = 0.9 + rnd() * 0.6, gd = 0.5 + rnd() * 0.4;
+    const gx = (rnd() - 0.5) * Math.max(0.2, w - gw - 1), gz = (rnd() - 0.5) * Math.max(0.2, h - gd - 1);
+    const g = new THREE.BoxGeometry(gw, 0.05, gd); g.translate(gx, PLATE_H + 0.02, gz);
+    parts.push({ geometry: g, colorHex: GRATE_COL });
+  }
+  // L-shaped walls
+  const legs = wallLegs(hw, hh, shape, tc, rnd);
+  for (const leg of legs) wallLegParts(THREE, leg, parts);
+  group.add(mergedMesh(ctx, parts));
+  // upper-floor slab @3" (and roof @6" on big pieces), placed in the walled corner — tagged so
+  // elevationFor lets models stand on the floors (contract: slab tops exactly 3/6).
+  const sthk = 0.26;
+  let maxTop = BLD_STOREY;
+  const addFloor = (topY, k) => {
+    let g;
+    if (shape === 'tri') g = triPrism(THREE, scaleTri(footPoly(hw, hh, 'tri', tc), k), topY - sthk, topY);
+    else { g = new THREE.BoxGeometry(Math.max(0.5, (w - 2 * BLD_WALL_TK) * k), sthk, Math.max(0.5, (h - 2 * BLD_WALL_TK) * k)); g.translate(0, topY - sthk / 2, 0); }
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: RUIN_PAL.slab, side: shape === 'tri' ? THREE.DoubleSide : THREE.FrontSide }));
+    m.userData.isSlab = true; m.userData.slabTopY = topY; group.add(m);
+  };
+  addFloor(BLD_STOREY, 0.94);
+  if (big) { addFloor(6, 0.6); maxTop = 6; }
+  if (Math.max(w, h) >= 8) for (const p of aquilaParts(THREE, hw, hh, 0, 0, maxTop + 0.03)) group.add(new THREE.Mesh(p.geometry, new THREE.MeshBasicMaterial({ color: p.colorHex })));
+  group.userData.terrainHeight = maxTop;
+  group.userData.builtBy = 'wp3d-6-terrain2';
+  return group;
 }
 
 /* =========================================================================================
@@ -525,6 +638,10 @@ function barricadeMesh(ctx, plan) {
   const { THREE } = ctx;
   const group = new THREE.Object3D();
   const parts = [];
+  // WP3D-v4: thin footprint plate under the defence line, matching the buildings' plates.
+  const plw = plan.longIsX ? plan.length : plan.thickness, pld = plan.longIsX ? plan.thickness : plan.length;
+  const pg = new THREE.BoxGeometry(plw, PLATE_H, pld); pg.translate(0, PLATE_H / 2, 0);
+  parts.push({ geometry: pg, colorHex: PLATE_COL });
   let maxH = 1.5;
   for (const s of plan.segs) {
     maxH = Math.max(maxH, s.h);

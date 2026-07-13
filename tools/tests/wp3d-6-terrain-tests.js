@@ -118,34 +118,49 @@
   }
 
   // ==================================================================
-  console.log("== pairing routing: two walls on perpendicular edges -> L-corner ruin ==");
+  // WP3D-v4: buildRuin now produces an 11th-edition BUILDING (footprint plate + L-walls +
+  // floor slabs @3/6), not the v3 slab-on-columns. (ruinPlan/pairingFor still exist and are
+  // exercised by the pure-function tests below; they no longer drive buildRuin's output.)
+  console.log("== 11th-ed building: footprint plate + floor slabs @3/6 ==");
   {
     const ruin = { id: "rc", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
-    const wallE = { id: "we", kind: "wall", x: 11, y: 0, w: 2, h: 7, rot: 0 };
-    const wallN = { id: "wn", kind: "wall", x: 0, y: -2, w: 11, h: 2, rot: 0 };
-    const all = [ruin, wallE, wallN];
-    const obj = buildTerrain("ruin", 11, 7, "rc", ruin, all);
-    assert(obj.userData.pairing.isCorner === true, "ruin with walls on two perpendicular edges is flagged isCorner");
-    assert(obj.userData.pairing.wallSides.length === 2, "L-corner ruin records both paired edges, got " + JSON.stringify(obj.userData.pairing.wallSides));
+    const obj = buildTerrain("ruin", 11, 7, "rc", ruin, [ruin]);
+    assert(obj.userData.builtBy === "wp3d-6-terrain2", "buildRuin tags builtBy");
+    assert(obj.userData.terrainHeight === 3 || obj.userData.terrainHeight === 6,
+      "11th-ed building terrainHeight is exactly 3 or 6, got " + obj.userData.terrainHeight);
+    let sawPlate = false, sawSlab = false;
+    obj.traverse(o => {
+      if (o.isMesh && o.material && o.material.side === 2 /* THREE.DoubleSide */) {
+        o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
+        if (bb.min.y > -0.01 && bb.max.y < 0.5) sawPlate = true; // thin ground footprint plate
+      }
+      if (o.userData && o.userData.isSlab) {
+        sawSlab = true;
+        assert(o.userData.slabTopY === 3 || o.userData.slabTopY === 6, "floor slab top exactly 3 or 6, got " + o.userData.slabTopY);
+      }
+    });
+    assert(sawPlate, "11th-ed building has a thin ground footprint plate (DoubleSide)");
+    assert(sawSlab, "11th-ed building has at least one floor slab @3/6");
+  }
 
-    // slab placement nestles into the corner: across many seeds the slab rectangle's offset
-    // is biased toward the SAME signs as the paired sides (E => +x, N => -z), not scattered.
-    let towardCorner = 0, total = 0;
-    for (let i = 0; i < 30; i++) {
-      const plan = ruinPlan("corner-slab-" + i, 11, 7, pairingFor(ruin, all));
-      for (const s of plan.slabs) { total++; if (s.cx >= -0.05 && s.cz <= 0.05) towardCorner++; }
-    }
-    assert(total > 0, "corner-paired ruin still produces slabs across 30 seeds");
-    assert(towardCorner / total > 0.7, "L-corner slabs predominantly sit toward the E/N corner (" + towardCorner + "/" + total + ")");
-
-    // stub remnants are suppressed on the two paired edges (the real wall pieces stand there)
-    for (let i = 0; i < 20; i++) {
-      const plan = ruinPlan("corner-stub-" + i, 11, 7, pairingFor(ruin, all));
-      const onE = plan.stubs.filter(s => s.side === "E").length;
-      const onN = plan.stubs.filter(s => s.side === "N").length;
-      assert(onE === 0, "corner-stub-" + i + " no stub remnants tagged for the paired E edge");
-      assert(onN === 0, "corner-stub-" + i + " no stub remnants tagged for the paired N edge");
-    }
+  // ==================================================================
+  console.log("== 11th-ed TRIANGLE footprint building ==");
+  {
+    const tri = { id: "tt", kind: "ruin", x: 0, y: 0, w: 8, h: 11.5, rot: 0, shape: "tri", tc: 1 };
+    let obj, threw = false;
+    try { obj = buildTerrain("ruin", 8, 11.5, "tt", tri, [tri]); } catch (e) { threw = true; }
+    assert(!threw, "triangle building builds without throwing");
+    assert(obj.userData.terrainHeight === 6, "large (8x11.5) triangle building reaches the 6\" roof");
+    let checkedPlate = false;
+    obj.traverse(o => {
+      if (o.isMesh && o.material && o.material.side === 2) {
+        o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
+        assert(bb.min.x >= -4.001 && bb.max.x <= 4.001 && bb.min.z >= -5.751 && bb.max.z <= 5.751,
+          "triangle plate stays within the rectangular footprint bounds");
+        checkedPlate = true;
+      }
+    });
+    assert(checkedPlate, "triangle plate mesh found");
   }
 
   // ==================================================================
