@@ -463,10 +463,14 @@ function buildGenericBlock(w, h) {
  * scatter, ruin wall-gap pattern) — the contract note "wood trees seeded by terrain id"
  * requires a 4th arg beyond the 3-arg signature literally shown; defaults to 0 so a 3-arg
  * call still works (deterministic, just not per-terrain-distinct). */
-function buildTerrain(kind, w, h, id) {
+function buildTerrain(kind, w, h, id, piece, all) {
   const override = TERRAIN_BUILDERS.get(kind);
   if (override) {
-    const obj = override({ THREE, hash: wp3dHash, rng: wp3dRng, mergeGeometries, voxelsToGeometry }, kind, w, h, id);
+    /* WP3D-v3: ctx.piece = this piece's full world-space entry, ctx.all = the whole terrain
+       array (same tick) — lets a builder pair with neighbors (wall = a ruin's façade).
+       Builders remain LOCAL-space; syncTerrain's pairKey keeps the cache honest. */
+    const obj = override({ THREE, hash: wp3dHash, rng: wp3dRng, mergeGeometries, voxelsToGeometry,
+      piece: piece || null, all: all || null }, kind, w, h, id);
     if (obj) return obj;
     // an override returning falsy falls through to the built-in look
   }
@@ -714,13 +718,32 @@ function createSceneSync(THREE, scene, bridge) {
 
   function syncTerrain(list) {
     const seen = new Set();
+    /* WP3D-v3 pairing pre-pass: a piece's LOCAL geometry may depend on its neighbors (a wall
+       renders as its adjacent ruin's façade), so the rebuild signature folds in a pairKey:
+       quantized own pose + every touching neighbor's kind+quantized rect. Moving ANY member
+       of a building rebuilds the affected pieces; lone pieces keep a pose-independent sig. */
+    const q = v => Math.round((v || 0) * 4) / 4;
+    const touch = (a, b, pad) => !(a.x + a.w + pad < b.x || b.x + b.w + pad < a.x ||
+                                   a.y + a.h + pad < b.y || b.y + b.h + pad < a.y);
+    const pairKeys = new Map();
+    for (const t of list) {
+      const nbrs = [];
+      for (const o of list) {
+        if (o === t || !touch(t, o, 0.6)) continue;
+        nbrs.push(o.kind + ':' + q(o.x) + ',' + q(o.y) + ',' + q(o.w) + ',' + q(o.h) + ',' + q(o.rot));
+      }
+      nbrs.sort();
+      pairKeys.set(t.id, nbrs.length
+        ? q(t.x) + ',' + q(t.y) + ',' + q(t.rot) + '|' + nbrs.join(';')
+        : '');
+    }
     for (const t of list) {
       seen.add(t.id);
       let entry = terrainById.get(t.id);
-      const sig = t.kind + '|' + t.w + '|' + t.h;
+      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + pairKeys.get(t.id);
       if (!entry || entry.sig !== sig) {
         if (entry) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
-        const obj = buildTerrain(t.kind, t.w, t.h, t.id);
+        const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, list);
         decorate(obj, 'terrain');
         scene.add(obj);
         entry = { obj, sig };
@@ -845,6 +868,10 @@ function createSceneSync(THREE, scene, bridge) {
     // ---- selection rings ----
     const selIds = Array.from((bridge && bridge.sel) || []);
     selectionPool.ensureCapacity(selIds.length);
+    /* WP3D-v3: slot bookkeeping (like the rim pool) so ringMeshesFor() can hand the motion
+       pack the exact (mesh, slot) to re-assert while a mini animates. */
+    if (!selectionPool.mesh.userData.slotTokenId) selectionPool.mesh.userData.slotTokenId = [];
+    const selSlotTokenId = selectionPool.mesh.userData.slotTokenId;
     let selCount = 0;
     for (let i = 0; i < selIds.length; i++) {
       const t = tokenById.get(selIds[i]);
@@ -856,10 +883,12 @@ function createSceneSync(THREE, scene, bridge) {
       _scl.set(hx.hx + 0.12, 1, hx.hz + 0.12);
       _mat4.compose(_pos, _quat, _scl);
       selectionPool.mesh.setMatrixAt(selCount, _mat4);
+      selSlotTokenId[selCount] = t.id;
       selCount++;
     }
     _scl.set(1, 1, 1);
     selectionPool.mesh.count = selCount;
+    selSlotTokenId.length = selCount;
     selectionPool.mesh.instanceMatrix.needsUpdate = true;
 
     syncTerrain((state && state.terrain) || []);
@@ -869,6 +898,20 @@ function createSceneSync(THREE, scene, bridge) {
 
   function pickMeshes() {
     return Array.from(archPools.values()).map(p => p.mesh);
+  }
+  /* WP3D-v3: every ring instance (owner rim + selection ring) carrying this token, as
+     {mesh, slot} pairs — lets animations fly the rings WITH the mini. Slots are only valid
+     until the next tick(); consumers must re-query each frame (same rule as tokenAt). */
+  function ringMeshesFor(tokenId) {
+    const out = [];
+    for (const mesh of [rimPool.mesh, selectionPool.mesh]) {
+      const ids = mesh && mesh.userData && mesh.userData.slotTokenId;
+      if (!ids) continue;
+      for (let i = 0; i < (mesh.count || 0); i++) {
+        if (ids[i] === tokenId) out.push({ mesh, slot: i });
+      }
+    }
+    return out;
   }
   function tokenAt(intersection) {
     if (!intersection || intersection.instanceId == null) return null;
@@ -897,7 +940,7 @@ function createSceneSync(THREE, scene, bridge) {
     selMaterial.dispose(); selGeo.dispose();
   }
 
-  return { tick, pickMeshes, tokenAt, elevationFor, dispose };
+  return { tick, pickMeshes, tokenAt, elevationFor, ringMeshesFor, dispose };
 }
 
 export {
