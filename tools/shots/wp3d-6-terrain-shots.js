@@ -1,20 +1,27 @@
 #!/usr/bin/env node
 "use strict";
-/* WP3D-6 visual-iteration shots: renders the mission-true terrain pack (sections/wp3d-6-
- * terrain2.js) so a human (or the agent itself) can judge "does this look like a GW
- * tournament table" per the contract's visual-iteration mandate. Not part of the pass/fail
- * test suite (tools/tests/wp3d-6-terrain-tests.js is the source of truth for correctness) —
- * this is the eyeball check. Run: node wp3d-6-terrain-shots.js  (from tools/shots/, after
- * `npm install` + `npx playwright install chromium` in the worktree root).
+/* WP3D-6 v3 visual-iteration shots: renders the pre-painted GW terrain pack + building-
+ * pairing seam (sections/wp3d-6-terrain2.js) so a human (or the agent itself) can judge
+ * "does this look like the GW pre-painted corner-ruin range" per the contract's visual-
+ * iteration mandate. Not part of the pass/fail test suite (tools/tests/wp3d-6-terrain-
+ * tests.js is the source of truth for correctness) — this is the eyeball check. Run:
+ * node wp3d-6-terrain-shots.js  (from tools/shots/, after `npm install` +
+ * `npx playwright install chromium` in the worktree root).
  *
  * Produces, under shots-out/wp3d-6-terrain/:
  *   00-official1a-2d-topdown.png   — the REAL 2D board (source of truth for footprints)
- *   01-official1a-3d-hero.png      — full "Official 1A" board, default 3/4 TTS-style camera
+ *   01-official1a-3d-hero.png      — full "Official 1A" board, rendered WITH pairing (every
+ *                                     wall/ruin gets ctx.piece+ctx.all, so real façade/
+ *                                     corner/barricade pairing fires exactly as in-game)
  *   02-official1a-3d-topdown.png   — same board, camera forced near-vertical (polar~0.12)
  *                                     for a direct footprint-alignment check against 00.
- *   10-ruin.png / 11-wall.png / 12-wood.png / 13-crate.png / 14-crater.png — close-ups of
- *   one representative instance of each kind, mission-realistic footprint sizes.
- *   99-contact-sheet.png           — all of the above tiled into one image.
+ *   10-ruin-open.png     — lone ruin, no adjacent wall -> open rubble footprint (v2 look)
+ *   11-wall-barricade.png — lone wall, no adjacent ruin -> electrified barricade run
+ *   12-wood.png / 13-crater.png — structure-unchanged, re-paletted
+ *   14-corner-building.png — a ruin paired with TWO perpendicular walls (L-corner): the
+ *                             GW corner-ruin product look this whole pass is chasing
+ *   15-container.png / 16-generator.png — the two crate variants
+ *   99-contact-sheet.png — all of the above tiled into one image.
  */
 const http = require("http");
 const fs = require("fs");
@@ -30,7 +37,7 @@ html,body{margin:0;background:#101216;}canvas{display:block;}
 <canvas id="c" width="1000" height="750"></canvas>
 <script type="module">
 import * as THREE from '/vendor/three.module.min.js';
-import { buildTerrain, buildBoard } from '/sections/wp3d-1-geometry.js';
+import { buildTerrain, buildBoard, wp3dHash } from '/sections/wp3d-1-geometry.js';
 import { createRenderer, createCameraRig } from '/sections/wp3d-2-renderer.js';
 import { register } from '/sections/wp3d-6-terrain2.js';
 register();
@@ -59,8 +66,11 @@ window.wp3dRenderLayout = function (terrain, board) {
   rig.camera.aspect = 1000 / 750; rig.camera.updateProjectionMatrix();
   scene = freshScene();
   scene.add(buildBoard(board.w, board.h));
-  terrain.forEach((t, i) => {
-    const obj = buildTerrain(t.kind, t.w, t.h, t.id || (t.kind + i));
+  // normalize ids up front (buildTerrain's pairing seam matches neighbors by identity, not
+  // array index) so ctx.piece/ctx.all pairing fires exactly as syncTerrain would in-game.
+  const list = terrain.map((t, i) => Object.assign({}, t, { id: t.id || (t.kind + i) }));
+  list.forEach((t) => {
+    const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, list);
     obj.position.set(t.x + t.w / 2, 0, t.y + t.h / 2);
     obj.rotation.y = -(t.rot || 0) * Math.PI / 180;
     scene.add(obj);
@@ -103,6 +113,38 @@ window.wp3dRenderSingle = function (kind, w, h, id) {
   s.add(obj);
   const cam = frame(obj, 640, 640);
   renderer.renderer.render(s, cam);
+};
+
+// Renders a small cluster of terrain pieces TOGETHER (each gets ctx.piece/ctx.all from the
+// whole group, exactly like syncTerrain) — for shots that only make sense as a pairing, e.g.
+// a ruin + its two façade walls (an L-corner building).
+window.wp3dRenderGroup = function (pieces) {
+  canvas.width = 760; canvas.height = 760;
+  renderer = createRenderer(THREE, canvas, { antialias: true, pixelRatioCap: 2 });
+  renderer.setSize(760, 760);
+  const s = freshScene();
+  const group = new THREE.Object3D();
+  for (const t of pieces) {
+    const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, pieces);
+    obj.position.set(t.x + t.w / 2, 0, t.y + t.h / 2);
+    obj.rotation.y = -(t.rot || 0) * Math.PI / 180;
+    group.add(obj);
+  }
+  s.add(group);
+  const cam = frame(group, 760, 760);
+  renderer.renderer.render(s, cam);
+};
+
+// Scans deterministic ids for the first crate that lands on the requested variant — used to
+// pick illustrative container/generator instances without hardcoding a magic id.
+window.wp3dFindCrateId = function (wantGenerator) {
+  for (let i = 0; i < 200; i++) {
+    const id = 'crate-scan-' + i;
+    const obj = buildTerrain('crate', 3, 2, id);
+    const isGen = obj.userData.crateVariant === 'generator';
+    if (isGen === !!wantGenerator) return id;
+  }
+  return null;
 };
 
 window.wp3dReady = true;
@@ -177,22 +219,52 @@ async function main() {
     shots.push(f2);
     console.log("wrote", f2);
 
-    // ---- close-ups, one representative instance per kind (mission-realistic sizes) ----
-    const CLOSEUPS = [
-      ["ruin", 11, 7, "ruin-search-5"], // has both floor levels w/ 2-3 surviving quadrants each — a good demo of the broken-floor look, not the (also-valid but less illustrative) bare-rubble variant
-      ["wall", 2, 11, "shot-wall"],
-      ["wood", 10, 8, "shot-wood"],
-      ["crate", 3, 2, "shot-crate"],
-      ["crater", 6, 6, "shot-crater"],
+    // ---- close-ups: pairing routing outcomes + palette identity, mission-realistic sizes ----
+    const SINGLE_CLOSEUPS = [
+      ["ruin", 11, 7, "ruin-open-5", "10-ruin-open"],   // no adjacent wall -> open rubble (v2 look, re-paletted)
+      ["wall", 2, 11, "shot-wall", "11-wall-barricade"], // no adjacent ruin -> electrified barricade run
+      ["wood", 10, 8, "shot-wood", "12-wood"],
+      ["crater", 6, 6, "shot-crater", "13-crater"],
     ];
-    let n = 10;
-    for (const [kind, w, h, id] of CLOSEUPS) {
+    for (const [kind, w, h, id, file] of SINGLE_CLOSEUPS) {
       await page.evaluate(([k, ww, hh, ii]) => window.wp3dRenderSingle(k, ww, hh, ii), [kind, w, h, id]);
-      const f = path.join(OUT_DIR, `${n}-${kind}.png`);
+      const f = path.join(OUT_DIR, `${file}.png`);
       await page.locator("#c").screenshot({ path: f });
       shots.push(f);
       console.log("wrote", f);
-      n++;
+    }
+
+    // ---- the whole point of this pass: a ruin paired with TWO perpendicular walls, an
+    // L-corner building — slabs should nestle into the corner, both walls should show their
+    // clean facade facing the ruin. ----
+    const cornerPieces = [
+      { id: "corner-ruin", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 },
+      { id: "corner-wall-e", kind: "wall", x: 11, y: 0, w: 2, h: 7, rot: 0 },
+      { id: "corner-wall-n", kind: "wall", x: 0, y: -2, w: 11, h: 2, rot: 0 },
+    ];
+    await page.evaluate((pieces) => window.wp3dRenderGroup(pieces), cornerPieces);
+    const fCorner = path.join(OUT_DIR, "14-corner-building.png");
+    await page.locator("#c").screenshot({ path: fCorner });
+    shots.push(fCorner);
+    console.log("wrote", fCorner);
+
+    // ---- crate variants: find one of each deterministically, then render close-ups ----
+    const containerId = await page.evaluate(() => window.wp3dFindCrateId(false));
+    const generatorId = await page.evaluate(() => window.wp3dFindCrateId(true));
+    console.log("container id:", containerId, "| generator id:", generatorId);
+    if (containerId) {
+      await page.evaluate((id) => window.wp3dRenderSingle("crate", 3, 2, id), containerId);
+      const f = path.join(OUT_DIR, "15-container.png");
+      await page.locator("#c").screenshot({ path: f });
+      shots.push(f);
+      console.log("wrote", f);
+    }
+    if (generatorId) {
+      await page.evaluate((id) => window.wp3dRenderSingle("crate", 3, 2, id), generatorId);
+      const f = path.join(OUT_DIR, "16-generator.png");
+      await page.locator("#c").screenshot({ path: f });
+      shots.push(f);
+      console.log("wrote", f);
     }
     await page.close();
 
