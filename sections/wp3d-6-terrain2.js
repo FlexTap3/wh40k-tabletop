@@ -405,7 +405,16 @@ function ruinMesh(ctx, plan) {
  * elevationFor contract). Right-angle TRIANGLE footprints (piece.shape==='tri', piece.tc =
  * right-angle corner) get a triangular-prism plate and walls on the two axis-aligned legs.
  * ======================================================================================= */
-const PLATE_H = 0.16, PLATE_COL = '#b4ae9c', GRATE_COL = '#2a2723';
+// WP3D-v4b: matched to GW's official flat "Terrain Area Footprints" — rusty deck + tan rubble.
+const PLATE_H = 0.16, PLATE_COL = '#5f4d2c', GRATE_COL = '#3a3a33';
+const RUBBLE_COL = '#b8965a', RUBBLE_HI = '#d3ba82', GIRDER_COL = '#4b4a3f';
+function pointInTri(px, pz, t) {
+  const [a, b, c] = t, d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+  if (d === 0) return true;
+  const u = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (pz - c[1])) / d;
+  const v = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (pz - c[1])) / d;
+  return u >= -0.02 && v >= -0.02 && u + v <= 1.02;
+}
 const BLD_WALL_H = 6, BLD_WALL_TK = 0.42, BLD_STOREY = 3, WINDOW_COL = '#20222a';
 
 // Right-angle triangular prism (indexed) from local xz points p0,p1,p2 between y0..y1. pts are
@@ -478,40 +487,48 @@ function buildRuin(ctx, kind, w, h, id) {
   const { THREE } = ctx;
   const shape = ctx.piece && ctx.piece.shape, tc = ctx.piece && ctx.piece.tc;
   const rnd = rngFor('ruin11', id);
-  const hw = w / 2, hh = h / 2, big = Math.max(w, h) >= 6;
+  const hw = w / 2, hh = h / 2;
+  const tri = shape === 'tri' ? footPoly(hw, hh, 'tri', tc) : null;
+  const inFoot = (x, z) => !tri || pointInTri(x, z, tri);
   const group = new THREE.Object3D();
   const parts = [];
-  // FOOTPRINT PLATE (separate DoubleSide mesh so a triangle plate never back-face-culls)
-  const plateGeo = shape === 'tri'
-    ? triPrism(THREE, footPoly(hw, hh, 'tri', tc), 0, PLATE_H)
+  // FLAT rusty deck plate (triangular prism when the footprint is a triangle; DoubleSide so it
+  // never back-face-culls). This is a battle-damaged terrain-area footprint, NOT a building.
+  const plateGeo = tri
+    ? triPrism(THREE, tri, 0, PLATE_H)
     : (() => { const g = new THREE.BoxGeometry(w, PLATE_H, h); g.translate(0, PLATE_H / 2, 0); return g; })();
   group.add(new THREE.Mesh(plateGeo, new THREE.MeshBasicMaterial({ color: PLATE_COL, side: THREE.DoubleSide })));
-  // drainage grates flush on the plate
-  for (let i = 0; i < 2; i++) {
-    const gw = 0.9 + rnd() * 0.6, gd = 0.5 + rnd() * 0.4;
-    const gx = (rnd() - 0.5) * Math.max(0.2, w - gw - 1), gz = (rnd() - 0.5) * Math.max(0.2, h - gd - 1);
-    const g = new THREE.BoxGeometry(gw, 0.05, gd); g.translate(gx, PLATE_H + 0.02, gz);
-    parts.push({ geometry: g, colorHex: GRATE_COL });
+  // a steel grate flush on the deck
+  { const gw = Math.min(w * 0.4, 1.6), gd = Math.min(h * 0.4, 0.9), gx = (rnd() - 0.5) * Math.max(0.2, w - gw - 1), gz = (rnd() - 0.5) * Math.max(0.2, h - gd - 1);
+    if (inFoot(gx, gz)) { const g = new THREE.BoxGeometry(gw, 0.06, gd); g.translate(gx, PLATE_H + 0.02, gz); parts.push({ geometry: g, colorHex: GRATE_COL }); } }
+  // crushed-rockcrete rubble mounds — LOW, biased toward the edges (the torn-edge look), but
+  // clamped to stay within the footprint so terrain never pokes into a movement lane.
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  let maxTop = PLATE_H + 0.2;
+  const nR = 8 + Math.round(w * h / 34);
+  for (let i = 0; i < nR; i++) {
+    const rw = 0.5 + rnd() * 1.1, rd = 0.5 + rnd() * 1.1, rh = 0.2 + rnd() * 0.85;
+    let x, z;
+    if (rnd() < 0.7) { const e = Math.floor(rnd() * 4); x = [-hw, hw, (rnd() * 2 - 1) * hw, (rnd() * 2 - 1) * hw][e]; z = [(rnd() * 2 - 1) * hh, (rnd() * 2 - 1) * hh, -hh, hh][e]; }
+    else { x = (rnd() * 2 - 1) * hw * 0.8; z = (rnd() * 2 - 1) * hh * 0.8; }
+    x = clamp(x, -hw + rw / 2, hw - rw / 2); z = clamp(z, -hh + rd / 2, hh - rd / 2);
+    if (!inFoot(x, z)) continue;
+    const g = new THREE.BoxGeometry(rw, rh, rd); g.translate(x, PLATE_H + rh / 2, z);
+    parts.push({ geometry: g, colorHex: rnd() < 0.5 ? RUBBLE_COL : RUBBLE_HI });
+    maxTop = Math.max(maxTop, PLATE_H + rh);
   }
-  // L-shaped walls
-  const legs = wallLegs(hw, hh, shape, tc, rnd);
-  for (const leg of legs) wallLegParts(THREE, leg, parts);
+  // scattered girder debris (thin low bars, tilted) — clamped by half-length so a rotated bar
+  // can't exit the footprint at any angle.
+  for (let i = 0; i < 5; i++) {
+    const gl = 0.8 + rnd() * 1.6, half = gl / 2;
+    let x = clamp((rnd() * 2 - 1) * hw * 0.85, -hw + half, hw - half), z = clamp((rnd() * 2 - 1) * hh * 0.85, -hh + half, hh - half);
+    if (hw - half < 0 || hh - half < 0 || !inFoot(x, z)) continue;
+    const g = new THREE.BoxGeometry(gl, 0.14, 0.16);
+    g.rotateY(rnd() * Math.PI); g.translate(x, PLATE_H + 0.12 + rnd() * 0.25, z);
+    parts.push({ geometry: g, colorHex: GIRDER_COL });
+  }
   group.add(mergedMesh(ctx, parts));
-  // upper-floor slab @3" (and roof @6" on big pieces), placed in the walled corner — tagged so
-  // elevationFor lets models stand on the floors (contract: slab tops exactly 3/6).
-  const sthk = 0.26;
-  let maxTop = BLD_STOREY;
-  const addFloor = (topY, k) => {
-    let g;
-    if (shape === 'tri') g = triPrism(THREE, scaleTri(footPoly(hw, hh, 'tri', tc), k), topY - sthk, topY);
-    else { g = new THREE.BoxGeometry(Math.max(0.5, (w - 2 * BLD_WALL_TK) * k), sthk, Math.max(0.5, (h - 2 * BLD_WALL_TK) * k)); g.translate(0, topY - sthk / 2, 0); }
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: RUIN_PAL.slab, side: shape === 'tri' ? THREE.DoubleSide : THREE.FrontSide }));
-    m.userData.isSlab = true; m.userData.slabTopY = topY; group.add(m);
-  };
-  addFloor(BLD_STOREY, 0.94);
-  if (big) { addFloor(6, 0.6); maxTop = 6; }
-  if (Math.max(w, h) >= 8) for (const p of aquilaParts(THREE, hw, hh, 0, 0, maxTop + 0.03)) group.add(new THREE.Mesh(p.geometry, new THREE.MeshBasicMaterial({ color: p.colorHex })));
-  group.userData.terrainHeight = maxTop;
+  group.userData.terrainHeight = maxTop; // flat footprint — low, no floors
   group.userData.builtBy = 'wp3d-6-terrain2';
   return group;
 }
@@ -661,10 +678,9 @@ function barricadeMesh(ctx, plan) {
       pg.translate(pcx, (bodyH + 0.05) / 2, pcz);
       parts.push({ geometry: pg, colorHex: BARRICADE_PAL.post });
     }
-    // hazard-striped top cap
-    const capStripe = hazardStripeParts(THREE, plan.longIsX, plan.longIsX ? cx : cz, s.w * 0.9, plan.longIsX ? cz : cx, (plan.longIsX ? bd : bw) / 2 * 0.9, bodyH, bodyH + capH);
-    for (const p of capStripe) parts.push(p);
-    if (s.lamp) parts.push(glowDotPart(THREE, cx, bodyH * 0.6, cz, 0.055));
+    // plain rusted metal cap (no hazard yellow — matches the official rusty footprint look)
+    const capG = new THREE.BoxGeometry(bw * 0.9, capH, bd * 0.9); capG.translate(cx, bodyH + capH / 2, cz);
+    parts.push({ geometry: capG, colorHex: GIRDER_COL });
   }
   group.add(mergedMesh(ctx, parts));
   group.userData.terrainHeight = Math.min(2.5, Math.max(1.5, maxH));
