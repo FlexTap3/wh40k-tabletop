@@ -747,6 +747,35 @@ remembers last non-off mode; phone = Off/Full only).
   own+remote dice share one throw slot; dice can land under a ruin roof post-battlecam;
   build()'s RO race worked around in P2, proper fix owed someday.
 
+### WP3D-v4 — "11th-edition tournament terrain"  [terrain re-look + all 45 layouts] — SHIPPED (2026-07-13)
+
+Paul rejected the 3D terrain a 3rd time ("use official 11th-edition tournament terrain").
+Root cause found by research: v1-v3 built the **10th-ed** vocabulary (loose ruins + wall
+façades). **11th edition (revealed April 2026) replaced it with a FOOTPRINT SYSTEM** — a flat
+light-rockcrete footprint plate defines each area, scenery sits on it; the official set is 16
+standardized pieces (2 triangles 8×11.5, 4 large 7×11.5, 4 medium 6×4, 2 long + 4 short defence
+lines). Paul chose REPLACE (11th-ed layouts become the standard set). Board stays 60×44.
+- **Key safety:** mapped 11th-ed pieces onto EXISTING kinds (`ruin`=buildings incl. triangles,
+  `wall`=defence lines, `crate`=obstacles) so LoS/cover/placement/AI are untouched. Triangles
+  carry `shape:"tri"`+`tc` (right-angle corner) and render as a triangle; rules keep the
+  rectangular bounding footprint (documented). `wp3d-1` rebuild sig folds in shape/tc.
+- **Look (I built + locked it myself, ≥3 render rounds — the discipline missing in v1-v3):**
+  2D `wp9Plate` (light rockcrete + cracked tiles + drainage grates) under every piece;
+  `wp9Ruin`→L-shaped 2-storey building (window bays, upper-floor slab, hazard trim);
+  `wp9Wall`→hazard defence-line barricade; triangle clip in `wp9Terrain`. 3D `buildRuin`
+  rewritten: footprint plate (box, or a `triPrism` for triangles) + L-walls with two window
+  rows + floor slabs @3/6 (elevationFor contract) + aquila; plate under barricades too.
+- **Layouts:** all 45 `Official *` terrain arrays regenerated (agent, `tools/gen-layouts11e.js`)
+  to the 16-piece set, symmetric on 60×44, preserving each layout's DZ/objectives/mission
+  verbatim; 2 Custom unchanged. `tools/tests/layouts11e-tests.js` (in run_all) locks piece
+  counts/bounds/180°-symmetry/preserved metadata.
+- **Bug caught by live-verify:** `loadLayout` hand-copied only kind/x/y/w/h/rot into the `ter+`
+  op, dropping shape/tc (triangles loaded as rectangles). Fixed to forward shape/tc (also
+  P2P-synced).
+- **Gate:** full suite (incl. 1767-check terrain + layouts11e) + wp3d/p2p/pip smokes green;
+  visual gate rendered 1A/5B/8C/11C in 2D+3D. LIVE at flextap3.github.io/wh40k-tabletop
+  (master @ 6148e6c, SW v8), live-verified (16 pieces, 2 triangles, 6 defence lines, no errors).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
