@@ -59,6 +59,35 @@
   drag([23, 23], [23, 20]); // vehicle onto wall
   assert(Math.abs(state.tokens[0].y - 20) < .01, "with enforcement off, illegal drop stands");
 
+  // 7. FLOORS: cycleFloor caps at the ruin's rendered storey count (ruinMaxLvl), and only
+  //    INFANTRY/BEASTS/SWARM climb — no floating models, no pure-FLY skimmers on upper floors.
+  state.tokens.length = 0; state.terrain.length = 0; sel.clear();
+  const large = { id: "rL", kind: "ruin", x: 0,  y: 0,  w: 12, h: 12, rot: 0 }; // longSide 12 → maxLvl 2
+  const med   = { id: "rM", kind: "ruin", x: 20, y: 0,  w: 8,  h: 8,  rot: 0 }; // longSide 8  → maxLvl 1
+  const small = { id: "rS", kind: "ruin", x: 40, y: 0,  w: 5,  h: 5,  rot: 0 }; // longSide 5  → maxLvl 0
+  state.terrain.push(large, med, small);
+  assert(ruinMaxLvl(large) === 2 && ruinMaxLvl(med) === 1 && ruinMaxLvl(small) === 0, "ruinMaxLvl: 12x12→2, 8x8→1, 5x5→0 (matches 3D storey thresholds)");
+
+  const cyc = (tok, n) => { sel.clear(); sel.add(tok.id); for (let i = 0; i < n; i++) cycleFloor(); };
+  // large ruin: INFANTRY climbs 0→1→2 then wraps to 0 (never lvl 3 — there is no y=9 slab)
+  const inf = mkTok("f", 6, 6, ["INFANTRY"]); state.tokens.push(inf);
+  cyc(inf, 1); assert(inf.lvl === 1, "large ruin: floor 0→1");
+  cyc(inf, 1); assert(inf.lvl === 2, "large ruin: floor 1→2");
+  cyc(inf, 1); assert(inf.lvl === 0, "large ruin: floor caps at 2, wraps 2→0 (no floating floor 3)");
+  // medium ruin: caps at 1
+  const inf2 = mkTok("g", 24, 4, ["INFANTRY"]); state.tokens.push(inf2);
+  cyc(inf2, 1); assert(inf2.lvl === 1, "medium ruin: floor 0→1");
+  cyc(inf2, 1); assert(inf2.lvl === 0, "medium ruin: floor caps at 1, wraps 1→0");
+  // small ruin: no upper floor at all
+  const inf3 = mkTok("h", 42, 2, ["INFANTRY"]); state.tokens.push(inf3);
+  cyc(inf3, 1); assert(inf3.lvl === 0 || inf3.lvl === undefined || !inf3.lvl, "small 1-storey ruin: cannot climb (stays floor 0)");
+  // pure-FLY skimmer (VEHICLE+FLY, no INFANTRY) in the large ruin: forbidden to climb
+  const skimmer = mkTok("s", 6, 6, ["VEHICLE", "FLY"]); state.tokens.push(skimmer);
+  cyc(skimmer, 1); assert(!skimmer.lvl, "pure-FLY skimmer can't climb a ruin it may not enter (KW_ENTER_RUINS gate)");
+  // jump-pack infantry (INFANTRY+FLY) in the large ruin: may climb (via INFANTRY)
+  const jump = mkTok("j", 6, 6, ["INFANTRY", "FLY"]); state.tokens.push(jump);
+  cyc(jump, 1); assert(jump.lvl === 1, "jump-pack INFANTRY+FLY may climb (INFANTRY grants entry)");
+
   console.log(failed ? "WP5 TESTS: " + failed + " FAILURES" : "WP5 TESTS: ALL PASSED");
   if (failed) process.exit(1);
 }
