@@ -107,41 +107,44 @@
   }
 
   // ==================================================================
-  // WP3D-v4b: buildRuin now produces a FLAT 11th-ed terrain-area FOOTPRINT (rusty deck + low
-  // crushed-rockcrete rubble + scattered girders), matched to GW's official "Terrain Area
-  // Footprints" — not tall buildings. (ruinPlan/pairingFor still exist and are exercised by the
-  // pure-function tests below; they no longer drive buildRuin's output.)
-  console.log("== 11th-ed footprint: flat rusty deck + low rubble, no floors ==");
+  // WP3D-v5: buildRuin produces the official footprint DECK (rusty riveted plate + pale rubble +
+  // girders) PLUS a ruined 2-storey building shell (bone walls with window bays) rising from it on
+  // ruin footprints. Defence lines (kind "wall") stay LOW barricades. (ruinPlan/pairingFor still
+  // exist and are exercised by the pure-function tests below.)
+  console.log("== 11th-ed ruin footprint: deck + rubble + ruined building walls ==");
   {
     const ruin = { id: "rc", kind: "ruin", x: 0, y: 0, w: 11, h: 7, rot: 0 };
     const obj = buildTerrain("ruin", 11, 7, "rc", ruin, [ruin]);
     assert(obj.userData.builtBy === "wp3d-6-terrain2", "buildRuin tags builtBy");
-    assert(obj.userData.terrainHeight > 0 && obj.userData.terrainHeight <= 1.5,
-      "flat footprint terrainHeight is LOW (<=1.5), got " + obj.userData.terrainHeight);
-    let sawPlate = false, sawSlab = false;
+    assert(obj.userData.terrainHeight >= 3 && obj.userData.terrainHeight <= 9,
+      "large ruin is a 3-storey gothic ruin (terrainHeight in [3,9]), got " + obj.userData.terrainHeight);
+    let sawPlate = false; const slabTops = [];
     obj.traverse(o => {
       if (o.isMesh && o.material && o.material.side === 2 /* THREE.DoubleSide */) {
         o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
         if (bb.min.y > -0.01 && bb.max.y < 0.5) sawPlate = true; // thin ground deck plate
       }
-      if (o.userData && o.userData.isSlab) sawSlab = true;
+      if (o.userData && o.userData.isSlab) slabTops.push(o.userData.slabTopY);
     });
     assert(sawPlate, "footprint has a thin ground deck plate (DoubleSide)");
-    assert(!sawSlab, "flat footprint has NO raised floor slabs");
-    // all geometry stays within the footprint (+/-0.2in) — rubble is clamped, not spilling
+    assert(slabTops.length >= 1, "ruin has at least one upper-floor slab (a real second storey)");
+    assert(slabTops.every(y => y === 3 || y === 6), "every upper-floor slab top is pinned to exactly y=3 or y=6 (elevationFor contract), got " + slabTops.join(","));
+    assert(slabTops.includes(3), "there is a second-storey floor at y=3");
     const bb = new THREE.Box3().setFromObject(obj);
+    assert(bb.max.y >= 3 - 1e-6, "building walls rise off the deck (max y >= 3), got " + bb.max.y.toFixed(2));
+    // all geometry stays within the footprint (+/-0.2in) — walls inset, rubble clamped
     assert(bb.min.x >= -5.5 - 0.2 - 1e-6 && bb.max.x <= 5.5 + 0.2 + 1e-6, "footprint geometry within bounds (x)");
     assert(bb.min.z >= -3.5 - 0.2 - 1e-6 && bb.max.z <= 3.5 + 0.2 + 1e-6, "footprint geometry within bounds (z)");
   }
 
   // ==================================================================
-  console.log("== 11th-ed TRIANGLE footprint (flat) ==");
+  console.log("== 11th-ed TRIANGLE ruin footprint: deck + building on the right-angle legs ==");
   {
     const tri = { id: "tt", kind: "ruin", x: 0, y: 0, w: 8, h: 11.5, rot: 0, shape: "tri", tc: 1 };
     let obj, threw = false;
     try { obj = buildTerrain("ruin", 8, 11.5, "tt", tri, [tri]); } catch (e) { threw = true; }
     assert(!threw, "triangle footprint builds without throwing");
-    assert(obj.userData.terrainHeight > 0 && obj.userData.terrainHeight <= 1.5, "triangle footprint terrainHeight is LOW");
+    assert(obj.userData.terrainHeight >= 3 && obj.userData.terrainHeight <= 9, "triangle ruin has a building shell (terrainHeight in [3,9])");
     let checkedPlate = false;
     obj.traverse(o => {
       if (o.isMesh && o.material && o.material.side === 2) {
