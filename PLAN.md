@@ -795,6 +795,27 @@ spilling over torn edges + scattered girder debris, laid flat. Not tall building
 - Live at flextap3.github.io/wh40k-tabletop (master @ fb196fe, SW v10); full gate + 3 smokes
   green; live-verified (objectives covered, no console errors, flat footprints, no tall walls).
 
+### WP3D-v5 — official layouts + real GW footprints + gothic 3-storey ruins — SHIPPED (2026-07-13)
+
+Iterated tightly with Paul (render → react → adjust) to match the ACTUAL official set.
+- **Layouts from official DATA**: sourced the 11th-ed Event Companion terrain data (rapidingress
+  `terrain-data-11e.js` — all 45 layouts on a 60×44 board). `tools/gen-layouts11e-ri.js`
+  regenerates every Official layout from it: min-area-rect per base piece snapped to nominal
+  sizes with rotation; triangles brute-fit `(rot,tc)` to the source polygon (worst corner err
+  0.00); objectives at footprint centroids (on-terrain by construction); DZ snapped to clean
+  integer lines; names/missions/2 Custom preserved. Rules footprint stays the rectangle.
+- **Real footprint outlines**: each piece carries its official outline `fp` (Douglas-Peucker
+  simplified, local coords) — torn ragged edges. `wp9Terrain` clips/strokes the real outline.
+- **Deck graphic** matched to GW's Terrain Area Set photos (Paul-supplied + community): rusty
+  riveted plating (`wp9Deck`) + drainage slots + verdigris + pale cream crushed-rockcrete
+  rubble clusters (`wp9Rubble`, edge-biased) + steel girders (`wp9Girder`) + fan/vent (`wp9Fan`).
+- **3D gothic ruins**: `buildRuin` = deck + rubble + a bone-rockcrete building shell — 3-storey
+  (large) / 2-storey (med) / 1-storey (small), lancet window bays + pilaster columns
+  (`ruinWallLeg`), upper-floor slabs pinned to y=3/y=6 (elevationFor), broken rooflines; defence
+  lines stay low barricades. Own lookalike geometry — NO GW/TTS models copied (public repo).
+- Live at flextap3.github.io/wh40k-tabletop (master @ efe9d63, SW v11); full node gate (1646
+  terrain checks) + 3 browser smokes green; live-verified (verify-live PASS, clean 3D render).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
