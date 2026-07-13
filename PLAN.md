@@ -709,6 +709,44 @@ with zero merge contention; bridge gained additive `onDice` (wrap of `wp20Note`)
   (master @ a29ec04, SW v5). Known cosmetics: owner-rim/selection rings don't fly with an
   animating mini; `onDice` has no unsubscribe (inert-flag guarded).
 
+### WP3D-v3 — "2D-first, GW-true"  [XL, 4 agents + integrator seams] — SHIPPED (2026-07-13)
+
+Paul's review of v2: terrain still didn't match the missions (→ target the GW pre-painted
+product identity), 3D must COMPLEMENT 2D (game played in 2D, enhanced by 3D, toggle easier
+to reach), plus "find more good things". Plan adversarially double-checked (13 findings
+folded in) before build. Integrator seams first on main (@ b717d33): terrain builder
+`ctx.piece/ctx.all` + neighbor-aware `pairKey` in the rebuild sig; ring slot maps +
+`sceneSync.ringMeshesFor`; bridge `onAttackStaged` (wp3Stage wrap) + shared transient
+`{t:"dice"}` P2P message (ephemeral-ruler pattern, never an op) + `onRemoteDice`; toolbar 🎲
+tri-state Off→PiP→Full + hotkey 3 + PiP CSS (same canvas, 340×220 inset; `wh40k_3d_mode`
+remembers last non-off mode; phone = Off/Full only).
+- **P1 terrain** (1,951 checks): pure `pairingFor(piece,all)` (0.6" pad — SAME test as the
+  pairKey cache, so geometry and cache can't disagree). Wall+ruin = corner-ruin building
+  (clean windowed façade faces the ruin, rubble layer outward; slabs bias to paired edges,
+  L-corner w/ two walls, stubs suppressed on paired edges); lone wall = hazard-striped
+  barricade run; crates = Munitorum containers + generator variant. GW pre-painted palette
+  (light rockcrete/bone, black/yellow hazard, warm glow lamps) as exported `PALETTE`.
+  NOTE: Official 1A itself has zero wall-ruin pairs (all its walls are free-standing —
+  faithful to the layout data; 167/256 walls pair across all layouts).
+- **P2 modes** (59 checks + wp3d-pip-smoke.js): mode manager drives sizing from the CANVAS
+  rect (boardwrap RO doesn't fire in PiP) + double-rAF re-apply to beat a latent RO race in
+  build(); PiP DPR up to 2; PiP token-drag block via window-capture raycast (empty-space
+  orbits pass through); `userQuietFor()` shared yield signal.
+- **P3 battle-cam/dice** (114+45 checks + behavioral smoke): motion `on()` events
+  ('remotemove'/'tweenland'/'diceland'); attack-staged camera swing (attack-line +0.9 rad,
+  low 3/4, ~600ms exp ease, cancels on user input via userQuietFor); opponent dice tinted
+  their rim color (wash 0.55 — 0.32 was invisible in renders); rings now fly with animated
+  minis (per-tick ringMeshesFor re-query).
+- **P4 extras** (259 checks + behavioral smoke): gesture-gated procedural WebAudio (dice
+  clatter on 'diceland', thunk on 'tweenland'; mute persisted `wh40k_3d_sound`); 📸 battle
+  photo (2× RenderTarget → PNG, navigator.share w/ download fallback); camera presets
+  ¾/top/table with instant-cancel. Overlay strip bottom-left in #boardwrap.
+- **Gate**: run_all (all suites) + wp3d-smoke + wp3d-p2p-smoke + wp3d-pip-smoke + battlecam-
+  dice smoke + extras smoke, all green post-merge; merged-scene eyeball (lighting holds with
+  the light palette); live-verified on Pages (master @ 13432b5, SW v6). Known v3 quirks:
+  own+remote dice share one throw slot; dice can land under a ruin roof post-battlecam;
+  build()'s RO race worked around in P2, proper fix owed someday.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel
