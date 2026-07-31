@@ -896,6 +896,33 @@ Paul's reaction to v7: models "kind of annoying"; also optimize the whole thing 
 - **Gate**: full run_all + smoke/pip/p2p + ipad-check ALL GREEN. SW v16. Report updated
   (`2026-07-31-wh40k-3d-minis-v7`). Deploy needs Paul.
 
+### WP3D-v7c — "painted mini" pass: PBR/IBL + hero-fidelity models — BUILT (2026-07-31, deploy pending Paul)
+
+Paul: "models are just so bad… make models based on the ones that exist; too-close is fine,
+private use." Two levers, biggest first:
+- **PBR + IBL** (`wp3d-9-environment.js`): desktop/iPad tiers now convert everything to
+  `MeshStandardMaterial` (per-role roughness/metalness: minis semi-gloss 0.5/0.22, terrain
+  matte 0.85, board 0.95) and install a procedural PMREM **studio IBL** (`installIBL`: warm
+  ceiling softbox + cool side cards + floor bounce, filtered into `scene.environment`) —
+  the flat-clay Lambert read becomes painted plastic. Phones keep Lambert (no IBL). Env
+  tests updated (desktop asserts Standard, phone still Lambert). Also fixed the v7b bug
+  where createEnvironment forced PCFSoft back on over the iPad tier's hard-PCF choice.
+- **Geometry**: new `s:'cap'` capsule primitive (CapsuleGeometry is in core three) for
+  rounded limbs. Hero-fidelity remodels sculpted on the real minis, prioritizing the
+  factions in lists.json (SM/AS, TAU, DRU): **troop-line** = full Intercessor read (~40
+  parts: contrapposto stance, knee pads, trim-edged pauldrons, gold aquila + belt buckle,
+  vented backpack, two-handed angled bolt rifle w/ mag+optic+muzzle, helm w/ brow, snout
+  grille + red lenses); **troop-tau** = fire-warrior read (ONE oversized left pad, center-
+  lens sensor helm, antenna w/ lit tip, sept stripe, long low pulse rifle); **troop-eldar**
+  = kabalite read (segmented midriff, soul gem, spiked shoulder, backswept crest, bayonet
+  splinter rifle); **troop-heavy** gained trim rims/red lenses/gold crux/capsule arms.
+  New tints: gold `#c9a24a`, lens-red `#d64a3a` (AO-exempt like all named tints).
+- **TTS-mesh import**: NOT built — no Steam Workshop access from this machine; the BYO
+  model-pack pipeline (user-local assets, never in the public repo) remains the offer if
+  Paul supplies a mod archive. These remodels are authored lookalikes in-repo instead.
+- **Gate**: full run_all + all 5 smokes + ipad-check green (extras smoke flaked once under
+  parallel load, passes standalone). SW v17. Report refreshed. Deploy needs Paul.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel

@@ -144,7 +144,7 @@ function fakeRenderer() {
   const pools = sync.pickMeshes();
   assert(pools.length > 0, "token pools were created");
   for (const mesh of pools) {
-    assert(mesh.material.isMeshLambertMaterial, "token pool material is MeshLambertMaterial (lit)");
+    assert(mesh.material.isMeshStandardMaterial, "token pool material is MeshStandardMaterial (PBR, WP3D-v7c)");
     assert(mesh.material.vertexColors === true, "token pool material keeps vertexColors:true");
     assert(mesh.castShadow === true, "token pool (role 'tokens') casts shadows on desktop tier");
   }
@@ -154,7 +154,7 @@ function fakeRenderer() {
   // flagged to receive shadows (role 'board').
   const boardMesh = scene.children.find((o) => o.userData && o.userData.isBoard);
   assert(!!boardMesh, "board mesh present in the scene");
-  assert(boardMesh.material.isMeshLambertMaterial, "board material converted Basic -> Lambert");
+  assert(boardMesh.material.isMeshStandardMaterial, "board material converted Basic -> Standard (PBR)");
   assert(boardMesh.material.color.getHexString() === "bf9d63", "board material preserves its original color (WP3D-v6 arid-tan fallback)");
   assert(boardMesh.receiveShadow === true, "board (role 'board') receives shadows on desktop tier, does not need to cast");
 
@@ -164,7 +164,7 @@ function fakeRenderer() {
   scene.traverse((o) => {
     if (o.isMesh && o.parent && o.parent.userData && o.parent.userData.terrainHeight != null) {
       terrainMeshCount++;
-      assert(o.material.isMeshLambertMaterial, "terrain child mesh material converted Basic -> Lambert");
+      assert(o.material.isMeshStandardMaterial, "terrain child mesh material converted Basic -> Standard (PBR)");
       assert(o.castShadow === true && o.receiveShadow === true, "terrain child mesh casts+receives shadows on desktop tier");
     }
   });

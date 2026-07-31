@@ -210,27 +210,41 @@ function installFog(THREE, scene, board) {
  * in place, preserving color/map/vertexColors — so ALL terrain packs get lit automatically,
  * not just this file's own table. Shadow flags per contract: tokens cast, terrain
  * cast+receive, board+table receive only. */
+/* WP3D-v7c "painted mini" pass: desktop/iPad tiers (tier.shadows as the proxy) convert to
+ * MeshStandardMaterial — PBR + the scene.environment IBL installed below reads as painted
+ * plastic instead of matte clay. Phones keep the cheaper Lambert (no IBL is installed there
+ * either). Roughness varies by role: minis are semi-gloss, terrain/board stay matte. */
+const PBR_ROUGHNESS = { tokens: 0.5, terrain: 0.85, board: 0.95 };
+const PBR_METALNESS = { tokens: 0.22, terrain: 0.08, board: 0.0 };
 function makeDecorator(THREE, tier) {
-  const litCache = new WeakMap(); // shared source Basic material -> converted Lambert material
-  function toLit(mat) {
+  const pbr = !!(tier && tier.shadows) && THREE.MeshStandardMaterial != null;
+  const litCache = { terrain: new WeakMap(), board: new WeakMap() }; // per-role: params differ
+  function toLit(mat, role) {
     if (!mat || !mat.isMeshBasicMaterial) return mat; // already lit, or not ours to convert
-    let lit = litCache.get(mat);
+    const cache = litCache[role];
+    let lit = cache.get(mat);
     if (!lit) {
-      lit = new THREE.MeshLambertMaterial({
+      const common = {
         color: mat.color ? mat.color.clone() : 0xffffff,
         vertexColors: !!mat.vertexColors,
         map: mat.map || null,
         side: mat.side,
         transparent: !!mat.transparent,
         opacity: mat.opacity != null ? mat.opacity : 1,
-      });
-      litCache.set(mat, lit);
+      };
+      lit = pbr
+        ? new THREE.MeshStandardMaterial(Object.assign(common, {
+            roughness: PBR_ROUGHNESS[role] != null ? PBR_ROUGHNESS[role] : 0.85,
+            metalness: PBR_METALNESS[role] != null ? PBR_METALNESS[role] : 0.05,
+          }))
+        : new THREE.MeshLambertMaterial(common);
+      cache.set(mat, lit);
     }
     return lit;
   }
-  function convertMesh(o) {
+  function convertMesh(o, role) {
     if (!o || !o.isMesh) return;
-    o.material = Array.isArray(o.material) ? o.material.map(toLit) : toLit(o.material);
+    o.material = Array.isArray(o.material) ? o.material.map((m) => toLit(m, role)) : toLit(o.material, role);
   }
   return function decorate(obj, role) {
     const shadows = !!(tier && tier.shadows);
@@ -238,14 +252,47 @@ function makeDecorator(THREE, tier) {
       obj.castShadow = shadows; // InstancedMesh — receiveShadow left off (contract: cast only)
     } else if (role === 'terrain') {
       obj.traverse((o) => {
-        convertMesh(o);
+        convertMesh(o, 'terrain');
         if (o.isMesh) { o.castShadow = shadows; o.receiveShadow = shadows; }
       });
     } else if (role === 'board') {
-      convertMesh(obj);
+      convertMesh(obj, 'board');
       obj.receiveShadow = shadows;
     }
   };
+}
+
+/* Procedural "studio" IBL: a tiny room with a bright warm ceiling softbox + cool side
+ * cards, PMREM-filtered into scene.environment so every MeshStandardMaterial picks up
+ * believable reflections/ambient. Requires a REAL renderer (guarded — node tests pass a
+ * stub or nothing). Cheap: built once, ~2ms, small filtered mip chain. */
+function installIBL(THREE, scene, renderer) {
+  if (!renderer || !THREE.PMREMGenerator || !THREE.Scene) return null;
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const room = new THREE.Scene();
+    room.background = new THREE.Color(0x23262e);
+    const card = (hex, intensity, w, h, x, y, z, rx, ry) => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(intensity), side: THREE.DoubleSide })
+      );
+      m.position.set(x, y, z);
+      if (rx) m.rotation.x = rx;
+      if (ry) m.rotation.y = ry;
+      room.add(m);
+      return m;
+    };
+    card(0xfff1dc, 5.5, 6, 6, 0, 8, 0, Math.PI / 2, 0);      // warm ceiling softbox (key)
+    card(0xbdd2ee, 1.6, 4, 6, -8, 3, 0, 0, Math.PI / 2);     // cool side fill L
+    card(0x8f9aad, 0.9, 4, 6, 8, 3, 0, 0, -Math.PI / 2);     // dim side fill R
+    card(0x4a4038, 1.0, 12, 12, 0, -4, 0, -Math.PI / 2, 0);  // warm dark floor bounce
+    const rt = pmrem.fromScene(room, 0.05);
+    room.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    pmrem.dispose();
+    scene.environment = rt.texture;
+    return rt;
+  } catch (e) { return null; }
 }
 
 function disposeMesh(mesh) {
@@ -278,11 +325,22 @@ export function createEnvironment(THREE, scene, board, tier, renderer) {
   if (renderer) {
     try {
       renderer.shadowMap.enabled = !!t.shadows;
-      if (t.shadows && THREE.PCFSoftShadowMap != null) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // Respect the tier's filter choice: iPad tier picks hard PCF (softShadows:false);
+      // everything else keeps PCFSoft. (v7b bug: this line used to force PCFSoft back on.)
+      if (t.shadows) {
+        renderer.shadowMap.type = (t.softShadows === false && THREE.PCFShadowMap != null)
+          ? THREE.PCFShadowMap
+          : (THREE.PCFSoftShadowMap != null ? THREE.PCFSoftShadowMap : renderer.shadowMap.type);
+      }
     } catch (e) { /* renderer stub in tests may not have a real shadowMap object */ }
   }
 
-  setPoolMaterialFactory((T) => new T.MeshLambertMaterial({ vertexColors: true }));
+  // IBL + PBR pools on desktop/iPad; phones keep Lambert + lights only.
+  const pbr = !!t.shadows && THREE.MeshStandardMaterial != null;
+  const envRT = pbr ? installIBL(THREE, scene, renderer && renderer.render ? renderer : null) : null;
+  setPoolMaterialFactory((T) => pbr
+    ? new T.MeshStandardMaterial({ vertexColors: true, roughness: PBR_ROUGHNESS.tokens, metalness: PBR_METALNESS.tokens })
+    : new T.MeshLambertMaterial({ vertexColors: true }));
   setMeshDecorator(makeDecorator(THREE, t));
 
   let disposed = false;
@@ -292,6 +350,7 @@ export function createEnvironment(THREE, scene, board, tier, renderer) {
       disposed = true;
       setPoolMaterialFactory(null);
       setMeshDecorator(null);
+      if (envRT) { scene.environment = null; envRT.dispose(); }
       scene.remove(apron); disposeMesh(apron);
       scene.remove(edge); disposeMesh(edge);
       scene.remove(hemi);

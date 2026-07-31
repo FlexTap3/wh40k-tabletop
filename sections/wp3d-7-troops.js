@@ -40,9 +40,9 @@ const POSE = [
 
 /* Shared weapon-metal / dark-joint tints used by every kit below (glow stays per-kit).
  * Named tints are exempt from AO baking, so they read as crisp painted metal. */
-const TROOP_TINTS = { steel: '#868c94', dark: '#23262c' };
+const TROOP_TINTS = { steel: '#868c94', dark: '#23262c', gold: '#c9a24a', lens: '#d64a3a' };
 function troopOpts(extra) {
-  const o = { ao: 0.26, earthBase: true, tints: { steel: TROOP_TINTS.steel, dark: TROOP_TINTS.dark } };
+  const o = { ao: 0.26, earthBase: true, tints: { steel: TROOP_TINTS.steel, dark: TROOP_TINTS.dark, gold: TROOP_TINTS.gold, lens: TROOP_TINTS.lens } };
   if (extra && extra.tints) for (const k in extra.tints) o.tints[k] = extra.tints[k];
   return o;
 }
@@ -134,11 +134,16 @@ function buildHeavy(ctx, t, footprint, palette) {
     { x: 0, y: 0.60, z: -0.20, w: 0.28, h: 0.26, d: 0.10, c: 'mid' },                     // backpack slab
     { x: -0.10, y: 0.76, z: -0.20, w: 0.07, h: 0.09, d: 0.07, c: 'dark', s: 'cyl' },      // vent L
     { x: 0.10, y: 0.76, z: -0.20, w: 0.07, h: 0.09, d: 0.07, c: 'dark', s: 'cyl' },       // vent R
+    { x: -0.33, y: 0.665, z: p.armZ, w: 0.30, h: 0.13, d: 0.34, c: 'dark', s: 'dome' },   // pauldron trim L (lower rim only)
     { x: -0.33, y: 0.70, z: p.armZ, w: 0.28, h: 0.20, d: 0.32, c: 'hi', s: 'dome' },      // massive dome pauldron L
+    { x: 0.33, y: 0.665, z: p.armZ, w: 0.30, h: 0.13, d: 0.34, c: 'dark', s: 'dome' },    // pauldron trim R (lower rim only)
     { x: 0.33, y: 0.70, z: p.armZ, w: 0.28, h: 0.20, d: 0.32, c: 'hi', s: 'dome' },       // massive dome pauldron R
-    { x: -0.33, y: 0.56, z: 0.04 + p.armZ, w: 0.18, h: 0.18, d: 0.20, c: 'mid' },         // arm L
-    { x: 0.33, y: 0.56, z: 0.04 + p.armZ, w: 0.18, h: 0.18, d: 0.20, c: 'mid' },          // arm R
+    { x: -0.33, y: 0.56, z: 0.04 + p.armZ, w: 0.18, h: 0.20, d: 0.20, c: 'mid', s: 'cap' }, // arm L
+    { x: 0.33, y: 0.56, z: 0.04 + p.armZ, w: 0.18, h: 0.20, d: 0.20, c: 'mid', s: 'cap' },  // arm R
     { x: p.headX, y: 0.80, z: 0.03, w: 0.15, h: 0.11, d: 0.16, c: 'hi', s: 'dome' },      // helm, buried low
+    { x: p.headX - 0.03, y: 0.785, z: 0.10, w: 0.026, h: 0.02, d: 0.018, c: 'lens' },     // eye lens L
+    { x: p.headX + 0.03, y: 0.785, z: 0.10, w: 0.026, h: 0.02, d: 0.018, c: 'lens' },     // eye lens R
+    { x: 0, y: 0.62, z: 0.145, w: 0.12, h: 0.08, d: 0.03, c: 'gold' },                    // gold crux/aquila
     { x: 0.34 + p.armX, y: 0.55, z: 0.24 + p.armZ, w: 0.13, h: 0.13, d: 0.24, c: 'dark' },// storm-bolter body
     { x: 0.31 + p.armX, y: 0.57, z: 0.42 + p.armZ, w: 0.05, h: 0.05, d: 0.16, c: 'steel', s: 'cyl', ax: 'z' }, // barrel L
     { x: 0.37 + p.armX, y: 0.57, z: 0.42 + p.armZ, w: 0.05, h: 0.05, d: 0.16, c: 'steel', s: 'cyl', ax: 'z' }, // barrel R
@@ -148,29 +153,58 @@ function buildHeavy(ctx, t, footprint, palette) {
   return ctx.voxelsToGeometry(table, footprint, palette, 1.5, troopOpts());
 }
 
-// power-armor line infantry (SM-family): the GW hero read — barrel chest with eagle,
-// dome pauldrons, snouted dome helm, backpack vents, bolter held across the body.
+// power-armor line infantry (SM-family, also Sisters): sculpted on the real Intercessor
+// read — contrapposto stance, trim-edged dome pauldrons, plastron with gold aquila, vented
+// backpack, snouted helm with red lenses, bolt rifle held two-handed across the chest.
 function buildLine(ctx, t, footprint, palette) {
   const p = POSE[poseOf(t)];
-  const table = [];
-  legRig(table, p, 1.0);
-  table.push(
-    { x: 0, y: 0.395, z: 0, w: 0.32, h: 0.06, d: 0.20, c: 'dark' },                       // belt
-    { x: 0, y: 0.455, z: 0, w: 0.24, h: 0.07, d: 0.17, c: 'mid' },                        // abdomen
-    { x: 0, y: 0.575, z: 0.01, w: 0.34, h: 0.17, d: 0.23, c: 'mid', tx: 1.12 },           // chest, flaring up
-    { x: 0, y: 0.60, z: 0.135, w: 0.15, h: 0.11, d: 0.03, c: 'hi' },                      // chest eagle
-    { x: 0, y: 0.58, z: -0.155, w: 0.22, h: 0.20, d: 0.09, c: 'mid' },                    // backpack
-    { x: -0.08, y: 0.71, z: -0.155, w: 0.06, h: 0.08, d: 0.06, c: 'dark', s: 'cyl' },     // vent L
-    { x: 0.08, y: 0.71, z: -0.155, w: 0.06, h: 0.08, d: 0.06, c: 'dark', s: 'cyl' },      // vent R
-    { x: -0.27, y: 0.675, z: 0, w: 0.18, h: 0.15, d: 0.22, c: 'hi', s: 'dome' },          // pauldron L
-    { x: 0.27, y: 0.675, z: 0, w: 0.18, h: 0.15, d: 0.22, c: 'hi', s: 'dome' },           // pauldron R
-    { x: -0.25, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                  // arm L
-    { x: 0.25, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                   // arm R
-    { x: 0.10 + p.armX, y: 0.545, z: 0.19 + p.armZ, w: 0.11, h: 0.13, d: 0.24, c: 'dark' },                   // bolter body
-    { x: 0.10 + p.armX, y: 0.575, z: 0.36 + p.armZ, w: 0.05, h: 0.05, d: 0.14, c: 'steel', s: 'cyl', ax: 'z' }, // bolter barrel
-    { x: p.headX, y: 0.87, z: 0.015, w: 0.17, h: 0.14, d: 0.18, c: 'hi', s: 'dome' },     // helm dome, clear of the pauldrons
-    { x: p.headX, y: 0.845, z: 0.11, w: 0.08, h: 0.06, d: 0.06, c: 'hi' },                // helm snout
-  );
+  const gunY = 0.53, gunZ = 0.17 + p.armZ, gunA = 0.35; // rifle line, angled across the body
+  const table = [
+    // ---- legs: braced stance, one foot forward, armored shins + knee pads ----
+    { x: -0.13, y: 0.04, z: p.legF + 0.04, w: 0.15, h: 0.08, d: 0.22, c: 'dark' },        // boot L
+    { x: 0.13, y: 0.04, z: -p.legF, w: 0.15, h: 0.08, d: 0.22, c: 'dark' },               // boot R
+    { x: -0.13, y: 0.165, z: p.legF + 0.02, w: 0.13, h: 0.19, d: 0.15, c: 'mid', s: 'cap' },  // greave L
+    { x: 0.13, y: 0.165, z: -p.legF, w: 0.13, h: 0.19, d: 0.15, c: 'mid', s: 'cap' },     // greave R
+    { x: -0.125, y: 0.27, z: p.legF + 0.05, w: 0.10, h: 0.07, d: 0.09, c: 'hi', s: 'dome' },  // knee pad L
+    { x: 0.125, y: 0.27, z: -p.legF + 0.04, w: 0.10, h: 0.07, d: 0.09, c: 'hi', s: 'dome' },  // knee pad R
+    { x: -0.115, y: 0.33, z: p.legF * 0.5, w: 0.13, h: 0.14, d: 0.15, c: 'mid', s: 'cap' },   // thigh L
+    { x: 0.115, y: 0.33, z: -p.legF * 0.5, w: 0.13, h: 0.14, d: 0.15, c: 'mid', s: 'cap' },   // thigh R
+    // ---- pelvis / torso ----
+    { x: 0, y: 0.415, z: 0, w: 0.26, h: 0.07, d: 0.18, c: 'dark' },                       // belt
+    { x: 0, y: 0.42, z: 0.095, w: 0.07, h: 0.08, d: 0.03, c: 'gold' },                    // belt buckle
+    { x: 0, y: 0.475, z: 0, w: 0.22, h: 0.07, d: 0.16, c: 'lo' },                         // abdomen ribbing
+    { x: 0, y: 0.585, z: 0.01, w: 0.32, h: 0.17, d: 0.22, c: 'mid', tx: 1.1 },            // plastron, flaring up
+    { x: 0, y: 0.635, z: 0.125, w: 0.17, h: 0.10, d: 0.035, c: 'gold' },                  // gold chest aquila
+    { x: 0, y: 0.70, z: 0.03, w: 0.20, h: 0.05, d: 0.14, c: 'mid' },                      // gorget
+    // ---- backpack: block + twin top vents + center exhaust ----
+    { x: 0, y: 0.60, z: -0.155, w: 0.22, h: 0.21, d: 0.10, c: 'mid' },
+    { x: -0.085, y: 0.725, z: -0.15, w: 0.065, h: 0.09, d: 0.065, c: 'dark', s: 'cyl', seg: 8 }, // vent L
+    { x: 0.085, y: 0.725, z: -0.15, w: 0.065, h: 0.09, d: 0.065, c: 'dark', s: 'cyl', seg: 8 },  // vent R
+    { x: 0, y: 0.71, z: -0.185, w: 0.05, h: 0.06, d: 0.05, c: 'steel', s: 'cyl', seg: 8 },       // center exhaust
+    // ---- pauldrons: trim ring under the dome so the edge reads ----
+    { x: -0.265, y: 0.66, z: 0, w: 0.20, h: 0.13, d: 0.24, c: 'dark', s: 'dome' },        // pauldron trim L
+    { x: -0.265, y: 0.675, z: 0, w: 0.17, h: 0.13, d: 0.21, c: 'hi', s: 'dome' },         // pauldron L
+    { x: 0.265, y: 0.66, z: 0, w: 0.20, h: 0.13, d: 0.24, c: 'dark', s: 'dome' },         // pauldron trim R
+    { x: 0.265, y: 0.675, z: 0, w: 0.17, h: 0.13, d: 0.21, c: 'hi', s: 'dome' },          // pauldron R
+    // ---- arms: both reach to the rifle line (two-handed grip) ----
+    { x: -0.235, y: 0.575, z: 0.05, w: 0.10, h: 0.15, d: 0.11, c: 'mid', s: 'cap', rx: 0.5 },  // upper arm L
+    { x: -0.17, y: 0.52, z: 0.13, w: 0.09, h: 0.13, d: 0.09, c: 'mid', s: 'cap', rx: 1.0, ry: -0.4 }, // forearm L to fore-grip
+    { x: 0.235, y: 0.575, z: 0.05, w: 0.10, h: 0.15, d: 0.11, c: 'mid', s: 'cap', rx: 0.4 },   // upper arm R
+    { x: 0.19, y: 0.52, z: 0.12, w: 0.09, h: 0.12, d: 0.09, c: 'mid', s: 'cap', rx: 0.9, ry: 0.3 },   // forearm R to trigger
+    // ---- bolt rifle: angled across the chest, receiver + mag + barrel + muzzle ----
+    { x: 0.04 + p.armX, y: gunY, z: gunZ, w: 0.09, h: 0.11, d: 0.30, c: 'dark', ry: gunA },       // receiver
+    { x: 0.07 + p.armX, y: gunY - 0.075, z: gunZ - 0.02, w: 0.05, h: 0.09, d: 0.08, c: 'dark', ry: gunA }, // magazine
+    { x: -0.045 + p.armX, y: gunY + 0.015, z: gunZ + 0.115, w: 0.042, h: 0.042, d: 0.15, c: 'steel', s: 'cyl', ax: 'z', ry: gunA }, // barrel
+    { x: -0.09 + p.armX, y: gunY + 0.015, z: gunZ + 0.165, w: 0.055, h: 0.055, d: 0.045, c: 'dark', s: 'cyl', ax: 'z', ry: gunA }, // muzzle brake
+    { x: 0.115 + p.armX, y: gunY + 0.045, z: gunZ - 0.09, w: 0.045, h: 0.05, d: 0.07, c: 'steel', ry: gunA }, // optic
+    // ---- head: helm dome + brow + snout grille + red lenses ----
+    { x: p.headX, y: 0.795, z: 0.02, w: 0.13, h: 0.10, d: 0.14, c: 'hi', s: 'cap' },      // helm core
+    { x: p.headX, y: 0.855, z: 0.015, w: 0.145, h: 0.09, d: 0.155, c: 'hi', s: 'dome' },  // helm dome
+    { x: p.headX, y: 0.845, z: 0.075, w: 0.13, h: 0.035, d: 0.05, c: 'hi' },              // brow ridge
+    { x: p.headX, y: 0.78, z: 0.085, w: 0.065, h: 0.07, d: 0.055, c: 'lo', tx: 0.75 },    // snout grille
+    { x: p.headX - 0.035, y: 0.82, z: 0.083, w: 0.028, h: 0.022, d: 0.02, c: 'lens' },    // eye lens L
+    { x: p.headX + 0.035, y: 0.82, z: 0.083, w: 0.028, h: 0.022, d: 0.02, c: 'lens' },    // eye lens R
+  ];
   if (t.sgt) sgtCrest(table, 0.92);
   return ctx.voxelsToGeometry(table, footprint, palette, 1.3, troopOpts());
 }
@@ -265,26 +299,43 @@ function buildNecron(ctx, t, footprint, palette) {
   return ctx.voxelsToGeometry(table, footprint, palette, 1.3, troopOpts({ tints: { glow: '#57d0ff' } }));
 }
 
-// T'au fire warrior: clean curved composite armor, sensor helm, long pulse rifle.
+// T'au fire warrior: sculpted on the real kit — smooth composite cuirass over a dark
+// bodysuit, the ONE oversized left shoulder pad, center-lens sensor helm + antenna,
+// long two-part pulse rifle held low across the body.
 function buildTau(ctx, t, footprint, palette) {
   const p = POSE[poseOf(t)];
-  const table = [];
-  legRig(table, p, 0.85);
-  table.push(
-    { x: 0, y: 0.40, z: 0, w: 0.28, h: 0.06, d: 0.18, c: 'dark' },                        // belt
-    { x: 0, y: 0.53, z: 0, w: 0.32, h: 0.22, d: 0.21, c: 'mid', tx: 0.85, tz: 0.85 },     // smooth tapering cuirass
-    { x: 0, y: 0.60, z: 0.115, w: 0.18, h: 0.10, d: 0.04, c: 'hi', tx: 0.7 },             // chest plate
-    { x: 0, y: 0.55, z: -0.135, w: 0.16, h: 0.18, d: 0.08, c: 'mid' },                    // backpack
-    { x: -0.21, y: 0.655, z: 0, w: 0.13, h: 0.10, d: 0.17, c: 'hi', s: 'dome' },          // shoulder guard L
-    { x: 0.21, y: 0.655, z: 0, w: 0.13, h: 0.10, d: 0.17, c: 'hi', s: 'dome' },           // shoulder guard R
-    { x: -0.19, y: 0.545, z: 0.02, w: 0.09, h: 0.13, d: 0.11, c: 'mid' },                 // arm L
-    { x: 0.19, y: 0.545, z: 0.02, w: 0.09, h: 0.13, d: 0.11, c: 'mid' },                  // arm R
-    { x: p.headX, y: 0.80, z: 0.01, w: 0.15, h: 0.13, d: 0.16, c: 'hi', s: 'dome' },      // sensor helm
-    { x: p.headX, y: 0.79, z: 0.095, w: 0.09, h: 0.045, d: 0.03, c: 'dark' },             // visor slit
-    { x: 0.06, y: 0.945, z: -0.06, w: 0.02, h: 0.16, d: 0.02, c: 'steel', s: 'cyl' },     // comm antenna
-    { x: 0.08 + p.armX, y: 0.545, z: 0.17 + p.armZ, w: 0.07, h: 0.09, d: 0.20, c: 'dark' },                    // pulse rifle body
-    { x: 0.08 + p.armX, y: 0.565, z: 0.335 + p.armZ, w: 0.05, h: 0.05, d: 0.16, c: 'steel', s: 'cyl', ax: 'z' }, // pulse rifle barrel
-  );
+  const table = [
+    // legs: dark bodysuit shins with armor plates hanging over the thighs
+    { x: -0.10, y: 0.04, z: p.legF + 0.03, w: 0.12, h: 0.08, d: 0.18, c: 'dark' },        // hoof-boot L
+    { x: 0.10, y: 0.04, z: -p.legF, w: 0.12, h: 0.08, d: 0.18, c: 'dark' },               // hoof-boot R
+    { x: -0.095, y: 0.165, z: p.legF, w: 0.10, h: 0.19, d: 0.11, c: 'lo', s: 'cap' },     // shin L
+    { x: 0.095, y: 0.165, z: -p.legF, w: 0.10, h: 0.19, d: 0.11, c: 'lo', s: 'cap' },     // shin R
+    { x: -0.10, y: 0.315, z: p.legF * 0.5 + 0.02, w: 0.11, h: 0.13, d: 0.12, c: 'mid', s: 'cap' }, // thigh plate L
+    { x: 0.10, y: 0.315, z: -p.legF * 0.5 + 0.02, w: 0.11, h: 0.13, d: 0.12, c: 'mid', s: 'cap' }, // thigh plate R
+    { x: 0, y: 0.41, z: 0, w: 0.26, h: 0.06, d: 0.17, c: 'dark' },                        // belt
+    { x: 0, y: 0.54, z: 0, w: 0.30, h: 0.20, d: 0.20, c: 'mid', tx: 0.82, tz: 0.82 },     // smooth tapering cuirass
+    { x: 0, y: 0.60, z: 0.105, w: 0.16, h: 0.09, d: 0.035, c: 'hi', tx: 0.7 },            // chest plate
+    { x: 0, y: 0.475, z: 0.10, w: 0.10, h: 0.05, d: 0.03, c: 'lens' },                    // sept stripe
+    { x: 0, y: 0.55, z: -0.13, w: 0.16, h: 0.17, d: 0.08, c: 'mid' },                     // backpack
+    { x: 0, y: 0.655, z: -0.13, w: 0.12, h: 0.04, d: 0.07, c: 'dark' },                   // backpack cap
+    // the iconic ONE big left shoulder pad; right side just a small joint dome
+    { x: -0.235, y: 0.645, z: 0, w: 0.17, h: 0.14, d: 0.22, c: 'hi', s: 'dome' },         // big pad L
+    { x: -0.235, y: 0.635, z: 0, w: 0.19, h: 0.13, d: 0.24, c: 'dark', s: 'dome' },       // pad trim L
+    { x: 0.195, y: 0.635, z: 0, w: 0.10, h: 0.08, d: 0.13, c: 'mid', s: 'dome' },         // joint dome R
+    { x: -0.19, y: 0.53, z: 0.04, w: 0.09, h: 0.14, d: 0.10, c: 'lo', s: 'cap', rx: 0.4 },    // arm L to fore-grip
+    { x: 0.185, y: 0.53, z: 0.04, w: 0.09, h: 0.14, d: 0.10, c: 'lo', s: 'cap', rx: 0.5 },    // arm R to trigger
+    // pulse rifle: long, blocky fore-end, thin barrel, held low across the body
+    { x: 0.05 + p.armX, y: 0.485, z: 0.16 + p.armZ, w: 0.075, h: 0.10, d: 0.26, c: 'dark', ry: 0.25 },  // rifle body
+    { x: 0.02 + p.armX, y: 0.50, z: 0.28 + p.armZ, w: 0.055, h: 0.065, d: 0.12, c: 'mid', ry: 0.25 },   // fore-end shroud
+    { x: -0.015 + p.armX, y: 0.505, z: 0.375 + p.armZ, w: 0.038, h: 0.038, d: 0.10, c: 'steel', s: 'cyl', ax: 'z', ry: 0.25 }, // barrel
+    // helm: smooth dome, protruding center lens, comm antenna
+    { x: p.headX, y: 0.775, z: 0.01, w: 0.125, h: 0.10, d: 0.135, c: 'hi', s: 'cap' },    // helm core
+    { x: p.headX, y: 0.825, z: 0.005, w: 0.14, h: 0.08, d: 0.15, c: 'hi', s: 'dome' },    // helm dome
+    { x: p.headX, y: 0.79, z: 0.085, w: 0.055, h: 0.045, d: 0.035, c: 'dark', s: 'dome' },// lens housing
+    { x: p.headX, y: 0.79, z: 0.10, w: 0.03, h: 0.026, d: 0.015, c: 'lens' },             // center lens
+    { x: 0.065, y: 0.93, z: -0.05, w: 0.018, h: 0.15, d: 0.018, c: 'steel', s: 'cyl', seg: 6 }, // antenna
+    { x: 0.065, y: 1.005, z: -0.05, w: 0.028, h: 0.028, d: 0.028, c: 'lens', s: 'dome' }, // antenna tip
+  ];
   if (t.sgt) sgtCrest(table, 0.88);
   return ctx.voxelsToGeometry(table, footprint, palette, 1.3, troopOpts());
 }
@@ -302,23 +353,35 @@ function buildTauDrone(ctx, t, footprint, palette) {
   return ctx.voxelsToGeometry(table, footprint, palette, 1.0, troopOpts());
 }
 
-// Eldar / Drukhari: sleek and tall — swept tapering torso, cone helm, long slim rifle.
+// Eldar / Drukhari (kabalite warrior read): lithe segmented armor over a slim frame, tall
+// crested helm, long bayonet-tipped splinter rifle held across the body.
 function buildEldar(ctx, t, footprint, palette) {
   const p = POSE[poseOf(t)];
   const table = [
-    { x: -0.08, y: 0.17, z: p.legF, w: 0.09, h: 0.34, d: 0.09, c: 'lo' },                 // leg L
-    { x: 0.08, y: 0.17, z: -p.legF, w: 0.09, h: 0.34, d: 0.09, c: 'lo' },                 // leg R
-    { x: 0, y: 0.375, z: 0, w: 0.22, h: 0.05, d: 0.14, c: 'dark' },                       // belt
-    { x: 0, y: 0.55, z: 0, w: 0.22, h: 0.30, d: 0.15, c: 'mid', tx: 1.25, shz: 0.02 },    // torso sweeping up+out
-    { x: 0, y: 0.715, z: 0.07, w: 0.16, h: 0.08, d: 0.04, c: 'hi', tx: 0.6 },             // gorget gem plate
-    { x: -0.16, y: 0.735, z: 0, w: 0.10, h: 0.09, d: 0.13, c: 'hi', s: 'dome' },          // shoulder L
-    { x: 0.16, y: 0.735, z: 0, w: 0.10, h: 0.09, d: 0.13, c: 'hi', s: 'dome' },           // shoulder R
-    { x: -0.15, y: 0.60, z: 0.02, w: 0.08, h: 0.14, d: 0.10, c: 'mid' },                  // arm L
-    { x: 0.15, y: 0.60, z: 0.02, w: 0.08, h: 0.14, d: 0.10, c: 'mid' },                   // arm R
-    { x: p.headX, y: 0.885, z: 0.01, w: 0.13, h: 0.12, d: 0.14, c: 'hi', s: 'dome' },     // helm
-    { x: p.headX, y: 1.00, z: -0.01, w: 0.06, h: 0.16, d: 0.06, c: 'hi', s: 'cyl', tp: 0 }, // cone crest
-    { x: 0.06 + p.armX, y: 0.615, z: 0.155 + p.armZ, w: 0.05, h: 0.07, d: 0.14, c: 'dark' },                   // rifle body
-    { x: 0.06 + p.armX, y: 0.63, z: 0.30 + p.armZ, w: 0.035, h: 0.035, d: 0.26, c: 'steel', s: 'cyl', ax: 'z' }, // rifle barrel, long
+    { x: -0.075, y: 0.035, z: p.legF + 0.03, w: 0.10, h: 0.07, d: 0.16, c: 'dark' },      // pointed boot L
+    { x: 0.075, y: 0.035, z: -p.legF, w: 0.10, h: 0.07, d: 0.16, c: 'dark' },             // pointed boot R
+    { x: -0.075, y: 0.17, z: p.legF, w: 0.085, h: 0.22, d: 0.09, c: 'lo', s: 'cap' },     // long shin L
+    { x: 0.075, y: 0.17, z: -p.legF, w: 0.085, h: 0.22, d: 0.09, c: 'lo', s: 'cap' },     // long shin R
+    { x: -0.075, y: 0.325, z: p.legF * 0.5, w: 0.09, h: 0.12, d: 0.10, c: 'mid', s: 'cap' },  // thigh L
+    { x: 0.075, y: 0.325, z: -p.legF * 0.5, w: 0.09, h: 0.12, d: 0.10, c: 'mid', s: 'cap' },  // thigh R
+    { x: 0, y: 0.40, z: 0, w: 0.19, h: 0.05, d: 0.13, c: 'dark' },                        // belt
+    { x: 0, y: 0.50, z: 0, w: 0.19, h: 0.12, d: 0.13, c: 'lo', s: 'cap' },                // segmented midriff
+    { x: 0, y: 0.615, z: 0.01, w: 0.24, h: 0.15, d: 0.15, c: 'mid', tx: 1.1, shz: 0.02 }, // chest carapace
+    { x: 0, y: 0.665, z: 0.085, w: 0.10, h: 0.07, d: 0.03, c: 'lens' },                   // soul gem
+    { x: 0, y: 0.715, z: 0.02, w: 0.15, h: 0.045, d: 0.10, c: 'hi' },                     // high gorget
+    { x: -0.155, y: 0.71, z: 0, w: 0.10, h: 0.08, d: 0.13, c: 'hi', s: 'dome' },          // spiked shoulder L
+    { x: -0.185, y: 0.755, z: 0, w: 0.035, h: 0.09, d: 0.035, c: 'hi', s: 'cyl', tp: 0, rz: 0.5 }, // shoulder spike
+    { x: 0.155, y: 0.71, z: 0, w: 0.10, h: 0.08, d: 0.13, c: 'hi', s: 'dome' },           // shoulder R
+    { x: -0.135, y: 0.585, z: 0.06, w: 0.075, h: 0.13, d: 0.085, c: 'mid', s: 'cap', rx: 0.55 }, // arm L to fore-grip
+    { x: 0.135, y: 0.585, z: 0.05, w: 0.075, h: 0.12, d: 0.085, c: 'mid', s: 'cap', rx: 0.6 },   // arm R to trigger
+    // splinter rifle: slim, long, blade under the muzzle
+    { x: 0.03 + p.armX, y: 0.545, z: 0.15 + p.armZ, w: 0.055, h: 0.08, d: 0.24, c: 'dark', ry: 0.3 },  // rifle body
+    { x: -0.02 + p.armX, y: 0.56, z: 0.27 + p.armZ, w: 0.03, h: 0.03, d: 0.16, c: 'steel', s: 'cyl', ax: 'z', ry: 0.3 }, // barrel
+    { x: -0.05 + p.armX, y: 0.525, z: 0.33 + p.armZ, w: 0.02, h: 0.09, d: 0.10, c: 'steel', tz: 0.15, ry: 0.3, rx: 0.9 }, // bayonet blade
+    // helm: tight dome + face plate + tall backswept crest
+    { x: p.headX, y: 0.83, z: 0.015, w: 0.115, h: 0.10, d: 0.13, c: 'hi', s: 'cap' },     // helm core
+    { x: p.headX, y: 0.845, z: 0.075, w: 0.07, h: 0.06, d: 0.05, c: 'lo', tx: 0.6 },      // face plate
+    { x: p.headX, y: 0.95, z: -0.02, w: 0.05, h: 0.17, d: 0.05, c: 'hi', s: 'cyl', tp: 0, rx: -0.25 }, // crest, swept back
   ];
   if (t.sgt) sgtCrest(table, 1.02);
   return ctx.voxelsToGeometry(table, footprint, palette, 1.35, troopOpts());

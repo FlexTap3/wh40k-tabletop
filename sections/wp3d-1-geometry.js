@@ -254,6 +254,14 @@ function voxelsToGeometry(table, footprint, palette, targetH, opts) {
     } else if (b.s === 'dome') {
       g = new THREE.SphereGeometry(0.5, b.seg || 10, 7);
       g.scale(w, h, d);
+    } else if (b.s === 'cap' && THREE.CapsuleGeometry) {
+      // capsule spanning the w×h×d budget (rounded-end limbs/torsos); ax like cyl.
+      g = new THREE.CapsuleGeometry(0.5, 1, 4, b.seg || 10);
+      if (b.ax === 'x') g.rotateZ(Math.PI / 2);
+      else if (b.ax === 'z') g.rotateX(Math.PI / 2);
+      if (b.ax === 'x') g.scale(w / 2, h, d);
+      else if (b.ax === 'z') g.scale(w, h, d / 2);
+      else g.scale(w, h / 2, d);
     } else {
       g = new THREE.BoxGeometry(w, h, d);
       if (b.tx != null || b.tz != null || b.shx || b.shz) {
