@@ -155,7 +155,7 @@ function fakeRenderer() {
   const boardMesh = scene.children.find((o) => o.userData && o.userData.isBoard);
   assert(!!boardMesh, "board mesh present in the scene");
   assert(boardMesh.material.isMeshLambertMaterial, "board material converted Basic -> Lambert");
-  assert(boardMesh.material.color.getHexString() === "2b3026", "board material preserves its original color");
+  assert(boardMesh.material.color.getHexString() === "bf9d63", "board material preserves its original color (WP3D-v6 arid-tan fallback)");
   assert(boardMesh.receiveShadow === true, "board (role 'board') receives shadows on desktop tier, does not need to cast");
 
   // terrain: buildTerrain's ruin group has multiple Mesh children, all originally

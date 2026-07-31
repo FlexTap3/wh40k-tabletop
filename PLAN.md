@@ -816,6 +816,30 @@ Iterated tightly with Paul (render → react → adjust) to match the ACTUAL off
 - Live at flextap3.github.io/wh40k-tabletop (master @ efe9d63, SW v11); full node gate (1646
   terrain checks) + 3 browser smokes green; live-verified (verify-live PASS, clean 3D render).
 
+### WP3D-v6 — Combat Patrol BATTLEZONE terrain (the real kit, mapped to the layouts) — SHIPPED (2026-07-31)
+
+Paul supplied the full Combat Patrol: Battlezone (2026) reference set — box-top table, sprue
+contents, per-piece close-ups, height scales, the fold-out arid boards and the card footprint
+tiles. That kit IS the physical realization of the official 11th-ed layout footprints, so the
+3D terrain now renders it (render → react → adjust, three visual rounds):
+- **Identity** (`wp3d-6-terrain2.js` PALETTE): dark green-grey battle-metal walls + charcoal
+  riveted girder pilasters + weathered ochre gothic panel bays + dark-red pipe runs with
+  verdigris fittings + warm lit-window dots + TEAL energy glow; rust-red riveted footprint
+  cards with grey-green trim. Replaces the v3-v5 light-rockcrete read.
+- **Kit-true mapping** (Paul's box-top correction): buildings are COMPACT — corner-anchored,
+  ~60-80% of each footprint edge, collapse ramp high-at-corner → broken far end, kit heights
+  (~5.4in max, floor pinned y=3; no invented 8.5in towers). The small 6×4 ruin cards route
+  deterministically (~3-in-5) to freestanding centerpieces: thermic generator (teal coil
+  banks + tesla pylons), quad-leg pipe gantry (teal containment orb), vox relay tower (gilded
+  aquila crest). Wall strips: mesh/aquila fence panels (60mm-true) with ~1-in-3 rendering the
+  tesla electro-coil variant.
+- **Flat cards** (Paul's mandate): rubble + girder debris are 2D printed-decal patches on the
+  card plane — never 3D mounds; the cards stay flat like the real tiles.
+- **Arid mat** (`wp3d-1-geometry.js`): board texture = desert tan w/ earth flecks (+ sRGB tag
+  fix that was washing the mat to cream); flat-color fallback retinted.
+- Palette-identity tests rewritten to assert the Battlezone read (1,645 green); env test's
+  board-fallback color updated. Own lookalike geometry — NO GW models copied (public repo).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel

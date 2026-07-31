@@ -375,13 +375,23 @@
   }
 
   // ==================================================================
-  console.log("== palette: GW pre-painted identity (light rockcrete/bone, NOT dark gothic stone) ==");
+  console.log("== palette: WP3D-v6 Combat Patrol BATTLEZONE identity (dark battle-metal + ochre accents on rust deck cards, NOT light rockcrete) ==");
   {
     assert(!!PALETTE, "module exports PALETTE for test/design-review assertions");
-    assert(luminance(PALETTE.RUIN_PAL.plate) > 0.4, "ruin base plate reads LIGHT rockcrete, luminance " + luminance(PALETTE.RUIN_PAL.plate).toFixed(3) + " (v2 dark-stone plate was ~0.19)");
-    assert(luminance(PALETTE.RUIN_PAL.slab) > 0.4, "ruin floor slab reads LIGHT bone/rockcrete, luminance " + luminance(PALETTE.RUIN_PAL.slab).toFixed(3));
-    assert(luminance(PALETTE.WALL_PAL.facade) > 0.4, "wall facade (interior/clean face) reads LIGHT rockcrete, luminance " + luminance(PALETTE.WALL_PAL.facade).toFixed(3));
-    assert(luminance(PALETTE.WALL_PAL.rubble) < luminance(PALETTE.WALL_PAL.facade), "wall's outward broken-rubble layer reads darker than its clean interior facade");
+    // walls read DARK green-grey battle-metal (the v3-v5 light-rockcrete read is retired)
+    assert(luminance(PALETTE.WALL_PAL.facade) < 0.3, "ruin wall reads DARK battle-metal, luminance " + luminance(PALETTE.WALL_PAL.facade).toFixed(3) + " (v5 light rockcrete was ~0.55)");
+    const wall = rgb(PALETTE.WALL_PAL.facade);
+    assert(wall.g >= wall.r && wall.g >= wall.b, "wall metal carries the kit's green-grey cast (green channel dominant)");
+    assert(luminance(PALETTE.WALL_PAL.rubble) < luminance(PALETTE.WALL_PAL.facade), "broken-rubble layer reads darker still");
+    // footprint card: rust-red riveted deck plate, warm not grey
+    const plate = rgb(PALETTE.RUIN_PAL.plate);
+    assert(plate.r > plate.b * 1.5 && luminance(PALETTE.RUIN_PAL.plate) < 0.35, "footprint card reads rust-red deck plate (warm, dark-ish)");
+    // printed rubble on the cards: warm ochre
+    const rub = rgb(PALETTE.RUIN_PAL.debrisLo);
+    assert(rub.r > rub.b * 1.6, "card rubble reads warm ochre");
+    // ochre gothic panel bays: warm bone/ochre against the dark metal
+    const pan = rgb(PALETTE.OCHRE_PANEL);
+    assert(pan.r > pan.b * 1.4 && luminance(PALETTE.OCHRE_PANEL) > luminance(PALETTE.WALL_PAL.facade), "gothic panel bays read warm ochre, lighter than the wall metal");
 
     // hazard stripe: high-contrast black/yellow, and yellow reads warm/yellow not neutral
     const yLum = luminance(PALETTE.HAZARD_YELLOW), kLum = luminance(PALETTE.HAZARD_BLACK);
@@ -389,10 +399,11 @@
     const y = rgb(PALETTE.HAZARD_YELLOW);
     assert(y.r > 150 && y.g > 110 && y.b < y.r * 0.6, "hazard stripe accent color reads yellow (r,g high, b low)");
 
-    // glow lamp: warm tint (per contract: "pick a warm lamp color"), not the vehicle-pack's
-    // example cool cyan/blue
+    // two glow families: warm lit-window dots AND the energy-teal coil/lamp accent
     const glow = rgb(PALETTE.GLOW_LAMP);
-    assert(glow.r > glow.b, "glow-lamp tint reads warm (red channel > blue channel), got " + PALETTE.GLOW_LAMP);
+    assert(glow.r > glow.b, "lit-window glow reads warm (red channel > blue channel), got " + PALETTE.GLOW_LAMP);
+    const teal = rgb(PALETTE.TEAL_GLOW);
+    assert(teal.b > teal.r && teal.g > teal.r, "energy glow reads teal (green+blue over red), got " + PALETTE.TEAL_GLOW);
 
     // Munitorum container variants: olive + ochre, distinct from v2's rust-orange single tone
     assert(PALETTE.CONTAINER_VARIANTS.length >= 2, "at least 2 container palette variants (olive + ochre)");
@@ -401,11 +412,12 @@
     const ochre = rgb(PALETTE.CONTAINER_VARIANTS[1].body);
     assert(ochre.r > ochre.b * 1.3, "container variant 1 reads ochre/warm-brown (red well above blue)");
 
-    // barricade: distinct dark industrial steel, contrasts against the light rockcrete buildings
-    assert(luminance(PALETTE.BARRICADE_PAL.panel) < luminance(PALETTE.RUIN_PAL.plate) - 0.15, "barricade panel reads darker/more industrial than the light rockcrete ruin plate");
-
-    // aquila accent: dark bronze/black block, distinct from the light slab it sits on
-    assert(luminance(PALETTE.AQUILA_BRONZE) < 0.25, "aquila accent block reads dark bronze/black");
+    // fence panels: mid grey-green solid panel, mesh band clearly lighter (the open grille read)
+    assert(luminance(PALETTE.FENCE_PAL.mesh) > luminance(PALETTE.FENCE_PAL.panel) + 0.1, "fence mesh band reads lighter/silvery vs the solid lower panel");
+    // embossed fence aquila: dark gunmetal; generator crest: warm gilded
+    assert(luminance(PALETTE.AQUILA_BRONZE) < 0.25, "fence aquila emboss reads dark gunmetal");
+    const gold = rgb(PALETTE.AQUILA_GOLD);
+    assert(gold.r > gold.b * 1.5, "generator aquila crest reads gilded (warm gold)");
   }
 
   // ==================================================================
