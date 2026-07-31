@@ -42,7 +42,7 @@ const POSE = [
  * Named tints are exempt from AO baking, so they read as crisp painted metal. */
 const TROOP_TINTS = { steel: '#868c94', dark: '#23262c' };
 function troopOpts(extra) {
-  const o = { ao: 0.4, tints: { steel: TROOP_TINTS.steel, dark: TROOP_TINTS.dark } };
+  const o = { ao: 0.26, earthBase: true, tints: { steel: TROOP_TINTS.steel, dark: TROOP_TINTS.dark } };
   if (extra && extra.tints) for (const k in extra.tints) o.tints[k] = extra.tints[k];
   return o;
 }
@@ -162,14 +162,14 @@ function buildLine(ctx, t, footprint, palette) {
     { x: 0, y: 0.58, z: -0.155, w: 0.22, h: 0.20, d: 0.09, c: 'mid' },                    // backpack
     { x: -0.08, y: 0.71, z: -0.155, w: 0.06, h: 0.08, d: 0.06, c: 'dark', s: 'cyl' },     // vent L
     { x: 0.08, y: 0.71, z: -0.155, w: 0.06, h: 0.08, d: 0.06, c: 'dark', s: 'cyl' },      // vent R
-    { x: -0.255, y: 0.685, z: 0, w: 0.19, h: 0.15, d: 0.23, c: 'hi', s: 'dome' },         // pauldron L
-    { x: 0.255, y: 0.685, z: 0, w: 0.19, h: 0.15, d: 0.23, c: 'hi', s: 'dome' },          // pauldron R
-    { x: -0.24, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                  // arm L
-    { x: 0.24, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                   // arm R
-    { x: 0.10 + p.armX, y: 0.545, z: 0.185 + p.armZ, w: 0.09, h: 0.11, d: 0.22, c: 'dark' },                  // bolter body
-    { x: 0.10 + p.armX, y: 0.565, z: 0.345 + p.armZ, w: 0.045, h: 0.045, d: 0.14, c: 'steel', s: 'cyl', ax: 'z' }, // bolter barrel
-    { x: p.headX, y: 0.84, z: 0.015, w: 0.16, h: 0.13, d: 0.17, c: 'hi', s: 'dome' },     // helm dome
-    { x: p.headX, y: 0.815, z: 0.105, w: 0.07, h: 0.06, d: 0.06, c: 'hi' },               // helm snout
+    { x: -0.27, y: 0.675, z: 0, w: 0.18, h: 0.15, d: 0.22, c: 'hi', s: 'dome' },          // pauldron L
+    { x: 0.27, y: 0.675, z: 0, w: 0.18, h: 0.15, d: 0.22, c: 'hi', s: 'dome' },           // pauldron R
+    { x: -0.25, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                  // arm L
+    { x: 0.25, y: 0.55, z: 0.02, w: 0.11, h: 0.16, d: 0.13, c: 'mid' },                   // arm R
+    { x: 0.10 + p.armX, y: 0.545, z: 0.19 + p.armZ, w: 0.11, h: 0.13, d: 0.24, c: 'dark' },                   // bolter body
+    { x: 0.10 + p.armX, y: 0.575, z: 0.36 + p.armZ, w: 0.05, h: 0.05, d: 0.14, c: 'steel', s: 'cyl', ax: 'z' }, // bolter barrel
+    { x: p.headX, y: 0.87, z: 0.015, w: 0.17, h: 0.14, d: 0.18, c: 'hi', s: 'dome' },     // helm dome, clear of the pauldrons
+    { x: p.headX, y: 0.845, z: 0.11, w: 0.08, h: 0.06, d: 0.06, c: 'hi' },                // helm snout
   );
   if (t.sgt) sgtCrest(table, 0.92);
   return ctx.voxelsToGeometry(table, footprint, palette, 1.3, troopOpts());
@@ -213,9 +213,9 @@ function buildMob(ctx, t, footprint, palette) {
     { x: 0.30 * s + p.armX, y: 0.44, z: 0.10 + p.armZ, w: 0.14 * s, h: 0.32 * s, d: 0.15 * s, c: 'mid' }, // choppa arm
     { x: 0.32 * s + p.armX, y: 0.62, z: 0.16 + p.armZ, w: 0.05 * s, h: 0.22, d: 0.14 * s, c: 'steel', tz: 0.3, rx: -0.5 }, // choppa blade raised overhead
     { x: -0.18, y: 0.42, z: 0.06, w: 0.10, h: 0.22, d: 0.12, c: 'lo' },                   // off-hand arm
-    { x: 0.02, y: isOrk ? 0.72 : 0.66, z: 0.11, w: isOrk ? 0.23 : 0.17, h: isOrk ? 0.18 : 0.14, d: isOrk ? 0.21 : 0.16, c: 'hi', s: 'dome' }, // head, jutted forward
+    { x: 0.02, y: isOrk ? 0.73 : 0.67, z: 0.12, w: isOrk ? 0.27 : 0.19, h: isOrk ? 0.21 : 0.16, d: isOrk ? 0.25 : 0.18, c: 'hi', s: 'dome' }, // head, jutted forward
   ];
-  if (isOrk) table.push({ x: 0.02, y: 0.635, z: 0.20, w: 0.17, h: 0.09, d: 0.11, c: 'hi', tx: 1.3 }); // underbite jaw
+  if (isOrk) table.push({ x: 0.02, y: 0.635, z: 0.22, w: 0.20, h: 0.10, d: 0.12, c: 'hi', tx: 1.3 }); // underbite jaw
   if (t.sgt) sgtCrest(table, isOrk ? 0.82 : 0.74);
   return ctx.voxelsToGeometry(table, footprint, palette, isOrk ? 1.35 : 1.15, troopOpts());
 }
@@ -375,7 +375,7 @@ function buildSwarm(ctx, t, footprint, palette) {
     const headY = bodyY + BODY_H * 0.5 + HEAD_H * 0.35;
     table.push({ x: bx + bodyD * 0.45, y: headY, z: bz, w: bodyW * 0.55, h: HEAD_H, d: bodyD * 0.45, c: 'hi', tx: 0.6 }); // head/mandibles
   }
-  return ctx.voxelsToGeometry(table, footprint, palette, 0.55, {});
+  return ctx.voxelsToGeometry(table, footprint, palette, 0.55, troopOpts());
 }
 
 /* ---------------------------------------------------------------------------------------

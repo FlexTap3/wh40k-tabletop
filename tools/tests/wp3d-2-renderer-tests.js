@@ -35,7 +35,18 @@ const fakeCanvas = () => ({ addEventListener() {}, removeEventListener() {} });
   const ipadLike = wp3dPerfTier({ phone: false, dpr: 2, memoryGB: 4 });
   assert(ipadLike.pixelRatioCap === 2 && ipadLike.antialias === true && ipadLike.labelEvery === 1
     && ipadLike.shadows === true,
-    "wp3dPerfTier: iPad-like (non-phone) tier matches desktop, shadows on");
+    "wp3dPerfTier: iPad-like (non-phone, no ipad flag) tier matches desktop, shadows on");
+
+  // WP3D-v7b: the explicit iPad tier — retina DPR 2 + shadows kept, MSAA off, hard PCF,
+  // half-size shadow map.
+  const ipad = wp3dPerfTier({ phone: false, ipad: true, dpr: 2 });
+  assert(ipad.pixelRatioCap === 2 && ipad.antialias === false && ipad.labelEvery === 1
+    && ipad.shadows === true && ipad.softShadows === false && ipad.shadowMapSize === 1024,
+    "wp3dPerfTier: ipad tier (DPR 2, AA off, shadows on, hard PCF, 1024 map)");
+
+  const phoneBeatsIpad = wp3dPerfTier({ phone: true, ipad: true });
+  assert(phoneBeatsIpad.shadows === false && phoneBeatsIpad.pixelRatioCap === 1.5,
+    "wp3dPerfTier: phone flag wins over ipad flag");
 
   const phone = wp3dPerfTier({ phone: true, dpr: 3 });
   assert(phone.pixelRatioCap === 1.5 && phone.antialias === false && phone.labelEvery === 2

@@ -171,7 +171,9 @@ function installLights(THREE, scene, board, tier) {
 
   if (tier && tier.shadows) {
     key.castShadow = true;
-    key.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+    // tier.shadowMapSize (iPad tier: 1024) overrides the desktop default map size.
+    const mapSize = (tier && tier.shadowMapSize) || SHADOW_MAP_SIZE;
+    key.shadow.mapSize.set(mapSize, mapSize);
     const pad = diag / 2 + TABLE_MARGIN + 2; // board half-diagonal + table + a little terrain headroom
     const cam = key.shadow.camera;
     cam.left = -pad; cam.right = pad; cam.top = pad; cam.bottom = -pad;

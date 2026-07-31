@@ -873,6 +873,29 @@ GW. Three layers, all inside the existing pack architecture (no new files, no br
   2D pixel-identity preserved. SW bumped v15. Renders filed at
   `reports/inbox/2026-07-31-wh40k-3d-minis-v7/`. Deploy needs Paul (`ALLOW_PUBLIC_PUSH=1`).
 
+### WP3D-v7b — model polish + iPad optimization — BUILT (2026-07-31, deploy pending Paul)
+
+Paul's reaction to v7: models "kind of annoying"; also optimize the whole thing for iPad.
+- **Model polish**: AO softened (troops 0.4→0.26, vehicles 0.32→0.24, span 0.55→0.7·targetH —
+  the murky lower halves were the annoyance read); **neutral earth-tone painted bases**
+  (`opts.earthBase`, kit packs only — built-in archetypes keep the faction disc) so minis pop
+  against the arid mat, side identity stays on the owner rims; marine helm raised clear of the
+  pauldrons + chunkier bolter; bigger ork head+jaw; swarm was passing `{}` → now troopOpts.
+- **iPad tier** (`wp3dPerfTier({ipad})`): DPR 2 + shadows KEPT, MSAA OFF (invisible at 264ppi,
+  expensive fill) + hard PCF + 1024 map (`tier.softShadows/shadowMapSize`, renderer + env read
+  them; desktop default untouched — truth-table tests extended, phone beats ipad). Detection in
+  `wh40k-3d.js` mirrors `wp12Detect`: `iPad` UA or Macintosh+maxTouchPoints>1, never phone.
+- **Touch ergonomics**: `#board3d{touch-action:none}` (orbit/pinch no longer scroll/zoom iPad
+  Safari — 2D canvas already had it via JS); coarse-pointer NON-phone media rule = 44px
+  toolbar buttons; wp3d-13 overlay buttons 44px on coarse pointers (matchMedia-guarded).
+  2D iPad layout confirmed already correct (wp12Detect routes iPads to desktop deck).
+- **New smoke** `tools/shots/wp3d-ipad-check.js`: CDP-faithful iPad emulation (Macintosh UA +
+  maxTouchPoints 5 + touch) → asserts desktop layout kept, AA=false (tier engaged),
+  touch-action none, no errors; desktop control keeps AA=true. NOTE: never `getContext()` in
+  a wait loop — it would create a default-attribute context before three.js (bug found live).
+- **Gate**: full run_all + smoke/pip/p2p + ipad-check ALL GREEN. SW v16. Report updated
+  (`2026-07-31-wh40k-3d-minis-v7`). Deploy needs Paul.
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel

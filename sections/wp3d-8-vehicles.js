@@ -36,7 +36,7 @@ const DARK = '#22262b';
 function tintsFor(palette) { return { steel: STEEL, dark: DARK, glow: (palette && palette.hi) || '#9aa0a8' }; }
 /* Shared build options: faction tints + baked vertical AO (mid/lo mass darkens toward the
  * tracks; hi/steel/dark/glow stay exact — the palette.hi and glow-skirt assertions rely on it). */
-function vehOpts(palette) { return { ao: 0.32, tints: tintsFor(palette) }; }
+function vehOpts(palette) { return { ao: 0.24, earthBase: true, tints: tintsFor(palette) }; }
 
 /* ---------------------------------------------------------------------------------------
  * Regex families — a superset of WP21_HULLS (wh40k-tabletop.html ~line 6701): every family

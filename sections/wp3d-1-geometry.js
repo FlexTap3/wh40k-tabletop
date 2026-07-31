@@ -242,7 +242,7 @@ function voxelsToGeometry(table, footprint, palette, targetH, opts) {
    *              shx/shz = top-face shear in normalized footprint units (swept hull sides).
    *   any      — rx/rz tilts (radians) alongside the existing ry, applied to the sized part. */
   const aoK = opts.ao ? (typeof opts.ao === 'number' ? opts.ao : 0.35) : 0;
-  const aoSpan = Math.max(0.001, targetH * 0.55);
+  const aoSpan = Math.max(0.001, targetH * 0.7);
   const parts = table.map(b => {
     const w = b.w * realW, h = b.h * targetH, d = b.d * realD;
     let g;
@@ -290,7 +290,13 @@ function voxelsToGeometry(table, footprint, palette, targetH, opts) {
   });
 
   if (!opts.noBase) {
-    const baseColor = { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
+    /* Painted-base read (WP3D-v7b): kits that opt in via opts.earthBase get a neutral
+     * dark-earth base — like a hobbyist's basing — so the mini pops against the arid mat
+     * instead of dissolving into a faction-dark disc (the owner rim already carries side
+     * color). Default stays the faction-derived dark disc for the built-in archetypes. */
+    const baseColor = opts.earthBase
+      ? { r: 0.322, g: 0.251, b: 0.184 }
+      : { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
     let baseGeo;
     const isRound = footprint && (footprint.shape === 'c' || footprint.oval);
     if (isRound) {

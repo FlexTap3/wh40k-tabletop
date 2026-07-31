@@ -72,7 +72,7 @@ canvas{display:block; width:100%; height:100%; cursor:default}
 /* ==== WP3D-0: 3D foundation ==== #board3d matches #board's sizing exactly (same generic
    `canvas{}` rule above) so DOM overlays (toolbar/inspector/etc, all positioned against
    #boardwrap) line up identically in either mode. Hidden unless .mode3d is active. */
-#board3d{display:none}
+#board3d{display:none; touch-action:none} /* iPad: orbit/pinch stay on the canvas, never scroll/zoom the page */
 #boardwrap.mode3d #board{display:none}
 #boardwrap.mode3d #board3d{display:block}
 /* ==== WP3D-v3 ==== PiP: the SAME #board3d canvas as a corner inset; 2D stays visible and
@@ -88,6 +88,12 @@ canvas{display:block; width:100%; height:100%; cursor:default}
 #toolbar{position:absolute; top:8px; left:8px; display:flex; flex-direction:column; gap:4px}
 #toolbar button{width:36px; height:32px; font-size:15px; background:rgba(22,19,23,.88); backdrop-filter:blur(4px); border-color:#3e3840; box-shadow:0 2px 6px rgba(0,0,0,.45)}
 #toolbar button:hover{border-color:var(--accent)}
+/* ==== WP3D-v7b iPad ==== finger-sized targets on coarse-pointer NON-phone devices (iPad):
+   Apple HIG 44pt minimum. html.phone keeps its own command-deck sizing untouched. */
+@media (pointer: coarse){
+  html:not(.phone) #toolbar button{width:44px; height:42px; font-size:17px}
+  html:not(.phone) #toolbar{gap:6px}
+}
 #toolbar button.active{background:linear-gradient(180deg,var(--accent-hi),var(--accent)); border-color:#8a6f1c}
 /* log */
 #bottombar{height:150px; background:linear-gradient(180deg,#191619,var(--panel)); border-top:1px solid var(--edge); display:flex; flex-direction:column}
