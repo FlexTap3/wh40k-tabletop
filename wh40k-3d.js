@@ -59,7 +59,12 @@ function build() {
   const st = bridge.state();
   const board = st.board || { w: 60, h: 44 };
   const phone = typeof document !== 'undefined' && document.documentElement.classList.contains('phone');
-  const tier = wp3dPerfTier({ phone, dpr: (typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1) });
+  // iPadOS Safari reports a "Macintosh" UA in its default desktop mode but, unlike a real
+  // Mac, exposes multi-touch — that combination (or an explicit iPad UA) is the iPad tier.
+  const ipad = !phone && typeof navigator !== 'undefined'
+    && (navigator.maxTouchPoints || 0) > 1
+    && /iPad|Macintosh/i.test(navigator.userAgent || '');
+  const tier = wp3dPerfTier({ phone, ipad, dpr: (typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1) });
   labelEvery = tier.labelEvery;
 
   const scene = new THREE.Scene();

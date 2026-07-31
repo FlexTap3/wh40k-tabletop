@@ -213,9 +213,15 @@ export function createExtras(deps) {
   // =======================================================================================
   // Overlay DOM
   // =======================================================================================
-  const BTN_CSS = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;'
+  /* WP3D-v7b iPad: finger-sized (44px, Apple HIG) buttons on coarse-pointer devices;
+     mouse/trackpad keeps the compact 32px strip. matchMedia guarded for headless tests. */
+  let coarsePointer = false;
+  try { coarsePointer = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches; } catch (e) {}
+  const BTN_SIZE = coarsePointer ? 44 : 32;
+  const BTN_CSS = 'width:' + BTN_SIZE + 'px;height:' + BTN_SIZE + 'px;display:flex;align-items:center;justify-content:center;'
     + 'background:rgba(22,19,23,.88);backdrop-filter:blur(4px);border:1px solid #3e3840;'
-    + 'border-radius:16px;box-shadow:0 2px 6px rgba(0,0,0,.45);color:#ddd6cc;font-size:15px;'
+    + 'border-radius:' + (BTN_SIZE / 2) + 'px;box-shadow:0 2px 6px rgba(0,0,0,.45);color:#ddd6cc;'
+    + 'font-size:' + (coarsePointer ? 18 : 15) + 'px;'
     + 'line-height:1;cursor:pointer;pointer-events:auto;padding:0;';
 
   let overlay = null;
@@ -366,6 +372,7 @@ export function createExtras(deps) {
   if (motion && typeof motion.on === 'function') {
     motion.on('tweenland', () => playThunk());
     motion.on('diceland', (payload) => playDice(payload && payload.count));
+    motion.on('casualty', () => playThunk()); // model tips over — same felt-table thunk
   }
 
   // =======================================================================================

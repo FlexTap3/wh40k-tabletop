@@ -1,0 +1,240 @@
+{"gen":712,"round":0,"phase":-1,"phaseName":"Deploy","side":0,"type":"deploy","layout":"Official 1A · T&H vs T&H","mission":"Battlefield Dominance / Battlefield Dominance","sideA":{"fid":"TAU","name":"T’au Empire","pts":1995,"units":17,"models":37,"reserves":1},"sideB":{"fid":"AS","name":"Adepta Sororitas","pts":1980,"units":13,"models":40,"reserves":1}}
+{"gen":712,"round":1,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":0,"cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"doa27zk","unit":"Cadre Fireblade","moved":6,"cap":6,"why":"→ Obj 5","fromX":59,"fromY":31,"toX":53,"toY":30.3}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"Kroot Lone-Spear","moved":6.6,"cap":12,"why":"→ Obj 3","fromX":51.5,"fromY":8.5,"toX":45.9,"toY":12}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"o7ksh4x","unit":"Breacher Team","moved":2.4,"cap":6,"why":"screens the backfield","fromX":52.7,"fromY":41.2,"toX":52,"toY":38.9}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qfrkuq9","unit":"Great Knarloc","moved":7.65,"cap":9,"why":"→ Obj 5","fromX":50,"fromY":22,"toX":42.4,"toY":22.7}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"pfp4tqa","unit":"Hammerhead Gunship","moved":0.62,"cap":10,"why":"→ Obj 2 (OC 3 v 0)","fromX":48.5,"fromY":29.5,"toX":48,"toY":29.8}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6t2tbw3","unit":"Riptide Battlesuit","moved":1,"cap":10,"why":"→ Obj 3","fromX":53,"fromY":13,"toX":52.1,"toY":13.4}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3k1ulkt","unit":"Tx42 Piranha","moved":0.73,"cap":14,"why":"→ Obj 2 (OC 2 v 0)","fromX":48.5,"fromY":38.5,"toX":47.9,"toY":38}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"8nupbmq","unit":"Piranha","moved":0,"why":"holds position"}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Heavy Gun Drones","moved":3.2,"cap":8,"why":"screens Obj 1","fromX":56,"fromY":17.5,"toX":52.8,"toY":16.9}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k8kw8mt","unit":"Crisis Battlesuits","moved":4,"cap":10,"why":"→ Obj 3","fromX":54.1,"fromY":3.6,"toX":50.9,"toY":6.1}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"4btarke","unit":"Great Knarloc","moved":0.54,"cap":9,"why":"→ Obj 2 (OC 3 v 0)","fromX":48.5,"fromY":34,"toX":48,"toY":33.9}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wsrjx3a","unit":"Crisis Sunforge Battlesuits","moved":2.5,"cap":10,"why":"→ Obj 5","fromX":55.6,"fromY":24.6,"toX":53.1,"toY":24.7}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"r3ee53b","unit":"Y’vahra Battlesuit","moved":0,"why":"holds position"}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wq3ob1g","unit":"Krootox Riders","moved":0.59,"cap":7,"why":"→ Obj 2 (OC 6 v 0)","fromX":43.6,"fromY":26.1,"toX":43.5,"toY":26.7}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6wvt2ha","unit":"Knarloc Riders","moved":0.7,"cap":7,"why":"→ Obj 3","fromX":48,"fromY":3.5,"toX":47.5,"toY":4}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ey51oap","unit":"Hammerhead Gunship","moved":8.5,"cap":10,"why":"→ Obj 5","fromX":56,"fromY":20.5,"toX":47.5,"toY":21.4}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ogeb55v","unit":"Tx42 Piranha","moved":1.39,"cap":14,"why":"screens the backfield","fromX":57.5,"fromY":40,"toX":56.7,"toY":38.9}
+{"gen":712,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Krootox Riders","target":"Mortifiers","weapon":"Tanglecannon","shooters":3,"dist":31.3,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Krootox Riders","target":"Mortifiers","weapon":"Repeater cannon","shooters":1,"dist":31.3,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":712,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":712,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Exorcist conflagration rockets","dist":13.6,"rng":36,"melee":false}
+{"gen":712,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Exorcist missile launcher","dist":13.6,"rng":36,"melee":false}
+{"gen":712,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Mortifiers","tgt":"Krootox Riders","weapon":"Heavy bolter","dist":28.4,"rng":36,"melee":false}
+{"gen":712,"round":1,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":0,"aiShots":3,"s1LostToAi":1,"cp1":3,"cp2":3,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"arrive","unit":"Strike Team","n":10,"toX":57,"toY":15,"why":"arrives from Strategic Reserves"}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"doa27zk","unit":"Cadre Fireblade","moved":0.6,"cap":6,"why":"→ Obj 5","fromX":53,"fromY":30.3,"toX":52.4,"toY":30.3}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"Kroot Lone-Spear","moved":12,"cap":12,"why":"→ Obj 3","fromX":45.9,"fromY":12,"toX":35.7,"toY":18.4}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"o7ksh4x","unit":"Breacher Team","moved":0.6,"cap":6,"why":"screens the backfield","fromX":52,"fromY":38.9,"toX":51.9,"toY":38.4}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qfrkuq9","unit":"Great Knarloc","moved":6.3,"cap":9,"why":"→ Obj 3","fromX":42.4,"fromY":22.7,"toX":36.1,"toY":22.3}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"pfp4tqa","unit":"Hammerhead Gunship","moved":0,"why":"holds position"}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6t2tbw3","unit":"Riptide Battlesuit","moved":5.5,"cap":10,"why":"→ Obj 4","fromX":52.1,"fromY":13.4,"toX":46.6,"toY":12.9}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3k1ulkt","unit":"Tx42 Piranha","moved":14,"cap":14,"why":"→ Obj 4","fromX":47.9,"fromY":38,"toX":37.3,"toY":28.9}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"8nupbmq","unit":"Piranha","moved":0,"why":"holds position"}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Heavy Gun Drones","moved":0,"why":"holds position"}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k8kw8mt","unit":"Crisis Battlesuits","moved":1,"cap":10,"why":"→ Obj 3","fromX":50.9,"fromY":6.1,"toX":50.2,"toY":6.7}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"4btarke","unit":"Great Knarloc","moved":9,"cap":9,"why":"→ Obj 4","fromX":48,"fromY":33.9,"toX":40.7,"toY":28.6}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wsrjx3a","unit":"Crisis Sunforge Battlesuits","moved":0.77,"cap":10,"why":"screens Obj 1","fromX":53.1,"fromY":24.7,"toX":52.8,"toY":24}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"r3ee53b","unit":"Y’vahra Battlesuit","moved":1,"cap":10,"why":"→ Obj 1","fromX":56,"fromY":29.5,"toX":55.6,"toY":28.6}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wq3ob1g","unit":"Krootox Riders","moved":0.7,"cap":7,"why":"→ Obj 3","fromX":43.9,"fromY":26,"toX":43.2,"toY":25.8}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6wvt2ha","unit":"Knarloc Riders","moved":0.7,"cap":7,"why":"→ Obj 5","fromX":47.5,"fromY":4,"toX":46.9,"toY":4.4}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ey51oap","unit":"Hammerhead Gunship","moved":4,"cap":10,"why":"→ Obj 3","fromX":47.5,"fromY":21.4,"toX":43.6,"toY":21.5}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ogeb55v","unit":"Tx42 Piranha","moved":1.32,"cap":14,"why":"screens the backfield","fromX":56.7,"fromY":38.9,"toX":55.8,"toY":37.9}
+{"gen":712,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Krootox Riders","target":"Mortifiers","weapon":"Tanglecannon","shooters":2,"dist":27.8,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":3}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Mortifiers","weapon":"Missile pod","shooters":1,"dist":24.8,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Mortifiers","weapon":"Twin Kroot gun","shooters":1,"dist":28.1,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Krootox Riders","target":"Mortifiers","weapon":"Repeater cannon","shooters":1,"dist":30,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Mortifiers","weapon":"Rail rifle","shooters":1,"dist":24.8,"rng":30,"vis":true,"cover":true,"slain":1,"woundsDealt":3}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Exorcist","weapon":"Kroot bolt thrower","shooters":1,"dist":11.3,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Exorcist","weapon":"Fusion blaster","shooters":1,"dist":8,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Exorcist","weapon":"Plasma rifle","shooters":1,"dist":8,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Great Knarloc","target":"Exorcist","need":10.7,"roll":7,"made":false}
+{"gen":712,"round":2,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":5,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Exorcist conflagration rockets","dist":8.1,"rng":36,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Exorcist missile launcher","dist":8.1,"rng":36,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Heavy bolter","dist":10.3,"rng":36,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Krootox Riders","weapon":"Hunter-killer missile","dist":10.3,"rng":48,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Great Knarloc","weapon":"Heavy bolter","dist":21.1,"rng":36,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Great Knarloc","weapon":"Hunter-killer missile","dist":21.1,"rng":48,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Tx42 Piranha","weapon":"Immolation flamers","dist":17.9,"rng":18,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Great Knarloc","weapon":"Twin heavy bolter","dist":21.1,"rng":36,"melee":false}
+{"gen":712,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Tx42 Piranha","weapon":"Twin multi-melta","dist":17.9,"rng":18,"melee":false}
+{"gen":712,"round":2,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Tx42 Piranha","weapon":"Armoured tracks","dist":0,"rng":1,"melee":true}
+{"gen":712,"round":2,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":10,"s1LostToAi":1,"cp1":5,"cp2":5,"vp1":5,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Tx42 Piranha","dice":[2,1],"ld":7,"pass":false}
+{"gen":712,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Great Knarloc","dice":[1,2],"ld":7,"pass":false}
+{"gen":712,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Krootox Riders","dice":[2,1],"ld":7,"pass":false}
+{"gen":712,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"doa27zk","unit":"Cadre Fireblade","moved":5.14,"cap":6,"why":"takes cover","fromX":52.4,"fromY":30.3,"toX":49.3,"toY":26.3}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"Kroot Lone-Spear","moved":1.2,"cap":12,"why":"→ Obj 2","fromX":35.7,"fromY":18.4,"toX":36.2,"toY":19.5}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"o7ksh4x","unit":"Breacher Team","moved":6,"cap":6,"why":"→ Obj 5","fromX":51.9,"fromY":38.4,"toX":46.1,"toY":36.6}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qfrkuq9","unit":"Great Knarloc","moved":0.49,"cap":9,"why":"→ Obj 3 (OC 3 v 0)","fromX":36.1,"fromY":22.3,"toX":35.6,"toY":22.3}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"pfp4tqa","unit":"Hammerhead Gunship","moved":0,"why":"holds position"}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6t2tbw3","unit":"Riptide Battlesuit","moved":10,"cap":10,"why":"→ Obj 5","fromX":46.6,"fromY":12.9,"toX":37.1,"toY":16.1}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3k1ulkt","unit":"Tx42 Piranha","moved":0,"why":"holds position"}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"8nupbmq","unit":"Piranha","moved":0,"why":"holds position"}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Heavy Gun Drones","moved":4.4,"cap":8,"why":"screens the backfield","fromX":52.8,"fromY":16.9,"toX":51.3,"toY":21.1}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k8kw8mt","unit":"Crisis Battlesuits","moved":4.76,"cap":10,"why":"→ Obj 1 (OC 6 v 0)","fromX":50.2,"fromY":6.7,"toX":49.8,"toY":11.4}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"4btarke","unit":"Great Knarloc","moved":0.9,"cap":9,"why":"→ Obj 5","fromX":40.7,"fromY":28.6,"toX":39.8,"toY":28.5}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wsrjx3a","unit":"Crisis Sunforge Battlesuits","moved":0,"why":"holds position"}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"r3ee53b","unit":"Y’vahra Battlesuit","moved":1,"cap":10,"why":"→ Obj 3","fromX":55.6,"fromY":28.6,"toX":54.6,"toY":28.4}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wq3ob1g","unit":"Krootox Riders","moved":7,"cap":7,"why":"→ Obj 3","fromX":44.3,"fromY":25.8,"toX":37.5,"toY":24}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6wvt2ha","unit":"Knarloc Riders","moved":4.9,"cap":7,"why":"screens the backfield","fromX":46.9,"fromY":4.4,"toX":47.1,"toY":9.3}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ey51oap","unit":"Hammerhead Gunship","moved":1.65,"cap":10,"why":"screens Obj 1","fromX":43.6,"fromY":21.5,"toX":44.8,"toY":20.5}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ogeb55v","unit":"Tx42 Piranha","moved":1.25,"cap":14,"why":"screens the backfield","fromX":55.8,"fromY":37.9,"toX":55,"toY":36.9}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"xlp3ip4","unit":"Strike Team","moved":4.2,"cap":6,"why":"screens the backfield","fromX":57,"fromY":15,"toX":54.6,"toY":18.4}
+{"gen":712,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Ion accelerator – supercharge","shooters":1,"dist":9.6,"rng":72,"vis":true,"cover":true,"slain":0,"woundsDealt":4}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Death Cult Assassins","weapon":"Heavy burst cannon","shooters":1,"dist":24,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Dogmata","weapon":"Ion accelerator – standard","shooters":1,"dist":14.4,"rng":72,"vis":true,"cover":true,"slain":2,"woundsDealt":4}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Kroot Lone-Spear","target":"Exorcist","weapon":"Blast javelin","shooters":1,"dist":6.9,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin fusion blaster","shooters":1,"dist":9.6,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Death Cult Assassins","weapon":"Twin smart missile system","shooters":1,"dist":24,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin plasma rifle","shooters":1,"dist":11.7,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Immolator","weapon":"Rail rifle","shooters":1,"dist":17.9,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Immolator","weapon":"Plasma rifle","shooters":1,"dist":17.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Immolator","weapon":"Twin Kroot gun","shooters":1,"dist":20.2,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Tx42 Piranha","target":"Immolator","weapon":"Missile pod","shooters":1,"dist":17.9,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Breacher Team","target":"Mortifiers","weapon":"Support turret","shooters":1,"dist":22.7,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Riptide Battlesuit","target":"Exorcist","need":9.2,"roll":4,"made":false}
+{"gen":712,"round":3,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Tx42 Piranha","target":"Exorcist","weapon":"Armoured hull","slain":0}
+{"gen":712,"round":3,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Great Knarloc","weapon":"Exorcist conflagration rockets","dist":13.1,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Great Knarloc","weapon":"Exorcist missile launcher","dist":13.1,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Cadre Fireblade","weapon":"Heavy bolter","dist":23.5,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Tx42 Piranha","weapon":"Hunter-killer missile","dist":10.8,"rng":48,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Immolator","tgt":"Breacher Team","weapon":"Heavy bolter","dist":22,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Mortifiers","tgt":"Cadre Fireblade","weapon":"Heavy bolter","dist":29.8,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Tx42 Piranha","weapon":"Exorcist conflagration rockets","dist":15.9,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Tx42 Piranha","weapon":"Exorcist missile launcher","dist":15.9,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Retributor Squad","tgt":"Riptide Battlesuit","weapon":"Heavy bolter","dist":15.9,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Retributor Squad","tgt":"Riptide Battlesuit","weapon":"Multi-melta","dist":15.9,"rng":18,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Exorcist conflagration rockets","dist":4.5,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Exorcist missile launcher","dist":4.5,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Heavy bolter","dist":4.5,"rng":36,"melee":false}
+{"gen":712,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Hunter-killer missile","dist":4.5,"rng":48,"melee":false}
+{"gen":712,"round":3,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":14,"s1LostToAi":5,"cp1":7,"cp2":7,"vp1":10,"vp2":20,"oc":{"held1":1,"held2":3,"contested":0}}
+{"gen":712,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Riptide Battlesuit","dice":[5,4],"ld":7,"pass":true}
+{"gen":712,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Krootox Riders","dice":[3,2],"ld":7,"pass":false}
+{"gen":712,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":1,"held2":3,"contested":0}}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"Kroot Lone-Spear","moved":0.55,"cap":12,"why":"→ Obj 3 (OC 2 v 1)","fromX":36.2,"fromY":19.5,"toX":35.7,"toY":19.7}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"o7ksh4x","unit":"Breacher Team","moved":6,"cap":6,"why":"→ Obj 2 (OC 16 v 0)","fromX":46.5,"fromY":36.7,"toX":42,"toY":32.8}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qfrkuq9","unit":"Great Knarloc","moved":9,"cap":9,"why":"screens the backfield","fromX":35.6,"fromY":22.3,"toX":44.4,"toY":24.3}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"pfp4tqa","unit":"Hammerhead Gunship","moved":4,"cap":10,"why":"→ Obj 3","fromX":48,"fromY":29.8,"toX":44.3,"toY":28.2}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6t2tbw3","unit":"Riptide Battlesuit","moved":0.8,"cap":10,"why":"→ Obj 3 (OC 4 v 1)","fromX":37.1,"fromY":16.1,"toX":36.5,"toY":16.6}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"8nupbmq","unit":"Piranha","moved":1.4,"cap":14,"why":"→ Obj 3","fromX":54.1,"fromY":33.6,"toX":52.8,"toY":33}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Heavy Gun Drones","moved":0.8,"cap":8,"why":"→ Obj 3","fromX":51.3,"fromY":21.1,"toX":50.5,"toY":21.1}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k8kw8mt","unit":"Crisis Battlesuits","moved":10,"cap":10,"why":"→ Obj 4","fromX":49.8,"fromY":11.4,"toX":39.8,"toY":11.1}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wsrjx3a","unit":"Crisis Sunforge Battlesuits","moved":0,"why":"holds position"}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"r3ee53b","unit":"Y’vahra Battlesuit","moved":1,"cap":10,"why":"→ Obj 5","fromX":54.6,"fromY":28.4,"toX":53.6,"toY":28.3}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wq3ob1g","unit":"Krootox Riders","moved":0.39,"cap":7,"why":"keeps range on Exorcist","fromX":37.5,"fromY":24,"toX":37.8,"toY":24.3}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6wvt2ha","unit":"Knarloc Riders","moved":1.75,"cap":7,"why":"screens the backfield","fromX":47.1,"fromY":9.3,"toX":47.1,"toY":11}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ey51oap","unit":"Hammerhead Gunship","moved":1,"cap":10,"why":"→ Obj 3","fromX":44.8,"fromY":20.5,"toX":43.8,"toY":20.6}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ogeb55v","unit":"Tx42 Piranha","moved":1.4,"cap":14,"why":"screens the backfield","fromX":55,"fromY":36.9,"toX":54.3,"toY":35.7}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"xlp3ip4","unit":"Strike Team","moved":0.6,"cap":6,"why":"screens the backfield","fromX":54.6,"fromY":18.4,"toX":54.2,"toY":18.9}
+{"gen":712,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":3,"contested":0}}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Dogmata","weapon":"Ion accelerator – supercharge","shooters":1,"dist":7.9,"rng":72,"vis":true,"cover":true,"slain":3,"woundsDealt":7}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Retributor Squad","weapon":"Heavy burst cannon","shooters":1,"dist":15.4,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":2}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Hammerhead Gunship","target":"Exorcist","weapon":"Railgun","shooters":1,"dist":16.6,"rng":72,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Retributor Squad","weapon":"Ion accelerator – standard","shooters":1,"dist":16.8,"rng":72,"vis":true,"cover":true,"slain":2,"woundsDealt":2}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Hammerhead Gunship","target":"Exorcist","weapon":"Ion cannon – overcharge","shooters":1,"dist":16.6,"rng":60,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Hammerhead Gunship","target":"Exorcist","weapon":"Seeker missile","shooters":1,"dist":21.9,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Hammerhead Gunship","target":"Exorcist","weapon":"Ion cannon – standard","shooters":1,"dist":21.9,"rng":60,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Crisis Battlesuits","target":"Exorcist","weapon":"Missile pod","shooters":3,"dist":7.8,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin fusion blaster","shooters":1,"dist":4,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin plasma rifle","shooters":1,"dist":4,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Crisis Battlesuits","target":"Exorcist","weapon":"Plasma rifle","shooters":1,"dist":7.8,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin smart missile system","shooters":1,"dist":4,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Breacher Team","target":"Mortifiers","weapon":"Support turret","shooters":1,"dist":19.8,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Hammerhead Gunship","target":"Exorcist","weapon":"Smart missile system","shooters":1,"dist":21.9,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Riptide Battlesuit","target":"Exorcist","need":2.8,"roll":4,"made":true}
+{"gen":712,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":4,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Riptide fists","slain":0}
+{"gen":712,"round":4,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":4,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Breacher Team","weapon":"Ministorum hand flamer","dist":11.9,"rng":12,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Breacher Team","weapon":"Artificer-crafted storm bolter","dist":13.2,"rng":24,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Breacher Team","weapon":"Heavy bolter","dist":13.2,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Breacher Team","weapon":"Multi-melta","dist":13.2,"rng":18,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Breacher Team","weapon":"Castigator autocannons","dist":8.9,"rng":48,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Breacher Team","weapon":"Castigator battle cannon","dist":9.9,"rng":48,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Breacher Team","weapon":"Heavy bolter","dist":10.1,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Breacher Team","weapon":"Hunter-killer missile","dist":10.1,"rng":48,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Breacher Team","weapon":"Storm bolter","dist":10.1,"rng":24,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Mortifiers","tgt":"Breacher Team","weapon":"Heavy bolter","dist":16.9,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Hammerhead Gunship","weapon":"Exorcist conflagration rockets","dist":21.9,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Hammerhead Gunship","weapon":"Exorcist missile launcher","dist":21.9,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Retributor Squad","tgt":"Riptide Battlesuit","weapon":"Heavy bolter","dist":15.7,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Retributor Squad","tgt":"Riptide Battlesuit","weapon":"Multi-melta","dist":15.7,"rng":18,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Crisis Battlesuits","weapon":"Exorcist conflagration rockets","dist":7.8,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Crisis Battlesuits","weapon":"Exorcist missile launcher","dist":7.8,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Crisis Battlesuits","weapon":"Heavy bolter","dist":8.6,"rng":36,"melee":false}
+{"gen":712,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Crisis Battlesuits","weapon":"Hunter-killer missile","dist":8.6,"rng":48,"melee":false}
+{"gen":712,"round":4,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Armoured tracks","dist":0,"rng":1,"melee":true}
+{"gen":712,"round":4,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":19,"s1LostToAi":11,"cp1":9,"cp2":9,"vp1":15,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":712,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Riptide Battlesuit","dice":[3,1],"ld":7,"pass":false}
+{"gen":712,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Crisis Battlesuits","dice":[3,6],"ld":7,"pass":true}
+{"gen":712,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Krootox Riders","dice":[5,3],"ld":7,"pass":true}
+{"gen":712,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"51ray3y","unit":"Kroot Lone-Spear","moved":1.2,"cap":12,"why":"screens Obj 1","fromX":35.7,"fromY":19.7,"toX":36.9,"toY":19.4}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"qfrkuq9","unit":"Great Knarloc","moved":4.29,"cap":9,"why":"→ Obj 2 (OC 3 v 0)","fromX":44.4,"fromY":24.3,"toX":43.2,"toY":28.5}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6t2tbw3","unit":"Riptide Battlesuit","moved":7,"cap":10,"why":"→ Obj 1","fromX":33.9,"fromY":16.3,"toX":40.9,"toY":16.4}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"8nupbmq","unit":"Piranha","moved":1.4,"cap":14,"why":"→ Obj 4","fromX":52.8,"fromY":33,"toX":51.6,"toY":32.2}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3m8tiud","unit":"Heavy Gun Drones","moved":0.8,"cap":8,"why":"→ Obj 5","fromX":50.5,"fromY":21.1,"toX":49.7,"toY":21.2}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k8kw8mt","unit":"Crisis Battlesuits","moved":5.5,"cap":10,"why":"→ Obj 4","fromX":41.3,"fromY":10.4,"toX":35.8,"toY":10.4}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wsrjx3a","unit":"Crisis Sunforge Battlesuits","moved":0,"why":"holds position"}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"r3ee53b","unit":"Y’vahra Battlesuit","moved":8.5,"cap":10,"why":"→ Obj 4","fromX":53.6,"fromY":28.3,"toX":45.9,"toY":24.7}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"wq3ob1g","unit":"Krootox Riders","moved":1.73,"cap":7,"why":"→ Obj 3 (OC 2 v 0)","fromX":37.8,"fromY":24.3,"toX":36.1,"toY":23.8}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"6wvt2ha","unit":"Knarloc Riders","moved":0,"why":"holds position"}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ey51oap","unit":"Hammerhead Gunship","moved":0,"why":"holds position"}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"ogeb55v","unit":"Tx42 Piranha","moved":7.7,"cap":14,"why":"→ Obj 1","fromX":54.3,"fromY":35.7,"toX":52.4,"toY":28.3}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"xlp3ip4","unit":"Strike Team","moved":4.2,"cap":6,"why":"screens Obj 1","fromX":54.2,"fromY":18.9,"toX":50.1,"toY":18}
+{"gen":712,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Death Cult Assassins","weapon":"Heavy burst cannon","shooters":1,"dist":15.8,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":2}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Ion accelerator – supercharge","shooters":1,"dist":11.5,"rng":72,"vis":true,"cover":true,"slain":1,"woundsDealt":1}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Retributor Squad","weapon":"Ion accelerator – standard","shooters":1,"dist":22.6,"rng":72,"vis":true,"cover":true,"slain":1,"woundsDealt":1}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Y’vahra Battlesuit","target":"Castigator","weapon":"Ionic discharge cannon – overcharge","shooters":1,"dist":12.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin fusion blaster","shooters":1,"dist":8.3,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin plasma rifle","shooters":1,"dist":8.3,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Y’vahra Battlesuit","target":"Castigator","weapon":"Ionic discharge cannon – standard","shooters":1,"dist":12.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Mortifiers","weapon":"Twin Kroot gun","shooters":1,"dist":16.3,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Castigator","weapon":"Kroot bolt thrower","shooters":1,"dist":9.6,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Strike Team","target":"Exorcist","weapon":"Pulse carbine","shooters":10,"dist":17.2,"rng":20,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Riptide Battlesuit","target":"Exorcist","weapon":"Twin smart missile system","shooters":1,"dist":8.3,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Great Knarloc","target":"Mortifiers","weapon":"Kroot rifle","shooters":1,"dist":16.3,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":712,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":2,"held2":1,"contested":0}}
+{"gen":712,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Great Knarloc","target":"Castigator","need":9,"roll":10,"made":true}
+{"gen":712,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Y’vahra Battlesuit","target":"Castigator","need":10.6,"roll":2,"made":false}
+{"gen":712,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":712,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Great Knarloc","target":"Castigator","weapon":"Great Knarloc beak and talons","slain":0}
+{"gen":712,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":712,"round":5,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":20,"vp2":30,"oc":{"held1":1,"held2":1,"contested":0}}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Great Knarloc","weapon":"Ministorum hand flamer","dist":11.6,"rng":12,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Great Knarloc","weapon":"Artificer-crafted storm bolter","dist":11.6,"rng":24,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Great Knarloc","weapon":"Heavy bolter","dist":11.6,"rng":36,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Great Knarloc","weapon":"Meltagun","dist":11.6,"rng":12,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Canoness","tgt":"Great Knarloc","weapon":"Ministorum flamer","dist":11.6,"rng":12,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Y’vahra Battlesuit","weapon":"Castigator autocannons","dist":12.2,"rng":48,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Y’vahra Battlesuit","weapon":"Castigator battle cannon","dist":12.2,"rng":48,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Y’vahra Battlesuit","weapon":"Heavy bolter","dist":12.2,"rng":36,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Castigator","tgt":"Y’vahra Battlesuit","weapon":"Hunter-killer missile","dist":12.2,"rng":48,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Strike Team","weapon":"Exorcist conflagration rockets","dist":15.6,"rng":36,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Exorcist missile launcher","dist":6.8,"rng":36,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Strike Team","weapon":"Heavy bolter","dist":16.9,"rng":36,"melee":false}
+{"gen":712,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Exorcist","tgt":"Riptide Battlesuit","weapon":"Hunter-killer missile","dist":6.8,"rng":48,"melee":false}
+{"gen":712,"round":5,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":5,"aiShots":13,"s1LostToAi":6,"cp1":10,"cp2":10,"vp1":20,"vp2":35,"oc":{"held1":1,"held2":3,"contested":0}}

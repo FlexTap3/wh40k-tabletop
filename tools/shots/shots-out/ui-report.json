@@ -1,0 +1,51 @@
+{
+  "steps": [
+    {
+      "name": "app loads, board renders",
+      "ok": true,
+      "note": "0 console errors on load"
+    },
+    {
+      "name": "load terrain layout (mission)",
+      "ok": true,
+      "note": "{\"ok\":true,\"objectives\":5,\"dz\":2,\"key\":\"Official 1A · T&H vs T&H\"}"
+    },
+    {
+      "name": "import + deploy my army",
+      "ok": true,
+      "note": "{\"ok\":true,\"myModels\":78}"
+    },
+    {
+      "name": "start Solo mode (AI opponent deploys)",
+      "ok": true,
+      "note": "{\"dialog\":true,\"started\":true,\"aiToks\":34}"
+    },
+    {
+      "name": "step through my 6 phases (Command→End)",
+      "ok": true,
+      "note": "ended at {\"side\":1,\"ph\":5,\"round\":1}, 0 new errors"
+    },
+    {
+      "name": "⚔ attack tool: click unit→enemy populates Attack tab",
+      "ok": true,
+      "note": "{\"hasContent\":true,\"mentionsWeapon\":true,\"sample\":\"Weapon Attacker Attacks Hit on2+3+4+5+6+Auto (Torrent) SAP0-1-2-3-4-5 D Hit mod-10+1 Wound mod-10+1 Lethal Hits Twin-lin\"}"
+    },
+    {
+      "name": "Cards tab renders",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "AI plays its turn without errors",
+      "ok": true,
+      "note": "{\"side\":2,\"round\":1,\"vp2\":0,\"newErrors\":0}"
+    },
+    {
+      "name": "phone viewport renders",
+      "ok": true,
+      "note": ""
+    }
+  ],
+  "errors": [],
+  "totalErrors": 0
+}

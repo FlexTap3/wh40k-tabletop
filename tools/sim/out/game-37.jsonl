@@ -1,0 +1,184 @@
+{"gen":37,"round":0,"phase":-1,"phaseName":"Deploy","side":0,"type":"deploy","layout":"Official 1A · T&H vs T&H","mission":"Battlefield Dominance / Battlefield Dominance","sideA":{"fid":"SM","name":"Space Marines","pts":1980,"units":11,"models":62,"reserves":0},"sideB":{"fid":"TAU","name":"T’au Empire","pts":1975,"units":10,"models":26,"reserves":1}}
+{"gen":37,"round":1,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":0,"cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":1,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"fr1ealb","unit":"Watch Master","moved":3.3,"cap":6,"why":"moves toward objective","fromX":10,"fromY":4,"toX":12.5,"toY":6.2}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"mfgzi4b","unit":"Ravenwing Talonmaster","moved":4.75,"cap":16,"why":"moves toward objective","fromX":7,"fromY":35.5,"toX":11.7,"toY":35.8}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"5royzb3","unit":"Heavy Intercessor Squad","moved":4.25,"cap":5,"why":"moves toward objective","fromX":8.1,"fromY":18.6,"toX":12.4,"toY":18.9}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k3rgi84","unit":"Tactical Squad","moved":0,"why":"blocked"}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"aj0ah4e","unit":"Blood Claws","moved":1.75,"cap":7,"why":"moves toward objective","fromX":5.5,"fromY":31,"toX":7.1,"toY":31.6}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3l2ity1","unit":"Venerable Dreadnought","moved":1.5,"cap":6,"why":"moves toward objective","fromX":11.5,"fromY":38.5,"toX":12.9,"toY":38.1}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cu1yueh","unit":"Vindicator","moved":4.95,"cap":9,"why":"moves toward objective","fromX":19,"fromY":16,"toX":23.5,"toY":18}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"2sk26f6","unit":"Terminator Assault Squad","moved":2,"cap":5,"why":"advances on Stormsurge","fromX":3.6,"fromY":5.1,"toX":5.3,"toY":6.2}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"fekigsx","unit":"Librarian Dreadnought","moved":5.6,"cap":8,"why":"moves toward objective","fromX":4,"fromY":23.5,"toX":8.3,"toY":27.1}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"9bdk4vi","unit":"Victrix Honour Guard","moved":6,"cap":6,"why":"moves toward objective","fromX":11.5,"fromY":8.5,"toX":13,"toY":14.3}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"dqhfbkw","unit":"SPACE MARINE BIKE","moved":8.4,"cap":12,"why":"moves toward objective","fromX":2.5,"fromY":17.5,"toX":8,"toY":23.8}
+{"gen":37,"round":1,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":1,"cp2":1,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":0,"contested":0}}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Cluster rocket system","dist":21.9,"rng":48,"melee":false}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Destroyer missiles","dist":21.9,"rng":72,"melee":false}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse blast cannon – focused","dist":21.9,"rng":24,"melee":false}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse blast cannon – dispersed","dist":23.4,"rng":48,"melee":false}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse driver cannon","dist":23.4,"rng":72,"melee":false}
+{"gen":37,"round":1,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Twin smart missile system","dist":24.9,"rng":30,"melee":false}
+{"gen":37,"round":1,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":0,"aiShots":6,"s1LostToAi":9,"cp1":3,"cp2":3,"vp1":0,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":10,"cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"fr1ealb","unit":"Watch Master","moved":6,"cap":6,"why":"moves toward objective","fromX":12.5,"fromY":6.2,"toX":18.5,"toY":6.5}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"mfgzi4b","unit":"Ravenwing Talonmaster","moved":0,"why":"blocked"}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"5royzb3","unit":"Heavy Intercessor Squad","moved":3.5,"cap":5,"why":"moves toward objective","fromX":12.4,"fromY":18.9,"toX":13.6,"toY":22.2}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k3rgi84","unit":"Tactical Squad","moved":1.5,"cap":6,"why":"moves toward objective","fromX":6.7,"fromY":39.7,"toX":8.1,"toY":39.3}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"aj0ah4e","unit":"Blood Claws","moved":2.8,"cap":7,"why":"moves toward objective","fromX":5.5,"fromY":31.7,"toX":8.1,"toY":32.6}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3l2ity1","unit":"Venerable Dreadnought","moved":0,"why":"blocked"}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cu1yueh","unit":"Vindicator","moved":9,"cap":9,"why":"moves toward objective","fromX":23.5,"fromY":18,"toX":21.3,"toY":26.7}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"2sk26f6","unit":"Terminator Assault Squad","moved":5,"cap":5,"why":"advances on Ghostkeel Battlesuit","fromX":5.3,"fromY":6.2,"toX":10,"toY":8.1}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"fekigsx","unit":"Librarian Dreadnought","moved":8,"cap":8,"why":"moves toward objective","fromX":8.3,"fromY":27.1,"toX":14.3,"toY":32.3}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"9bdk4vi","unit":"Victrix Honour Guard","moved":6,"cap":6,"why":"moves toward objective","fromX":13,"fromY":14.3,"toX":18.7,"toY":16.4}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"dqhfbkw","unit":"SPACE MARINE BIKE","moved":0,"why":"blocked"}
+{"gen":37,"round":2,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Crisis Battlesuits","weapon":"Heavy bolt rifle","shooters":1,"dist":26.5,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Crisis Battlesuits","weapon":"Heavy bolter","shooters":10,"dist":26.5,"rng":36,"vis":true,"cover":true,"slain":2,"woundsDealt":8}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Kroot Flesh Shaper","weapon":"Demolisher cannon","shooters":1,"dist":23.3,"rng":24,"vis":true,"cover":true,"slain":4,"woundsDealt":4}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Kroot Flesh Shaper","weapon":"Hunter-killer missile","shooters":1,"dist":23.3,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Kroot Flesh Shaper","weapon":"Storm bolter","shooters":1,"dist":23.3,"rng":24,"vis":true,"cover":true,"slain":1,"woundsDealt":1}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Librarian Dreadnought","target":"Stormsurge","weapon":"Blood Lance – witchfire","shooters":1,"dist":17.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":3}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Librarian Dreadnought","target":"Stormsurge","weapon":"Blood Lance – focused witchfire","shooters":1,"dist":17.2,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":2,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":3,"cp2":3,"vp1":10,"vp2":0,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Cluster rocket system","dist":21,"rng":48,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Librarian Dreadnought","weapon":"Destroyer missiles","dist":16.3,"rng":72,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Librarian Dreadnought","weapon":"Pulse blast cannon – focused","dist":16.3,"rng":24,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse blast cannon – dispersed","dist":21.5,"rng":48,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse driver cannon","dist":22.5,"rng":72,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Twin airbursting fragmentation projector","dist":23,"rng":24,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Twin smart missile system","dist":23,"rng":30,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Heavy Intercessor Squad","weapon":"Heavy rail rifle","dist":29.8,"rng":60,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Victrix Honour Guard","weapon":"High-yield missile pods","dist":25,"rng":30,"melee":false}
+{"gen":37,"round":2,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Heavy Intercessor Squad","weapon":"Seeker missile","dist":31.6,"rng":48,"melee":false}
+{"gen":37,"round":2,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":10,"s1LostToAi":10,"cp1":5,"cp2":5,"vp1":10,"vp2":10,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Blood Claws","dice":[6,5],"ld":6,"pass":true}
+{"gen":37,"round":3,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"fr1ealb","unit":"Watch Master","moved":6,"cap":6,"why":"moves toward objective","fromX":18.5,"fromY":6.5,"toX":22,"toY":11.4}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"mfgzi4b","unit":"Ravenwing Talonmaster","moved":0,"why":"blocked"}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"5royzb3","unit":"Heavy Intercessor Squad","moved":4.25,"cap":5,"why":"moves toward objective","fromX":12.8,"fromY":22.3,"toX":14.5,"toY":26.2}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k3rgi84","unit":"Tactical Squad","moved":0,"why":"blocked"}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"aj0ah4e","unit":"Blood Claws","moved":0.7,"cap":7,"why":"moves toward objective","fromX":7.1,"fromY":33,"toX":7.7,"toY":33.2}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3l2ity1","unit":"Venerable Dreadnought","moved":0,"why":"blocked"}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cu1yueh","unit":"Vindicator","moved":4.95,"cap":9,"why":"moves toward objective","fromX":21.3,"fromY":26.7,"toX":24.9,"toY":23.3}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"2sk26f6","unit":"Terminator Assault Squad","moved":0.5,"cap":5,"why":"advances on Y’vahra Battlesuit","fromX":10,"fromY":8.1,"toX":10.4,"toY":8.2}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"9bdk4vi","unit":"Victrix Honour Guard","moved":6,"cap":6,"why":"moves toward objective","fromX":18.3,"fromY":16.6,"toX":12.4,"toY":17.7}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"dqhfbkw","unit":"SPACE MARINE BIKE","moved":10.2,"cap":12,"why":"moves toward objective","fromX":8,"fromY":23.8,"toX":14.7,"toY":31.5}
+{"gen":37,"round":3,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Watch Master","target":"Crisis Battlesuits","weapon":"Vigil spear","shooters":1,"dist":16.6,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Kroot Flesh Shaper","weapon":"Heavy bolt rifle","shooters":1,"dist":23.6,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Kroot Flesh Shaper","weapon":"Heavy bolter","shooters":8,"dist":23.6,"rng":36,"vis":true,"cover":true,"slain":6,"woundsDealt":8}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Victrix Honour Guard","target":"Y’vahra Battlesuit","weapon":"Master-crafted bolt carbine","shooters":5,"dist":19.1,"rng":24,"vis":true,"cover":false,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Combi-weapon","shooters":1,"dist":15.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Grav-gun","shooters":1,"dist":15.9,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Heavy bolter","shooters":1,"dist":15.9,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Multi-melta","shooters":1,"dist":15.9,"rng":18,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Plasma gun – standard","shooters":1,"dist":15.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Plasma gun – supercharge","shooters":1,"dist":15.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"SPACE MARINE BIKE","target":"Stormsurge","weapon":"Twin boltgun","shooters":1,"dist":15.9,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":3,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":5,"cp2":5,"vp1":15,"vp2":10,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Watch Master","weapon":"Ionic discharge cannon – standard","dist":16.9,"rng":18,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Watch Master","weapon":"Ionic discharge cannon – overcharge","dist":16.9,"rng":18,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Crisis Battlesuits","tgt":"Watch Master","weapon":"T’au flamer","dist":7.1,"rng":12,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"SPACE MARINE BIKE","weapon":"Cluster rocket system","dist":8.6,"rng":48,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"SPACE MARINE BIKE","weapon":"Destroyer missiles","dist":8.6,"rng":72,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Vindicator","weapon":"Pulse blast cannon – focused","dist":4.6,"rng":24,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Watch Master","weapon":"Pulse blast cannon – dispersed","dist":18,"rng":48,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Pulse driver cannon","dist":8.2,"rng":72,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Twin T’au flamer","dist":8.2,"rng":12,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Ghostkeel Battlesuit","tgt":"Watch Master","weapon":"Cyclic ion raker – standard","dist":15.7,"rng":36,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Ghostkeel Battlesuit","tgt":"Watch Master","weapon":"Cyclic ion raker – overcharge","dist":15.7,"rng":36,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Ghostkeel Battlesuit","tgt":"Watch Master","weapon":"Fusion collider","dist":15.7,"rng":18,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Victrix Honour Guard","weapon":"Ionic discharge cannon – standard","dist":17,"rng":18,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Victrix Honour Guard","weapon":"Ionic discharge cannon – overcharge","dist":17,"rng":18,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Victrix Honour Guard","weapon":"Heavy rail rifle","dist":32.6,"rng":60,"melee":false}
+{"gen":37,"round":3,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Victrix Honour Guard","weapon":"Seeker missile","dist":32.6,"rng":48,"melee":false}
+{"gen":37,"round":3,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":16,"s1LostToAi":3,"cp1":7,"cp2":7,"vp1":15,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Blood Claws","dice":[6,4],"ld":6,"pass":true}
+{"gen":37,"round":4,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":10,"cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"mfgzi4b","unit":"Ravenwing Talonmaster","moved":0,"why":"blocked"}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"5royzb3","unit":"Heavy Intercessor Squad","moved":5,"cap":5,"why":"moves toward objective","fromX":14.5,"fromY":26.2,"toX":16.5,"toY":30.8}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k3rgi84","unit":"Tactical Squad","moved":0,"why":"blocked"}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"aj0ah4e","unit":"Blood Claws","moved":0.7,"cap":7,"why":"moves toward objective","fromX":7.7,"fromY":33.2,"toX":8.4,"toY":33.1}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3l2ity1","unit":"Venerable Dreadnought","moved":0,"why":"blocked"}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"cu1yueh","unit":"Vindicator","moved":0,"why":"blocked"}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"2sk26f6","unit":"Terminator Assault Squad","moved":0,"why":"blocked"}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"9bdk4vi","unit":"Victrix Honour Guard","moved":6,"cap":6,"why":"moves toward objective","fromX":11.8,"fromY":17.5,"toX":17.5,"toY":15.6}
+{"gen":37,"round":4,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Great Knarloc","weapon":"Heavy bolt rifle","shooters":1,"dist":13.7,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Great Knarloc","weapon":"Heavy bolter","shooters":8,"dist":13.7,"rng":36,"vis":true,"cover":true,"slain":1,"woundsDealt":8}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Stormsurge","weapon":"Demolisher cannon","shooters":1,"dist":4.6,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":5}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Stormsurge","weapon":"Hunter-killer missile","shooters":1,"dist":4.6,"rng":48,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Vindicator","target":"Stormsurge","weapon":"Storm bolter","shooters":1,"dist":4.6,"rng":24,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Victrix Honour Guard","target":"Crisis Battlesuits","weapon":"Master-crafted bolt carbine","shooters":4,"dist":9.1,"rng":24,"vis":true,"cover":true,"slain":1,"woundsDealt":4}
+{"gen":37,"round":4,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":7,"cp2":7,"vp1":25,"vp2":20,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Heavy Intercessor Squad","weapon":"Cyclic ion blaster – standard","dist":13.2,"rng":18,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Heavy Intercessor Squad","weapon":"Cyclic ion blaster – overcharge","dist":13.5,"rng":18,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Heavy Intercessor Squad","weapon":"Missile pod","dist":13.5,"rng":30,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Heavy Intercessor Squad","weapon":"Plasma rifle","dist":13.5,"rng":18,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Cluster rocket system","dist":5.8,"rng":48,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Vindicator","weapon":"Destroyer missiles","dist":2.8,"rng":72,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Vindicator","weapon":"Pulse blast cannon – focused","dist":2.8,"rng":24,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Pulse blast cannon – dispersed","dist":5.8,"rng":48,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Pulse driver cannon","dist":7.6,"rng":72,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Twin T’au flamer","dist":8,"rng":12,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Ghostkeel Battlesuit","tgt":"Victrix Honour Guard","weapon":"Cyclic ion raker – standard","dist":21.5,"rng":36,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Ghostkeel Battlesuit","tgt":"Victrix Honour Guard","weapon":"Cyclic ion raker – overcharge","dist":21.5,"rng":36,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Victrix Honour Guard","weapon":"Ionic discharge cannon – standard","dist":13.7,"rng":18,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Y’vahra Battlesuit","tgt":"Victrix Honour Guard","weapon":"Ionic discharge cannon – overcharge","dist":13.7,"rng":18,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Terminator Assault Squad","weapon":"Heavy rail rifle","dist":29.1,"rng":60,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Terminator Assault Squad","weapon":"High-yield missile pods","dist":29.1,"rng":30,"melee":false}
+{"gen":37,"round":4,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Broadside Battlesuits","tgt":"Terminator Assault Squad","weapon":"Seeker missile","dist":30.9,"rng":48,"melee":false}
+{"gen":37,"round":4,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":17,"s1LostToAi":11,"cp1":9,"cp2":9,"vp1":25,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Heavy Intercessor Squad","dice":[4,3],"ld":6,"pass":true}
+{"gen":37,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"shock","unit":"Blood Claws","dice":[3,4],"ld":6,"pass":true}
+{"gen":37,"round":5,"phase":0,"phaseName":"Command","side":1,"type":"phase-end","vp1delta":5,"cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":1,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"mfgzi4b","unit":"Ravenwing Talonmaster","moved":13.6,"cap":16,"why":"moves toward objective","fromX":11.7,"fromY":35.8,"toX":11.8,"toY":22.2}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"5royzb3","unit":"Heavy Intercessor Squad","moved":2,"cap":5,"why":"moves toward objective","fromX":15.4,"fromY":31.5,"toX":16.9,"toY":30.2}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"k3rgi84","unit":"Tactical Squad","moved":0,"why":"blocked"}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"aj0ah4e","unit":"Blood Claws","moved":7,"cap":7,"why":"moves toward objective","fromX":8.4,"fromY":33.1,"toX":15.1,"toY":35.1}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"3l2ity1","unit":"Venerable Dreadnought","moved":0,"why":"blocked"}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"move","uk":"2sk26f6","unit":"Terminator Assault Squad","moved":1.25,"cap":5,"why":"advances on Breacher Team","fromX":9.7,"fromY":8.3,"toX":10.9,"toY":8.5}
+{"gen":37,"round":5,"phase":1,"phaseName":"Movement","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Commander In Enforcer Battlesuit","weapon":"Heavy bolt rifle","shooters":1,"dist":13.9,"rng":30,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Heavy Intercessor Squad","target":"Commander In Enforcer Battlesuit","weapon":"Heavy bolter","shooters":4,"dist":13.9,"rng":36,"vis":true,"cover":true,"slain":0,"woundsDealt":2}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Blood Claws","target":"Stormsurge","weapon":"Bolt pistol","shooters":5,"dist":9.9,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Blood Claws","target":"Stormsurge","weapon":"Plasma pistol – standard","shooters":1,"dist":9.9,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"shoot","unit":"Blood Claws","target":"Stormsurge","weapon":"Plasma pistol – supercharge","shooters":1,"dist":9.9,"rng":12,"vis":true,"cover":true,"slain":0,"woundsDealt":0}
+{"gen":37,"round":5,"phase":2,"phaseName":"Shooting","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"charge","unit":"Blood Claws","target":"Stormsurge","need":8.4,"roll":12,"made":true}
+{"gen":37,"round":5,"phase":3,"phaseName":"Charge","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"fight","unit":"Blood Claws","target":"Stormsurge","weapon":"Power weapon","slain":0}
+{"gen":37,"round":5,"phase":4,"phaseName":"Fight","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":5,"phaseName":"End","side":1,"type":"phase-end","cp1":9,"cp2":9,"vp1":30,"vp2":30,"oc":{"held1":2,"held2":2,"contested":0}}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Airbursting fragmentation projector","dist":2.5,"rng":24,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Burst cannon","dist":2.5,"rng":18,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Cyclic ion blaster – standard","dist":2.5,"rng":18,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Cyclic ion blaster – overcharge","dist":3.5,"rng":18,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Fusion blaster","dist":3.5,"rng":12,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Missile pod","dist":3.8,"rng":30,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"Plasma rifle","dist":3.8,"rng":18,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Commander In Enforcer Battlesuit","tgt":"Blood Claws","weapon":"T’au flamer","dist":3.8,"rng":12,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Cluster rocket system","dist":2.3,"rng":48,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Destroyer missiles","dist":2.3,"rng":72,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse blast cannon – focused","dist":2.3,"rng":24,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse blast cannon – dispersed","dist":2.3,"rng":48,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Blood Claws","weapon":"Pulse driver cannon","dist":2.3,"rng":72,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Tactical Squad","weapon":"Twin airbursting fragmentation projector","dist":14.6,"rng":24,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Tactical Squad","weapon":"Twin burst cannon","dist":14.6,"rng":18,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Tactical Squad","weapon":"Twin smart missile system","dist":14.6,"rng":30,"melee":false}
+{"gen":37,"round":5,"phase":2,"phaseName":"AI-shoot","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Twin T’au flamer","dist":3.7,"rng":12,"melee":false}
+{"gen":37,"round":5,"phase":4,"phaseName":"AI-fight","side":2,"type":"ai-shot","atk":"Stormsurge","tgt":"Heavy Intercessor Squad","weapon":"Thunderous footfalls","dist":0,"rng":1,"melee":true}
+{"gen":37,"round":5,"phase":5,"phaseName":"AI-turn","side":2,"type":"ai-turn","commandVp":10,"aiShots":18,"s1LostToAi":5,"cp1":10,"cp2":10,"vp1":30,"vp2":40,"oc":{"held1":1,"held2":3,"contested":0}}

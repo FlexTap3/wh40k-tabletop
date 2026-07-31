@@ -173,6 +173,41 @@ export function classifyMotionTick(prevStreak, dist) {
   return { isRemoteJump: false, nextStreak: Math.min(prevStreak + 1, 999) };
 }
 
+/* ---------------------------------------------------------------------------------------
+ * 1b. Casualty topple + local drag lift (TTS-feel pass) — pure cores.
+ *
+ * CASUALTY: when a token vanishes from state (slain/removed by either peer), a local,
+ * cosmetic "ghost" of its pooled geometry tips over about its base edge and fades out —
+ * the tabletop convention of laying a dead model down. Purely display: state is already
+ * authoritative, both peers derive the same effect from the same removal. A mass removal
+ * (> CASUALTY_MASS_SKIP in one tick = board clear / game load) skips the theatrics.
+ *
+ * DRAG LIFT: your OWN drag writes state every pointermove (many small deltas — see note 1),
+ * so a run of drag-continuation ticks means "this piece is in the player's hand". The mini
+ * eases up DRAG_LIFT_IN off the table while dragged, and when movement goes quiet for
+ * DRAG_SETTLE_QUIET_MS it drops back down and plays the existing squash landing (emitting
+ * 'tweenland', which already drives the piece-thunk audio in wp3d-13).
+ * ------------------------------------------------------------------------------------- */
+export const CASUALTY_MS = 850;
+export const CASUALTY_TIP_RAD = 1.45;   // ~83deg — clearly "fallen over", not standing
+export const CASUALTY_MASS_SKIP = 6;    // >N removals in one tick = clear/load, no effect
+export const CASUALTY_MAX_GHOSTS = 10;
+
+/* casualtyPose(elapsedMs) -> {tip, opacity, done}: tips over during the first ~55% then
+ * fades away; endpoints exact (tip 0 at t=0, full CASUALTY_TIP_RAD from 55% on). */
+export function casualtyPose(elapsedMs) {
+  const t = clamp01(elapsedMs / CASUALTY_MS);
+  const tip = CASUALTY_TIP_RAD * smoothstep(clamp01(t / 0.55));
+  const opacity = t < 0.45 ? 1 : 1 - smoothstep(clamp01((t - 0.45) / 0.55));
+  return { tip, opacity, done: elapsedMs >= CASUALTY_MS };
+}
+
+export const DRAG_LIFT_IN = 0.45;        // inches off the table while held
+export const DRAG_LIFT_EASE_MS = 90;     // pickup ease-in
+export const DRAG_SETTLE_QUIET_MS = 140; // no movement for this long while held => drop
+export const DRAG_DROP_MS = 130;         // descent time back to the table
+export const DRAG_MAX_CONCURRENT = 12;
+
 /* tweenRemoteMove(start, end, elapsedMs) -> {x, y, rot, lift, scaleY, scaleXZ, done}
  * start/end = {x, y, rot} in board-state space (x/y inches, rot degrees). Pure — no THREE,
  * no side effects; the caller composes the actual world-space matrix. */
@@ -408,6 +443,45 @@ export function createMotion(deps) {
     applyRingFollow(t, pose, el, anim);
   }
 
+  /* ---- casualty ghosts (design: see pure-core block above classifyMotionTick) ---- */
+  const ghosts = []; // {outer, pivot, mat, elapsed}
+  const dragLifts = new Map(); // tokenId -> {lift01, quietMs, dropping, dropElapsed, ringOffsetY}
+
+  function spawnCasualty(lk) {
+    if (!lk.geometry || ghosts.length >= CASUALTY_MAX_GHOSTS) return;
+    const mat = THREE.MeshLambertMaterial
+      ? new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true })
+      : new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true });
+    const mesh = new THREE.Mesh(lk.geometry, mat);
+    const hx = lk.hx || 0.6;
+    const pivot = new THREE.Object3D();
+    pivot.position.set(hx, 0, 0);   // pivot on the base's +x edge…
+    mesh.position.set(-hx, 0, 0);   // …so the model tips about it, base edge grounded
+    pivot.add(mesh);
+    const outer = new THREE.Object3D();
+    outer.position.set(lk.x, lk.el || 0, lk.y);
+    outer.rotation.y = -(lk.rot || 0) * Math.PI / 180;
+    outer.add(pivot);
+    scene.add(outer);
+    ghosts.push({ outer, pivot, mat, elapsed: 0 });
+  }
+
+  function processGhosts(dtMs) {
+    for (let i = ghosts.length - 1; i >= 0; i--) {
+      const g = ghosts[i];
+      g.elapsed += dtMs;
+      const pose = casualtyPose(g.elapsed);
+      g.pivot.rotation.z = -pose.tip;
+      g.mat.opacity = pose.opacity;
+      if (pose.done) { scene.remove(g.outer); g.mat.dispose(); ghosts.splice(i, 1); }
+    }
+  }
+
+  function clearGhosts() {
+    for (const g of ghosts) { scene.remove(g.outer); g.mat.dispose(); }
+    ghosts.length = 0;
+  }
+
   function processRemoteMoves(dtMs, state) {
     const tokens = (state && state.tokens) || [];
     const seen = new Set();
@@ -415,11 +489,13 @@ export function createMotion(deps) {
     const jumpedIds = []; // WP3D-v3: batched 'remotemove' payload, see design note 6
     for (const t of tokens) {
       seen.add(t.id);
-      const lk = lastKnown.get(t.id);
+      let lk = lastKnown.get(t.id);
+      let dist = 0;
       if (!lk) {
-        lastKnown.set(t.id, { x: t.x, y: t.y, rot: t.rot || 0, streak: 0 });
+        lk = { x: t.x, y: t.y, rot: t.rot || 0, streak: 0, geometry: null, hx: 0, hz: 0, el: 0 };
+        lastKnown.set(t.id, lk);
       } else {
-        const dist = Math.hypot(t.x - lk.x, t.y - lk.y);
+        dist = Math.hypot(t.x - lk.x, t.y - lk.y);
         const cls = classifyMotionTick(lk.streak, dist);
         if (cls.isRemoteJump) {
           jumpedIds.push(t.id);
@@ -431,9 +507,21 @@ export function createMotion(deps) {
               ringOffsetY: null,
             });
           }
+        } else if (dist > 0 && lk.streak > 0 && !activeMoves.has(t.id)) {
+          // Drag continuation on an OWN drag (see pure-core block): pick the mini up.
+          let dl = dragLifts.get(t.id);
+          if (!dl && dragLifts.size < DRAG_MAX_CONCURRENT) {
+            dl = { lift01: 0, quietMs: 0, dropping: false, dropElapsed: 0, ringOffsetY: null };
+            dragLifts.set(t.id, dl);
+          }
+          if (dl) { dl.quietMs = 0; if (dl.dropping) { dl.dropping = false; dl.dropElapsed = 0; } }
         }
         lk.x = t.x; lk.y = t.y; lk.rot = t.rot || 0; lk.streak = cls.nextStreak;
       }
+      // casualty/ghost snapshot upkeep (cheap in-place writes, no allocation)
+      if (t.shape === 'c') { lk.hx = lk.hz = (t.dmm || 32) / 50.8; }
+      else { lk.hx = (t.wIn || 1) / 2; lk.hz = (t.hIn || 1) / 2; }
+      lk.el = t.lvl && sceneSync.elevationFor ? sceneSync.elevationFor(t) : 0;
       const anim = activeMoves.get(t.id);
       if (anim) {
         anim.elapsed += dtMs;
@@ -442,9 +530,53 @@ export function createMotion(deps) {
         applyAnimatedPose(t, pose, meshes, anim);
         if (pose.done) { activeMoves.delete(t.id); emit('tweenland', { tokenId: t.id }); }
       }
+      const dl = dragLifts.get(t.id);
+      if (dl && !anim) {
+        if (dist <= 1e-9) dl.quietMs += dtMs;
+        let lift, scaleY = 1, scaleXZ = 1, finished = false;
+        if (!dl.dropping) {
+          dl.lift01 = Math.min(1, dl.lift01 + dtMs / DRAG_LIFT_EASE_MS);
+          lift = DRAG_LIFT_IN * smoothstep(dl.lift01);
+          if (dl.quietMs >= DRAG_SETTLE_QUIET_MS && dl.lift01 >= 1) { dl.dropping = true; dl.dropElapsed = 0; }
+        } else {
+          dl.dropElapsed += dtMs;
+          const d01 = clamp01(dl.dropElapsed / DRAG_DROP_MS);
+          lift = DRAG_LIFT_IN * (1 - smoothstep(d01));
+          if (d01 >= 1) {
+            const st = clamp01((dl.dropElapsed - DRAG_DROP_MS) / SQUASH_MS);
+            const bump = Math.sin(Math.PI * st);
+            scaleY = 1 - bump * SQUASH_AMOUNT;
+            scaleXZ = 1 + bump * SQUASH_AMOUNT * 0.6;
+            if (dl.dropElapsed >= DRAG_DROP_MS + SQUASH_MS) finished = true;
+          }
+        }
+        if (!meshes) meshes = sceneSync.pickMeshes ? sceneSync.pickMeshes() : [];
+        applyAnimatedPose(t, { x: t.x, y: t.y, rot: t.rot || 0, lift, scaleY, scaleXZ }, meshes, dl);
+        if (finished) { dragLifts.delete(t.id); emit('tweenland', { tokenId: t.id }); }
+      }
     }
+    // removals: topple a ghost for each vanished token (skip mass clears)
+    let removedCount = 0;
+    for (const id of lastKnown.keys()) { if (!seen.has(id)) removedCount++; }
     for (const id of Array.from(lastKnown.keys())) {
-      if (!seen.has(id)) { lastKnown.delete(id); activeMoves.delete(id); }
+      if (!seen.has(id)) {
+        const lk = lastKnown.get(id);
+        if (removedCount <= CASUALTY_MASS_SKIP) spawnCasualty(lk);
+        lastKnown.delete(id);
+        activeMoves.delete(id);
+        dragLifts.delete(id);
+      }
+    }
+    if (removedCount > 0 && removedCount <= CASUALTY_MASS_SKIP) emit('casualty', { count: removedCount });
+    // refresh each live token's pooled-geometry snapshot for next tick's possible casualty
+    if (!meshes) meshes = sceneSync.pickMeshes ? sceneSync.pickMeshes() : [];
+    for (const mesh of meshes) {
+      const ids = mesh.userData && mesh.userData.slotTokenId;
+      if (!ids) continue;
+      for (let i = 0; i < (mesh.count || ids.length || 0); i++) {
+        const lk = lastKnown.get(ids[i]);
+        if (lk) lk.geometry = mesh.geometry;
+      }
     }
     if (jumpedIds.length) emit('remotemove', { tokenIds: jumpedIds });
   }
@@ -672,17 +804,18 @@ export function createMotion(deps) {
   return {
     tick(dtMs, state) {
       processRemoteMoves(dtMs, state);
+      processGhosts(dtMs);
       processHover();
       processFocus(dtMs);
       processDiceBatch();
       processDiceThrow();
     },
-    on, // WP3D-v3: on(evt, cb) -> unsubscribe(); events 'remotemove'|'tweenland'|'diceland'
+    on, // events: 'remotemove'|'tweenland'|'diceland'|'casualty' (casualty = TTS-feel pass)
     /* _debug — WP3D-v3 test/inspection hook (documented, intentionally minimal): exposes the
        live diceThrow record so behavioral/E2E tests (page.evaluate) can assert tint/identity
        without reaching into module-private closure state any other way. Not part of the
        frozen tick/dispose contract; do not build production behavior on it. */
-    _debug: { diceThrow: () => diceThrow, activeMoves: () => activeMoves },
+    _debug: { diceThrow: () => diceThrow, activeMoves: () => activeMoves, ghosts: () => ghosts, dragLifts: () => dragLifts },
     dispose() {
       disposed = true;
       canvas.removeEventListener('pointermove', onPointerMove);
@@ -692,11 +825,13 @@ export function createMotion(deps) {
       hoverRingGeo.dispose();
       hoverRingMat.dispose();
       clearDice();
+      clearGhosts();
       dieGeometry.dispose();
       diceMaterial.dispose();
       remoteDiceMaterial.dispose();
       lastKnown.clear();
       activeMoves.clear();
+      dragLifts.clear();
       focusAnim = null;
       listeners.clear();
     },

@@ -1,0 +1,460 @@
+{
+  "steps": [
+    {
+      "name": "app loads, board renders",
+      "ok": true,
+      "note": "0 console errors on load"
+    },
+    {
+      "name": "mission + my army + AI deployed, clean pre-game state",
+      "ok": true,
+      "note": "{\"obj\":5,\"dz\":2,\"mission\":\"Official 1A · T&H vs T&H\",\"mine\":78,\"foe\":39}"
+    },
+    {
+      "name": "kickoff: Deploy → round 1 Command (side 1)",
+      "ok": true,
+      "note": "{\"round\":1,\"ph\":0,\"side\":1,\"cp1\":1,\"cp2\":1,\"vp1\":0,\"vp2\":0,\"over\":false,\"mine\":78,\"foe\":39,\"label\":\"Player 1 · Command\"}"
+    },
+    {
+      "name": "round 1: my six phases played (Command→End)",
+      "ok": true,
+      "note": "label=\"Player 1 · End\""
+    },
+    {
+      "name": "round 1: AI played its turn and handed back",
+      "ok": true,
+      "note": "{\"aiStartSide\":2,\"backToRound\":2,\"allocPrompts\":9,\"newErr\":0}"
+    },
+    {
+      "name": "round 2: my six phases played (Command→End)",
+      "ok": true,
+      "note": "label=\"Player 1 · End\""
+    },
+    {
+      "name": "round 2: AI played its turn and handed back",
+      "ok": true,
+      "note": "{\"aiStartSide\":2,\"backToRound\":3,\"allocPrompts\":4,\"newErr\":0}"
+    },
+    {
+      "name": "round 3: my six phases played (Command→End)",
+      "ok": true,
+      "note": "label=\"Player 1 · End\""
+    },
+    {
+      "name": "round 3: AI played its turn and handed back",
+      "ok": true,
+      "note": "{\"aiStartSide\":2,\"backToRound\":4,\"allocPrompts\":11,\"newErr\":0}"
+    },
+    {
+      "name": "round 4: my six phases played (Command→End)",
+      "ok": true,
+      "note": "label=\"Player 1 · End\""
+    },
+    {
+      "name": "round 4: AI played its turn and handed back",
+      "ok": true,
+      "note": "{\"aiStartSide\":2,\"backToRound\":5,\"allocPrompts\":4,\"newErr\":0}"
+    },
+    {
+      "name": "round 5: my six phases played (Command→End)",
+      "ok": true,
+      "note": "label=\"Player 1 · End\""
+    },
+    {
+      "name": "round 5: AI played its turn and handed back",
+      "ok": true,
+      "note": "{\"aiStartSide\":2,\"backToRound\":6,\"allocPrompts\":7,\"newErr\":0}"
+    },
+    {
+      "name": "state integrity: no NaN/Infinity token positions or wounds after 5 rounds",
+      "ok": true,
+      "note": "{\"total\":81,\"bad\":0,\"sample\":[]}"
+    },
+    {
+      "name": "game reached round 5 and the explicit Game-over state",
+      "ok": true,
+      "note": "{\"round\":6,\"over\":true}"
+    },
+    {
+      "name": "scoring adds up: CP 10/10 after 5 rounds (no phantom round-6 grant)",
+      "ok": true,
+      "note": "{\"cp1\":10,\"cp2\":10}"
+    },
+    {
+      "name": "end-game cue: phase label 'Game over', round badge '5 ✓' (never a bare 6), scoreboard shows Game over",
+      "ok": true,
+      "note": "{\"round\":6,\"over\":true,\"cp1\":10,\"cp2\":10,\"vp1\":20,\"vp2\":0,\"phaseLabel\":\"🏁 Game over\",\"roundBadge\":\"5 ✓\",\"scoreboardOver\":true,\"mine\":37,\"foe\":44}"
+    },
+    {
+      "name": "stepping past game-over grants no extra CP (phantom guard holds)",
+      "ok": true,
+      "note": "{\"cpBefore\":10,\"cpAfter\":10}"
+    },
+    {
+      "name": "P5-1 FIX: casualty-allocation click passes THROUGH the banner to a model beneath it",
+      "ok": true,
+      "note": "{\"elemUnderBanner\":\"board\",\"appliedAfterClick\":\"cleared\"}"
+    },
+    {
+      "name": "WHOLE-GAME: 0 console/page errors across all five rounds",
+      "ok": true,
+      "note": "0 total"
+    }
+  ],
+  "errors": [],
+  "rounds": [
+    {
+      "round": 1,
+      "aiAllocPrompts": 9,
+      "afterAi": {
+        "mine": 66,
+        "foe": 39,
+        "vp1": 0,
+        "vp2": 0,
+        "cp1": 3,
+        "cp2": 3
+      }
+    },
+    {
+      "round": 2,
+      "scoredPrimary": 5
+    },
+    {
+      "round": 2,
+      "aiAllocPrompts": 4,
+      "afterAi": {
+        "mine": 63,
+        "foe": 44,
+        "vp1": 5,
+        "vp2": 0,
+        "cp1": 5,
+        "cp2": 5
+      }
+    },
+    {
+      "round": 3,
+      "scoredPrimary": 5
+    },
+    {
+      "round": 3,
+      "aiAllocPrompts": 11,
+      "afterAi": {
+        "mine": 53,
+        "foe": 44,
+        "vp1": 10,
+        "vp2": 0,
+        "cp1": 7,
+        "cp2": 7
+      }
+    },
+    {
+      "round": 4,
+      "scoredPrimary": 5
+    },
+    {
+      "round": 4,
+      "aiAllocPrompts": 4,
+      "afterAi": {
+        "mine": 47,
+        "foe": 44,
+        "vp1": 15,
+        "vp2": 0,
+        "cp1": 9,
+        "cp2": 9
+      }
+    },
+    {
+      "round": 5,
+      "scoredPrimary": 5
+    },
+    {
+      "round": 5,
+      "aiAllocPrompts": 7,
+      "afterAi": {
+        "mine": 37,
+        "foe": 44,
+        "vp1": 20,
+        "vp2": 0,
+        "cp1": 10,
+        "cp2": 10
+      }
+    }
+  ],
+  "findings": [
+    {
+      "probe": "casualty allocation (manual)",
+      "note": "Resolved a real prompt via board-click + 'A': \"AI: Cadre Fireblade → Ministorum Priest · Pulse carbine ×11\" (6 packets vs xfcv3rd)."
+    },
+    {
+      "probe": "phase-of-shooting-casualties",
+      "severity": "minor (out of Lane-B scope: AI turn-loop)",
+      "note": "34/35 of the AI's SHOOTING casualty-allocation prompts fired while the phase label already read 'Charge'. Root cause (AI code, not UI): aiShootUnit enqueues each weapon's aiFireWeapon to the TAIL of the action queue, but aiPlanPhase enqueues the Shooting→Charge wp7Step BEFORE those fire actions run, so the shots (and their casualty prompts) resolve one phase late. Player-facing symptom: the casualty banner shows an AI shooting attack during 'AI · Charge'. Hand to the AI lane / coordinator."
+    },
+    {
+      "probe": "P5-1 banner click-through",
+      "severity": "MAJOR (playability, FIXED)",
+      "note": "The #wp11Banner casualty-allocation banner was pointer-events-opaque, so a target unit positioned under the top-centre banner could NOT be clicked to allocate damage (the banner ate the click → allocation impossible; auto-assign was the only escape). Fixed: #wp11Banner is now pointer-events:none with the Auto-assign button re-enabled, mirroring the P2-2 fix on #wpRulesReminder. Verified: element under banner centre = \"board\" (was a banner SPAN); a real click now applies the packet."
+    }
+  ],
+  "final": {
+    "round": 6,
+    "over": true,
+    "cp1": 10,
+    "cp2": 10,
+    "vp1": 20,
+    "vp2": 0,
+    "phaseLabel": "🏁 Game over",
+    "roundBadge": "5 ✓",
+    "scoreboardOver": true,
+    "mine": 37,
+    "foe": 44
+  },
+  "allocPhases": [
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Ministorum Priest · Pulse carbine ×11"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Commander In Enforcer Battlesuit → Celestian Insidiants · Airbursting fragmentation projector"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Battle Sisters Squad · Cluster rocket system"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Immolator · Pulse blast cannon – focused"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Battle Sisters Squad · Pulse driver cannon"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Battle Sisters Squad · Twin T’au flamer"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Crisis Fireknife Battlesuits → Battle Sisters Squad · Plasma rifle"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Xv9 Hazard Battlesuits → Battle Sisters Squad · Phased ion gun"
+    },
+    {
+      "round": 1,
+      "side": 2,
+      "ph": 4,
+      "phName": "Fight",
+      "label": "AI: Crisis Fireknife Battlesuits → Battle Sisters Squad · Battlesuit fists ×2"
+    },
+    {
+      "round": 2,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Battle Sisters Squad · Pulse carbine ×11"
+    },
+    {
+      "round": 2,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Hammerhead Gunship → Canoness · Ion cannon – standard"
+    },
+    {
+      "round": 2,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Hammerhead Gunship → Canoness · Ion cannon – overcharge"
+    },
+    {
+      "round": 2,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Crisis Fireknife Battlesuits → Palatine · Missile pod ×3"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Palatine · Pulse carbine ×11"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Commander In Enforcer Battlesuit → Palatine · Burst cannon"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Commander In Enforcer Battlesuit → Celestian Insidiants · Cyclic ion blaster – standard"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Commander In Enforcer Battlesuit → Celestian Insidiants · Cyclic ion blaster – overcharge"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Sanctifiers · Cluster rocket system"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Triumph Of Saint Katherine · Pulse blast cannon – focused"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Sanctifiers · Twin airbursting fragmentation projector"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Triumph Of Saint Katherine · Twin burst cannon"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Triumph Of Saint Katherine · Twin T’au flamer"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Hammerhead Gunship → Celestian Insidiants · Ion cannon – standard"
+    },
+    {
+      "round": 3,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Hammerhead Gunship → Celestian Insidiants · Ion cannon – overcharge"
+    },
+    {
+      "round": 4,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Arco-flagellants · Fireblade pulse rifle"
+    },
+    {
+      "round": 4,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Celestian Insidiants · Pulse carbine ×11"
+    },
+    {
+      "round": 4,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Sanctifiers · Cluster rocket system"
+    },
+    {
+      "round": 4,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Sanctifiers · Pulse blast cannon – focused"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Cadre Fireblade → Triumph Of Saint Katherine · Pulse carbine ×11"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Y’vahra Battlesuit → Celestian Insidiants · Ionic discharge cannon – standard"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Y’vahra Battlesuit → Celestian Insidiants · Ionic discharge cannon – overcharge"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Arco-flagellants · Cluster rocket system"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Arco-flagellants · Twin smart missile system"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stormsurge → Celestian Insidiants · Twin T’au flamer"
+    },
+    {
+      "round": 5,
+      "side": 2,
+      "ph": 3,
+      "phName": "Charge",
+      "label": "AI: Stealth Battlesuits → Celestian Insidiants · Burst cannon ×5"
+    }
+  ],
+  "totalErrors": 0
+}

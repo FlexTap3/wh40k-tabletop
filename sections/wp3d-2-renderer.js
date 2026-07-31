@@ -10,14 +10,20 @@
 // 1. wp3dPerfTier — pure device -> render-quality tier
 // ---------------------------------------------------------------------------
 /**
- * @param {{phone?:boolean, dpr?:number, memoryGB?:number}} deviceInfo
- * @returns {{pixelRatioCap:number, antialias:boolean, labelEvery:number, shadows:boolean}}
+ * @param {{phone?:boolean, ipad?:boolean, dpr?:number, memoryGB?:number}} deviceInfo
+ * @returns {{pixelRatioCap:number, antialias:boolean, labelEvery:number, shadows:boolean,
+ *            softShadows?:boolean, shadowMapSize?:number}}
  */
 export function wp3dPerfTier(deviceInfo) {
   const d = deviceInfo || {};
   // shadows: !phone (WP3D-v2 immersion pass) — real shadow maps are desktop/iPad-tier only;
   // phones skip shadow-map rendering entirely (see createRenderer below).
   if (d.phone) return { pixelRatioCap: 1.5, antialias: false, labelEvery: 2, shadows: false };
+  // iPad (WP3D-v7b): keep the full desktop LOOK (retina DPR 2 + real shadows) but shed the
+  // two costs that don't earn their keep on a 264ppi panel — MSAA (invisible at DPR 2,
+  // expensive fill) and 2048 PCFSoft shadow filtering (halved map + hard PCF reads the same
+  // at tabletop viewing distances). The FPS governor still backstops a struggling device.
+  if (d.ipad) return { pixelRatioCap: 2, antialias: false, labelEvery: 1, shadows: true, softShadows: false, shadowMapSize: 1024 };
   return { pixelRatioCap: 2, antialias: true, labelEvery: 1, shadows: true };
 }
 
@@ -51,8 +57,14 @@ export function createRenderer(THREE, canvas, tier) {
   // Shadow maps: desktop/iPad-tier only (tier.shadows, WP3D-v2 immersion pass). Soft PCF so
   // token/terrain shadow edges aren't jagged at the board's normal viewing distances.
   renderer.shadowMap.enabled = !!tier.shadows;
-  if (renderer.shadowMap.enabled && THREE.PCFSoftShadowMap != null) {
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if (renderer.shadowMap.enabled) {
+    // softShadows === false (iPad tier) picks plain PCF — much cheaper filtering, near-
+    // identical at tabletop viewing distances. Anything else keeps the PCFSoft default.
+    if (tier.softShadows === false && THREE.PCFShadowMap != null) {
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+    } else if (THREE.PCFSoftShadowMap != null) {
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
   }
   // sRGB output (r170 API name).
   if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {

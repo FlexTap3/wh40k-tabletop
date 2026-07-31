@@ -171,7 +171,8 @@ function mergeGeometries(parts) {
     positions.set(pos, vOff * 3);
     normals.set(nor, vOff * 3);
     const n = pos.length / 3;
-    for (let i = 0; i < n; i++) { colors[(vOff + i) * 3] = p.color.r; colors[(vOff + i) * 3 + 1] = p.color.g; colors[(vOff + i) * 3 + 2] = p.color.b; }
+    if (p.colors) colors.set(p.colors, vOff * 3); // per-vertex colors (AO-baked parts)
+    else for (let i = 0; i < n; i++) { colors[(vOff + i) * 3] = p.color.r; colors[(vOff + i) * 3 + 1] = p.color.g; colors[(vOff + i) * 3 + 2] = p.color.b; }
     for (let i = 0; i < idx.length; i++) indices[iOff + i] = idx[i] + vOff;
     vOff += n; iOff += idx.length;
     g.dispose();
@@ -232,15 +233,78 @@ function voxelsToGeometry(table, footprint, palette, targetH, opts) {
   for (const k in (opts.tints || {})) tints[k] = new THREE.Color(opts.tints[k]);
   const colorFor = c => (c === 'hi' ? hi : c === 'lo' ? lo : c === 'mid' ? mid : (tints[c] || mid));
 
+  /* Optional richer primitives per entry (kit packs opt in per box; plain entries stay
+   * BoxGeometry so the built-in archetype tables keep their exact 24-verts-per-box contract):
+   *   s:'cyl'  — cylinder; ax:'x'|'y'|'z' = axis (default y), seg = radial segments (default
+   *              10), tp = far-cap radius scale (0 = cone / tapered muzzle).
+   *   s:'dome' — ellipsoid scaled to w/h/d (helmet domes, sensor pods, organic heads).
+   *   boxes    — tx/tz = top-face scale (wedges/frustums: angled glacis, sloped pauldrons),
+   *              shx/shz = top-face shear in normalized footprint units (swept hull sides).
+   *   any      — rx/rz tilts (radians) alongside the existing ry, applied to the sized part. */
+  const aoK = opts.ao ? (typeof opts.ao === 'number' ? opts.ao : 0.35) : 0;
+  const aoSpan = Math.max(0.001, targetH * 0.7);
   const parts = table.map(b => {
-    const g = new THREE.BoxGeometry(b.w * realW, b.h * targetH, b.d * realD);
+    const w = b.w * realW, h = b.h * targetH, d = b.d * realD;
+    let g;
+    if (b.s === 'cyl') {
+      g = new THREE.CylinderGeometry(0.5 * (b.tp != null ? b.tp : 1), 0.5, 1, b.seg || 10);
+      if (b.ax === 'x') g.rotateZ(Math.PI / 2);
+      else if (b.ax === 'z') g.rotateX(Math.PI / 2);
+      g.scale(w, h, d);
+    } else if (b.s === 'dome') {
+      g = new THREE.SphereGeometry(0.5, b.seg || 10, 7);
+      g.scale(w, h, d);
+    } else if (b.s === 'cap' && THREE.CapsuleGeometry) {
+      // capsule spanning the w×h×d budget (rounded-end limbs/torsos); ax like cyl.
+      g = new THREE.CapsuleGeometry(0.5, 1, 4, b.seg || 10);
+      if (b.ax === 'x') g.rotateZ(Math.PI / 2);
+      else if (b.ax === 'z') g.rotateX(Math.PI / 2);
+      if (b.ax === 'x') g.scale(w / 2, h, d);
+      else if (b.ax === 'z') g.scale(w, h, d / 2);
+      else g.scale(w, h / 2, d);
+    } else {
+      g = new THREE.BoxGeometry(w, h, d);
+      if (b.tx != null || b.tz != null || b.shx || b.shz) {
+        const tx = b.tx != null ? b.tx : 1, tz = b.tz != null ? b.tz : 1;
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          if (pos.getY(i) > 0) {
+            pos.setX(i, pos.getX(i) * tx + (b.shx || 0) * realW);
+            pos.setZ(i, pos.getZ(i) * tz + (b.shz || 0) * realD);
+          }
+        }
+        g.computeVertexNormals();
+      }
+    }
+    if (b.rx) g.rotateX(b.rx);
+    if (b.rz) g.rotateZ(b.rz);
     if (b.ry) g.rotateY(b.ry);
     g.translate(b.x * realW, b.y * targetH, b.z * realD);
-    return { geometry: g, color: colorFor(b.c) };
+    const col = colorFor(b.c);
+    const part = { geometry: g, color: col };
+    /* Baked vertical AO — grounds the mass without touching highlight/tint colors ('hi',
+     * 'glow', 'steel', … stay EXACT: palette assertions and the glow=palette.hi identity in
+     * the vehicle pack depend on it). Only mid/lo body mass darkens toward the base. */
+    if (aoK && (b.c === 'mid' || b.c === 'lo')) {
+      const pos = g.attributes.position, n = pos.count;
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const f = 1 - aoK * (1 - Math.max(0, Math.min(1, pos.getY(i) / aoSpan)));
+        arr[i * 3] = col.r * f; arr[i * 3 + 1] = col.g * f; arr[i * 3 + 2] = col.b * f;
+      }
+      part.colors = arr;
+    }
+    return part;
   });
 
   if (!opts.noBase) {
-    const baseColor = { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
+    /* Painted-base read (WP3D-v7b): kits that opt in via opts.earthBase get a neutral
+     * dark-earth base — like a hobbyist's basing — so the mini pops against the arid mat
+     * instead of dissolving into a faction-dark disc (the owner rim already carries side
+     * color). Default stays the faction-derived dark disc for the built-in archetypes. */
+    const baseColor = opts.earthBase
+      ? { r: 0.322, g: 0.251, b: 0.184 }
+      : { r: lo.r * 0.55, g: lo.g * 0.55, b: lo.b * 0.55 };
     let baseGeo;
     const isRound = footprint && (footprint.shape === 'c' || footprint.oval);
     if (isRound) {

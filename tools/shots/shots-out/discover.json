@@ -1,0 +1,324 @@
+{
+  "surface": {
+    "buttons": [
+      {
+        "tag": "button",
+        "id": null,
+        "text": "−",
+        "onclick": "stepTracker('round',-1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "+",
+        "onclick": "stepTracker('round',1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "‹",
+        "onclick": "wp7Step(-1)",
+        "title": "Previous phase",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "›",
+        "onclick": "wp7Step(1)",
+        "title": "Next phase",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "−",
+        "onclick": "stepTracker('cp1',-1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "+",
+        "onclick": "stepTracker('cp1',1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "−",
+        "onclick": "stepTracker('vp1',-1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "+",
+        "onclick": "stepTracker('vp1',1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "−",
+        "onclick": "stepTracker('cp2',-1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "+",
+        "onclick": "stepTracker('cp2',1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "−",
+        "onclick": "stepTracker('vp2',-1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "+",
+        "onclick": "stepTracker('vp2',1)",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Roll D6",
+        "onclick": "quickRoll()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "wp20Btn",
+        "text": "📊",
+        "onclick": "wp20Toggle()",
+        "title": "Dice stats — every d6 rolled on this screen",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "btnHost",
+        "text": "Host",
+        "onclick": "hostGame()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "btnJoin",
+        "text": "Join",
+        "onclick": "joinPrompt()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "btnSolo",
+        "text": "⚔ Solo",
+        "onclick": "aiSoloToggle()",
+        "title": "Practise offline against a local AI opponent (plays Blue / side 2)",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "?",
+        "onclick": "document.getElementById('helpDlg').showModal()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Builder ⛶",
+        "onclick": "openBuilder()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Army",
+        "onclick": "showTab('army')",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Cards",
+        "onclick": "showTab('cards')",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Attack",
+        "onclick": "showTab('attack')",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Setup",
+        "onclick": "showTab('setup')",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "⚒ Edit list in Builder",
+        "onclick": "openBuilder()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "📋 Import list",
+        "onclick": "openListImport()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "⚡ Auto-deploy",
+        "onclick": "wp17AutoDeploy()",
+        "title": "Place all your units in legal spots inside your deployment zone (setup only — round 1, before the battle starts). You can still drag anything afterwards.",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Save",
+        "onclick": "exportArmy()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Load",
+        "onclick": "document.getElementById('armyFile').click()",
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-select",
+        "text": "➤",
+        "onclick": "setTool('select')",
+        "title": "Select / move (V)",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-ruler",
+        "text": "📏",
+        "onclick": "setTool('ruler')",
+        "title": "Tape measure (T) — drag to measure",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-terrain",
+        "text": "⬛",
+        "onclick": "setTool('terrain')",
+        "title": "Place terrain — drag a rectangle",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-objective",
+        "text": "◎",
+        "onclick": "setTool('objective')",
+        "title": "Place objective marker — click",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-los",
+        "text": "👁",
+        "onclick": "setTool('los')",
+        "title": "Line of sight — click one of your units to see visibility & cover to every enemy unit",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": "tool-attack",
+        "text": "⚔",
+        "onclick": "setTool('attack')",
+        "title": "Attack: click your unit, then the enemy unit",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "⤢",
+        "onclick": "fitView()",
+        "title": "Zoom to fit",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "id": null,
+        "text": "Send",
+        "onclick": "sendChat()",
+        "title": null,
+        "visible": true
+      }
+    ],
+    "navLike": [
+      {
+        "tag": "div",
+        "id": "tabs",
+        "text": "Builder ⛶\n      Army\n      Cards\n      A",
+        "onclick": null,
+        "title": null,
+        "visible": true
+      },
+      {
+        "tag": "div",
+        "id": "tab-army",
+        "text": "⚒ Edit list in Builder\n      \n      \n   ",
+        "onclick": null,
+        "title": null,
+        "visible": true
+      }
+    ],
+    "selects": [],
+    "globalsPresent": [
+      "loadLayout",
+      "wpImportSelected",
+      "aiStartFromDlg",
+      "aiStart",
+      "wp7Step",
+      "aiFinishTurn",
+      "draw",
+      "fitView"
+    ]
+  },
+  "errors": []
+}
