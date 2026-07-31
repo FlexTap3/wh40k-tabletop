@@ -485,12 +485,13 @@ function buildTerrain(kind, w, h, id, piece, all) {
   }
 }
 
-/* Procedural battlefield-mat texture for buildBoard's default material: dark olive/canvas
- * grit (mirrors the 2D app's wp9MatPattern base tone/fleck approach) plus faint 6-inch grid
- * lines. Tiled at exactly 6in/tile via texture.repeat so the grid lands on true 6in
- * intervals regardless of overall board size. Browser-only (guarded by `document` — plain
- * node test environments have none), so buildBoard(w,h) with no matCanvas still constructs
- * a mesh with a flat-color fallback material there. */
+/* Procedural battlefield-mat texture for buildBoard's default material: WP3D-v6 ARID
+ * DESERT tan (the Combat Patrol Battlezone fold-out boards — mottled sand/dust rockcrete
+ * with darker earth flecks and pale cracked patches) plus faint 6-inch grid lines. Tiled at
+ * exactly 6in/tile via texture.repeat so the grid lands on true 6in intervals regardless of
+ * overall board size. Browser-only (guarded by `document` — plain node test environments
+ * have none), so buildBoard(w,h) with no matCanvas still constructs a mesh with a
+ * flat-color fallback material there. */
 function buildBoardMatTexture(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
   try {
@@ -501,17 +502,19 @@ function buildBoardMatTexture(w, h) {
     const g = c.getContext('2d');
     if (!g || !g.createImageData || !g.putImageData) return null;
     const img = g.createImageData(TILE, TILE);
-    const rnd = wp3dRng(wp3dHash('wp3d-board-mat-v1'));
+    const rnd = wp3dRng(wp3dHash('wp3d-board-mat-v2-arid'));
     for (let i = 0; i < img.data.length; i += 4) {
-      const v = 34 + rnd() * 12, fleck = rnd();
-      img.data[i] = v + (fleck < 0.05 ? 12 : 0);         // R
-      img.data[i + 1] = v + 4 + (fleck < 0.05 ? 9 : 0);   // G — pushed up for an olive cast
-      img.data[i + 2] = Math.max(0, v - 6);               // B — pulled down: dark canvas/olive
+      const v = 152 + rnd() * 26, fleck = rnd();
+      const dark = fleck < 0.06 ? -30 : 0;                 // scattered earth-brown flecks
+      const pale = fleck > 0.96 ? 18 : 0;                  // pale cracked-rockcrete specks
+      img.data[i] = Math.min(255, v + dark + pale + 6);    // R — warm sand
+      img.data[i + 1] = Math.min(255, v * 0.85 + dark + pale); // G
+      img.data[i + 2] = Math.max(0, v * 0.6 + dark * 0.8 + pale * 0.8); // B — pulled down: tan, not grey
       img.data[i + 3] = 255;
     }
     g.putImageData(img, 0, 0);
     // faint 6in grid lines at the tile edges — tiling repeats them across the whole board
-    g.strokeStyle = 'rgba(205,212,190,0.15)';
+    g.strokeStyle = 'rgba(96,66,34,0.22)';
     g.lineWidth = 1;
     g.beginPath();
     g.moveTo(0, 0.5); g.lineTo(TILE, 0.5);
@@ -520,6 +523,10 @@ function buildBoardMatTexture(w, h) {
     const tex = new THREE.CanvasTexture(c);
     if (THREE.RepeatWrapping) tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(Math.max(1, w / 6), Math.max(1, h / 6));
+    // canvas pixels are display-referred sRGB; without tagging, the linear working space +
+    // sRGB output round trip double-encodes them and the tan mat washes out to pale cream
+    // (same fix wp3d-9-environment applies to its wood/room textures).
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;
     return tex;
   } catch (e) { return null; }
@@ -527,7 +534,7 @@ function buildBoardMatTexture(w, h) {
 
 /* buildBoard(w,h,matCanvas?) -> board plane mesh, spans world x∈[0,w], z∈[0,h]. When no
  * matCanvas is supplied and a DOM is available, generates the procedural mat texture above;
- * otherwise falls back to a flat dark olive color (also the plain-node/no-DOM path). */
+ * otherwise falls back to a flat arid-tan color (also the plain-node/no-DOM path). */
 function buildBoard(w, h, matCanvas) {
   const geo = new THREE.PlaneGeometry(w, h);
   // local (x,y,0) -> world (x,0,y): matches world.z = state.y. NOTE: rotateX(+PI/2) would
@@ -546,7 +553,7 @@ function buildBoard(w, h, matCanvas) {
     // ever dips below the board plane (e.g. a low-angle inspect view).
     material = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
   } else {
-    material = new THREE.MeshBasicMaterial({ color: 0x2b3026, side: THREE.DoubleSide });
+    material = new THREE.MeshBasicMaterial({ color: 0xbf9d63, side: THREE.DoubleSide });
   }
   const mesh = new THREE.Mesh(geo, material);
   mesh.userData.isBoard = true;

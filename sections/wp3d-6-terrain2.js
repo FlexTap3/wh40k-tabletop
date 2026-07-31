@@ -121,39 +121,52 @@ export function pairingFor(piece, all) {
 }
 
 /* =========================================================================================
- * PALETTE — GW pre-painted product identity: light rockcrete grey/bone (not dark gothic
- * stone), clean edges, black/yellow hazard accents, warm small glow-lamp dots, dark-bronze
- * aquila accent block.
+ * PALETTE — WP3D-v6: Combat Patrol BATTLEZONE (2026) product identity, matched to the owner's
+ * reference photos of the boxed set. Grim dark-metal industrial ruins (green-grey steel +
+ * charcoal girder frames) carrying weathered ochre/bone gothic panel bays, dark-red external
+ * pipework with verdigris fittings, small TEAL glow accents (skull lamps / coil energy),
+ * warm lit window dots, rust-red riveted deck-plate footprint cards with printed ochre
+ * rubble, and an arid tan battlefield underneath. NOT the light pre-painted rockcrete range
+ * (that was v3-v5) and NOT flat dark gothic stone (v2) — the Battlezone read is dark METAL
+ * with warm ochre accents on a desert mat.
  * ======================================================================================= */
 const HAZARD_YELLOW = '#e2b23c';
 const HAZARD_BLACK = '#17150f';
-const GLOW_LAMP = '#ffb15c';           // warm lamp glow — the one 'glow' tint this pack uses
-const AQUILA_BRONZE = '#332720';
+const GLOW_LAMP = '#ffb15c';           // warm lit-window dot (the lamp glow inside ruins)
+const TEAL_GLOW = '#5bcac2';           // energy teal — coil bands, skull lamps, tesla accents
+const AQUILA_BRONZE = '#33352f';       // embossed aquila on fence panels — dark gunmetal
+const AQUILA_GOLD = '#a98d4a';         // gilded aquila crest on the generator/large ruins
 
 const RUIN_PAL = {
-  plate: '#8f897a', debrisLo: '#a29c8b', debrisHi: '#c2bbaa',
-  stub: '#a7a091', column: '#b5af9f', slab: '#c9c3b1',
+  plate: '#71412a', debrisLo: '#c08340', debrisHi: '#dcc491',
+  stub: '#4a4f48', column: '#333a35', slab: '#5f3d28',
 };
 const WALL_PAL = {
-  // interior (ruin-facing) facade layer — clean bone/rockcrete, this is the "product" face
-  facade: '#c9c3b2', facadeA: '#bdb7a4', facadeB: '#cbc5b3', facadeC: '#b3ad9b',
-  // outward (away from the ruin) layer — broken rubble stone, darker, jagged
-  rubble: '#726b5c',
+  // the ruin's standing face — dark green-grey battle-metal (the Battlezone wall read)
+  facade: '#3a423d', facadeA: '#333a35', facadeB: '#3e463f', facadeC: '#2f3733',
+  // broken/rubble layer — rusted-out, darker still
+  rubble: '#2a2622',
 };
-const BARRICADE_PAL = { panel: '#43464c', panelAlt: '#393c41', post: '#2f3236' };
+const FENCE_PAL = {
+  post: '#565a5c', frame: '#484c4e', mesh: '#a2a89f', panel: '#7d7a66', panelWeather: '#8f8058',
+};
+const BARRICADE_PAL = { panel: FENCE_PAL.panel, panelAlt: FENCE_PAL.panelWeather, post: FENCE_PAL.post };
 const CONTAINER_VARIANTS = [
   { body: '#5a6234', rib: '#454c28', accent: '#c9b23c' }, // olive Munitorum
   { body: '#8a6a34', rib: '#6e5326', accent: '#c9b23c' }, // ochre Munitorum
 ];
-const GEN_PAL = { body: '#767b82', dark: '#4b4f55', cable: '#5a4530' };
+const GEN_PAL = { body: '#6b4a30', dark: '#3c3f3a', cable: '#5a4530', screen: '#4c7a44' };
+const PIPE_PAL = { red: '#7c352c', verdigris: '#4e7a68' };
+const OCHRE_PANEL = '#9b8352', OCHRE_PANEL_HI = '#b3a06b';
 const WOOD_PAL = { trunk: '#5a4428', canopyLo: '#5c6a34', canopyMid: '#7c7a3a', canopyHi: '#9c8a42' };
-const CRATER_PAL = { rim: '#b3a68f', moat: '#6b5f52', pad: '#241f1c' }; // lighter dirt rim/moat, honest dark scorch (no ember glow — contract keeps this OFF)
+const CRATER_PAL = { rim: '#b98a55', moat: '#7a5c3a', pad: '#241f1c' }; // arid dirt rim/moat, honest dark scorch (no ember glow — contract keeps this OFF)
 
-// Exported read-only for tests/design review — the pre-painted "product identity" palette in
+// Exported read-only for tests/design review — the Battlezone "product identity" palette in
 // one place, so a test can assert luminance/hue without walking merged mesh vertex colors.
 export const PALETTE = {
-  HAZARD_YELLOW, HAZARD_BLACK, GLOW_LAMP, AQUILA_BRONZE,
-  RUIN_PAL, WALL_PAL, BARRICADE_PAL, CONTAINER_VARIANTS, GEN_PAL, WOOD_PAL, CRATER_PAL,
+  HAZARD_YELLOW, HAZARD_BLACK, GLOW_LAMP, TEAL_GLOW, AQUILA_BRONZE, AQUILA_GOLD,
+  RUIN_PAL, WALL_PAL, FENCE_PAL, BARRICADE_PAL, CONTAINER_VARIANTS, GEN_PAL, PIPE_PAL,
+  OCHRE_PANEL, OCHRE_PANEL_HI, WOOD_PAL, CRATER_PAL,
 };
 
 /* ---------------------------------------------------------------------------------------
@@ -405,11 +418,11 @@ function ruinMesh(ctx, plan) {
  * elevationFor contract). Right-angle TRIANGLE footprints (piece.shape==='tri', piece.tc =
  * right-angle corner) get a triangular-prism plate and walls on the two axis-aligned legs.
  * ======================================================================================= */
-// WP3D-v5: rusty riveted deck + pale cream crushed-rockcrete rubble + steel girders (matched to
-// GW's official Terrain Area Set photos), with ruined 2-storey building shells on ruin footprints.
-const PLATE_H = 0.16, PLATE_COL = '#6f4f2e', GRATE_COL = '#33332c';
-const RUBBLE_COL = '#cdbd93', RUBBLE_HI = '#e2d6b4', GIRDER_COL = '#565c62';
-const BONE_WALL = '#b7ab8e';
+// WP3D-v6: the Battlezone card footprint — rust-red riveted deck plate with a grey-green
+// trim frame, printed ochre rubble heaps, dark floor grates — under dark-metal kit ruins.
+const PLATE_H = 0.16, PLATE_COL = '#71412a', PLATE_TRIM = '#5a5f4e', GRATE_COL = '#23261f';
+const RUBBLE_COL = '#c08340', RUBBLE_HI = '#dcc491', GIRDER_COL = '#2c302f';
+const METAL_WALL = '#3a423d', METAL_WALL_ALT = '#333a35', DECK_RUST = '#5f3d28';
 function pointInTri(px, pz, t) {
   const [a, b, c] = t, d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
   if (d === 0) return true;
@@ -485,9 +498,13 @@ function scaleTri(pts, k) {
   const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, cz = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
   return pts.map(p => [cx + (p[0] - cx) * k, cz + (p[1] - cz) * k]);
 }
-// A ruined GOTHIC building WALL along one leg: a bone-rockcrete shell split into segments of
-// varying height (broken/bombed top), with tall lancet WINDOW openings at each storey and bone
-// PILASTERS (columns) framing the bays. No hazard trim. H = full wall height (storeys @3").
+// A ruined BATTLEZONE building WALL along one leg — the kit read from the owner's reference
+// photos: dark green-grey battle-metal shell in broken-top segments, framed by charcoal
+// riveted GIRDER pilasters, weathered ochre gothic PANEL BAYS on the ground storey, dark
+// arched window recesses above (some lit warm from inside), an occasional dark-red external
+// pipe run with a verdigris fitting, and small teal skull-lamps. All proud detail hangs on
+// the INNER (footprint-center-facing) face so nothing can poke past the footprint edge.
+// H = full wall height (storeys @3in; the kit's big ruins stand ~5in).
 function ruinWallLeg(THREE, leg, H, rnd, parts) {
   const horiz = Math.abs(leg.x1 - leg.x0) > Math.abs(leg.z1 - leg.z0);
   const len = Math.hypot(leg.x1 - leg.x0, leg.z1 - leg.z0);
@@ -495,36 +512,164 @@ function ruinWallLeg(THREE, leg, H, rnd, parts) {
   const cx = (leg.x0 + leg.x1) / 2, cz = (leg.z0 + leg.z1) / 2;
   const inx = horiz ? 0 : (cx > 0 ? -1 : 1) * BLD_WALL_TK / 2;   // inset inward so the wall sits on the deck
   const inz = horiz ? (cz > 0 ? -1 : 1) * BLD_WALL_TK / 2 : 0;
+  const inSign = horiz ? (cz > 0 ? -1 : 1) : (cx > 0 ? -1 : 1);  // toward footprint center along thickness
   const at = t => [leg.x0 + (leg.x1 - leg.x0) * t, leg.z0 + (leg.z1 - leg.z0) * t];
-  const box = (px, pz, alongLen, thick, y0, y1, col) => {
+  const box = (px, pz, alongLen, thick, y0, y1, col, proud) => {
+    const off = (proud || 0) * inSign;
     const g = new THREE.BoxGeometry(horiz ? alongLen : thick, Math.max(0.02, y1 - y0), horiz ? thick : alongLen);
-    g.translate(px + inx, (y0 + y1) / 2, pz + inz);
+    g.translate(px + inx + (horiz ? 0 : off), (y0 + y1) / 2, pz + inz + (horiz ? off : 0));
     parts.push({ geometry: g, colorHex: col });
   };
   const nSeg = Math.max(2, Math.round(len / 1.5)), seg = len / nSeg;
   let top = PLATE_H;
+  const segTops = [];
+  // kit collapse profile: the wall stands FULL height at the corner end (t=0 — wallLegs puts
+  // the shared corner vertex at leg start) and ramps down toward the broken far end, with
+  // small jitter — one reading silhouette per leg, not an independent sawtooth per segment.
+  const hi = H * (0.9 + rnd() * 0.1), lo = H * (0.35 + rnd() * 0.25);
   for (let i = 0; i < nSeg; i++) {
-    if (rnd() < 0.1) continue;                                   // a collapsed gap in the wall
-    const segH = H * (0.66 + rnd() * 0.34), [px, pz] = at((i + 0.5) / nSeg);
-    box(px, pz, seg * 0.98, BLD_WALL_TK, PLATE_H, PLATE_H + segH, BONE_WALL);
+    const u = (i + 0.5) / nSeg;
+    if (rnd() < 0.12 && u > 0.55) { segTops.push(0); continue; } // collapse gaps sit near the broken end
+    const segH = Math.max(0.9, hi + (lo - hi) * u + (rnd() - 0.5) * H * 0.12);
+    const [px, pz] = at(u);
+    box(px, pz, seg * 0.98, BLD_WALL_TK, PLATE_H, PLATE_H + segH, i % 2 === 0 ? METAL_WALL : METAL_WALL_ALT);
+    segTops.push(segH);
     top = Math.max(top, PLATE_H + segH);
   }
-  // storey window rows: sill heights ~0.6 above each floor level (0, 3, 6)
-  const rows = [PLATE_H + 0.6]; if (H >= 4.5) rows.push(PLATE_H + 3.3); if (H >= 7.5) rows.push(PLATE_H + 6.3);
-  const nWin = Math.max(1, Math.floor(len / 1.7));
-  for (let i = 0; i < nWin; i++) {
-    const [px, pz] = at((i + 0.5) / nWin);
-    for (const wy of rows) { if (wy + 1.6 > PLATE_H + H) continue;
-      box(px, pz, 0.5, BLD_WALL_TK + 0.08, wy, wy + 1.5, WINDOW_COL);   // tall lancet opening (dark recess)
+  // ground-storey ochre gothic panel bays with paired dark lancet recesses
+  for (let i = 0; i < nSeg; i++) {
+    if (!segTops[i] || rnd() < 0.35) continue;
+    const [px, pz] = at((i + 0.5) / nSeg);
+    const panelTop = Math.min(2.6, segTops[i] - 0.3);
+    if (panelTop < 1.2) continue;
+    box(px, pz, seg * 0.7, 0.08, PLATE_H + 0.25, PLATE_H + panelTop, rnd() < 0.5 ? OCHRE_PANEL : OCHRE_PANEL_HI, BLD_WALL_TK / 2 + 0.04);
+    for (const s of [-1, 1]) {
+      box(px + (horiz ? s * seg * 0.16 : 0), pz + (horiz ? 0 : s * seg * 0.16),
+        seg * 0.16, 0.05, PLATE_H + 0.45, PLATE_H + panelTop - 0.25, WINDOW_COL, BLD_WALL_TK / 2 + 0.09);
     }
   }
-  // bone pilasters framing every bay (incl. the two leg ends = corner columns) — the gothic cue
+  // upper-storey window rows: dark arched recesses, some lit warm from inside. A window only
+  // exists where the wall still STANDS that high — the collapse ramp means the broken end has
+  // no wall there, and an ungated recess box would float in mid-air.
+  const segAt = t => segTops[Math.min(nSeg - 1, Math.floor(t * nSeg))] || 0;
+  const rows = []; if (H >= 4.5) rows.push(PLATE_H + 3.3); if (H >= 7.5) rows.push(PLATE_H + 6.3);
+  const nWin = Math.max(1, Math.floor(len / 1.7));
+  for (let i = 0; i < nWin; i++) {
+    const u = (i + 0.5) / nWin, [px, pz] = at(u);
+    for (const wy of rows) { if (wy + 1.6 > PLATE_H + H) continue;
+      if (PLATE_H + segAt(u) < wy + 1.55) continue;
+      box(px, pz, 0.5, BLD_WALL_TK + 0.08, wy, wy + 1.5, WINDOW_COL);   // tall lancet opening (dark recess)
+      if (rnd() < 0.3) box(px, pz, 0.3, 0.06, wy + 0.45, wy + 0.95, GLOW_LAMP, BLD_WALL_TK / 2 + 0.06);
+    }
+  }
+  // charcoal riveted girder pilasters framing every bay (incl. leg ends = corner columns) —
+  // the steel-frame cue that separates Battlezone metal ruins from rockcrete ones. Each
+  // pilaster rises just past its NEIGHBORING segments' broken tops (not the global max) so
+  // the frame follows the ruin silhouette instead of reading as castle crenellation.
   for (let i = 0; i <= nWin; i++) {
+    const t = i / nWin, [px, pz] = at(t);
+    const j = Math.min(nSeg - 1, Math.max(0, Math.round(t * nSeg) - 1));
+    const near = Math.max(segTops[j] || 0, segTops[Math.min(nSeg - 1, j + 1)] || 0);
+    if (!near) continue;                       // pilaster in a collapsed gap: nothing to frame
+    box(px, pz, 0.3, BLD_WALL_TK + 0.1, PLATE_H, Math.min(top, PLATE_H + near + 0.2), GIRDER_COL);
+  }
+  // horizontal girder beam at the storey line (the floor edge showing in the broken shell)
+  if (top > 3.4) box(cx, cz, len * 0.98, BLD_WALL_TK + 0.08, 3.0, 3.22, GIRDER_COL);
+  // one dark-red external pipe run on a random bay, with a verdigris junction fitting
+  if (len >= 2.5 && rnd() < 0.75) {
+    const t = 0.2 + rnd() * 0.6, [px, pz] = at(t);
+    const pipeTop = Math.max(2.2, top - PLATE_H - 0.4);
+    const pg = new THREE.CylinderGeometry(0.09, 0.09, pipeTop, 8);
+    const ox = horiz ? 0 : inSign * (BLD_WALL_TK / 2 + 0.1), oz = horiz ? inSign * (BLD_WALL_TK / 2 + 0.1) : 0;
+    pg.translate(px + inx + ox, PLATE_H + pipeTop / 2, pz + inz + oz);
+    parts.push({ geometry: pg, colorHex: PIPE_PAL.red });
+    box(px, pz, 0.26, 0.26, PLATE_H + 0.7, PLATE_H + 1.0, PIPE_PAL.verdigris, BLD_WALL_TK / 2 + 0.1);
+  }
+  // small teal skull-lamp dots on a couple of pilasters (only where the wall stands that high)
+  for (let i = 1; i < nWin; i++) {
+    if (rnd() < 0.7 || PLATE_H + segAt(i / nWin) < 2.4) continue;
     const [px, pz] = at(i / nWin);
-    box(px, pz, 0.34, BLD_WALL_TK + 0.06, PLATE_H, top, BONE_WALL);
+    box(px, pz, 0.1, 0.1, 2.1, 2.2, TEAL_GLOW, BLD_WALL_TK / 2 + 0.08);
   }
   return top;
 }
+/* ---------------------------------------------------------------------------------------
+ * Freestanding kit centerpieces for the SMALL footprint cards (owner box-top reference:
+ * the 6x4 cards mostly carry the generator / pipe gantry / vox tower, not building shells).
+ * Both builders emit {geometry,colorHex} parts centered on the card origin, long axis along
+ * local x (caller rotates 90° when the footprint is taller than wide), scaled by s so every
+ * extremity stays inside the footprint. Return = top y (above the deck plate).
+ * ------------------------------------------------------------------------------------- */
+// Quad-leg promethium pipe GANTRY (reference IMG_7003/7006): four splayed girder legs with
+// feet, a cross axle, a horizontal conduit bundle on top with hazard wraps and cabling, and
+// the teal containment orb at the muzzle end.
+function gantryParts(THREE, parts, s) {
+  const legH = 2.6 * s;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const g = new THREE.BoxGeometry(0.22 * s, legH, 0.34 * s);
+    g.translate(0, legH / 2, 0);
+    g.rotateZ(sx * 0.16);
+    g.translate(sx * 0.8 * s, 0, sz * 0.5 * s);
+    parts.push({ geometry: g, colorHex: GIRDER_COL });
+    const f = new THREE.BoxGeometry(0.42 * s, 0.1, 0.48 * s);
+    f.translate(sx * (0.8 * s + 0.2 * s), 0.05, sz * 0.5 * s);
+    parts.push({ geometry: f, colorHex: METAL_WALL_ALT });
+  }
+  const axle = new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 1.7 * s, 8);
+  axle.rotateZ(Math.PI / 2);
+  axle.translate(0, legH * 0.55, 0);
+  parts.push({ geometry: axle, colorHex: FENCE_PAL.post });
+  const yTop = legH + 0.28 * s;
+  const main = new THREE.CylinderGeometry(0.3 * s, 0.3 * s, 2.5 * s, 10);
+  main.rotateZ(Math.PI / 2);
+  main.translate(0, yTop, 0);
+  parts.push({ geometry: main, colorHex: GEN_PAL.dark });
+  // hazard + cable wraps around the conduit bundle
+  for (const [wx, col] of [[-0.5, HAZARD_YELLOW], [0.1, PIPE_PAL.red], [0.7, PIPE_PAL.verdigris]]) {
+    const wrap = new THREE.CylinderGeometry(0.33 * s, 0.33 * s, 0.22 * s, 10);
+    wrap.rotateZ(Math.PI / 2);
+    wrap.translate(wx * s, yTop, 0);
+    parts.push({ geometry: wrap, colorHex: col });
+  }
+  const orb = new THREE.SphereGeometry(0.22 * s, 8, 6);
+  orb.translate(-1.36 * s, yTop, 0);
+  parts.push({ geometry: orb, colorHex: TEAL_GLOW });
+  return yTop + 0.33 * s;
+}
+// VOX/auspex relay TOWER (reference IMG_7007 bottom-right): flared base, dark shaft, mid
+// instrument housing with dial blocks, gilded aquila crest with spread wing bars at the top.
+function voxTowerParts(THREE, parts, s) {
+  const base = new THREE.BoxGeometry(1.1 * s, 0.3, 1.1 * s);
+  base.translate(0, 0.15, 0);
+  parts.push({ geometry: base, colorHex: METAL_WALL_ALT });
+  const shaftH = 3.0 * s;
+  const shaft = new THREE.CylinderGeometry(0.3 * s, 0.42 * s, shaftH, 10);
+  shaft.translate(0, 0.3 + shaftH / 2, 0);
+  parts.push({ geometry: shaft, colorHex: GEN_PAL.dark });
+  const midY = 0.3 + shaftH * 0.55;
+  const housing = new THREE.BoxGeometry(0.85 * s, 0.95 * s, 0.55 * s);
+  housing.translate(0, midY, 0);
+  parts.push({ geometry: housing, colorHex: METAL_WALL });
+  for (const dx of [-0.22, 0.22]) {
+    const dial = new THREE.BoxGeometry(0.26 * s, 0.26 * s, 0.06 * s);
+    dial.translate(dx * s, midY + 0.1 * s, 0.29 * s);
+    parts.push({ geometry: dial, colorHex: GEN_PAL.body });
+  }
+  const crestY = 0.3 + shaftH + 0.25 * s;
+  const crest = new THREE.BoxGeometry(0.4 * s, 0.55 * s, 0.18 * s);
+  crest.translate(0, crestY, 0);
+  parts.push({ geometry: crest, colorHex: AQUILA_GOLD });
+  for (const side of [-1, 1]) {
+    const wing = new THREE.BoxGeometry(0.5 * s, 0.16 * s, 0.12 * s);
+    wing.translate(side * 0.42 * s, crestY + 0.12 * s, 0);
+    parts.push({ geometry: wing, colorHex: AQUILA_GOLD });
+  }
+  const lamp = new THREE.BoxGeometry(0.1 * s, 0.1 * s, 0.1 * s);
+  lamp.translate(0, crestY + 0.34 * s, 0);
+  parts.push({ geometry: lamp, colorHex: TEAL_GLOW });
+  return crestY + 0.4 * s;
+}
+
 function buildRuin(ctx, kind, w, h, id) {
   const { THREE } = ctx;
   const shape = ctx.piece && ctx.piece.shape, tc = ctx.piece && ctx.piece.tc;
@@ -540,43 +685,90 @@ function buildRuin(ctx, kind, w, h, id) {
     ? triPrism(THREE, tri, 0, PLATE_H)
     : (() => { const g = new THREE.BoxGeometry(w, PLATE_H, h); g.translate(0, PLATE_H / 2, 0); return g; })();
   group.add(new THREE.Mesh(plateGeo, new THREE.MeshBasicMaterial({ color: PLATE_COL, side: THREE.DoubleSide })));
+  // grey-green trim frame around the card edge (the printed border every footprint card has)
+  if (!tri) {
+    for (const [tx, tz, tw, td] of [[0, -hh + 0.1, w, 0.2], [0, hh - 0.1, w, 0.2], [-hw + 0.1, 0, 0.2, h - 0.4], [hw - 0.1, 0, 0.2, h - 0.4]]) {
+      const g = new THREE.BoxGeometry(tw, 0.02, td); g.translate(tx, PLATE_H + 0.01, tz);
+      parts.push({ geometry: g, colorHex: PLATE_TRIM });
+    }
+  }
   // a steel grate flush on the deck
   { const gw = Math.min(w * 0.4, 1.6), gd = Math.min(h * 0.4, 0.9), gx = (rnd() - 0.5) * Math.max(0.2, w - gw - 1), gz = (rnd() - 0.5) * Math.max(0.2, h - gd - 1);
     if (inFoot(gx, gz)) { const g = new THREE.BoxGeometry(gw, 0.06, gd); g.translate(gx, PLATE_H + 0.02, gz); parts.push({ geometry: g, colorHex: GRATE_COL }); } }
-  // crushed-rockcrete rubble mounds — LOW, biased toward the edges (the torn-edge look), but
-  // clamped to stay within the footprint so terrain never pokes into a movement lane.
+  // rubble is PRINTED FLAT on the real footprint cards (owner mandate + reference IMG_7009)
+  // — so it renders as flat 2D decal patches a hair above the deck, never as 3D mounds. Each
+  // "heap" is a small cluster of overlapping ochre/pale patches so it reads like the cards'
+  // printed gravel spills; still biased toward the edges like the printed art.
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   let maxTop = PLATE_H + 0.2;
   const nR = 8 + Math.round(w * h / 34);
   for (let i = 0; i < nR; i++) {
-    const rw = 0.5 + rnd() * 1.1, rd = 0.5 + rnd() * 1.1, rh = 0.2 + rnd() * 0.85;
+    const rw = 0.5 + rnd() * 1.1, rd = 0.5 + rnd() * 1.1;
     let x, z;
     if (rnd() < 0.7) { const e = Math.floor(rnd() * 4); x = [-hw, hw, (rnd() * 2 - 1) * hw, (rnd() * 2 - 1) * hw][e]; z = [(rnd() * 2 - 1) * hh, (rnd() * 2 - 1) * hh, -hh, hh][e]; }
     else { x = (rnd() * 2 - 1) * hw * 0.8; z = (rnd() * 2 - 1) * hh * 0.8; }
     x = clamp(x, -hw + rw / 2, hw - rw / 2); z = clamp(z, -hh + rd / 2, hh - rd / 2);
     if (!inFoot(x, z)) continue;
-    const g = new THREE.BoxGeometry(rw, rh, rd); g.translate(x, PLATE_H + rh / 2, z);
-    parts.push({ geometry: g, colorHex: rnd() < 0.5 ? RUBBLE_COL : RUBBLE_HI });
-    maxTop = Math.max(maxTop, PLATE_H + rh);
+    const nPatch = 2 + Math.floor(rnd() * 3);
+    for (let p2 = 0; p2 < nPatch; p2++) {
+      const pw = rw * (0.35 + rnd() * 0.5), pd = rd * (0.35 + rnd() * 0.5);
+      const px = clamp(x + (rnd() - 0.5) * rw * 0.6, -hw + pw / 2, hw - pw / 2);
+      const pz = clamp(z + (rnd() - 0.5) * rd * 0.6, -hh + pd / 2, hh - pd / 2);
+      // stacked a fraction above the plate/trim planes (and each other) so nothing z-fights
+      const g = new THREE.BoxGeometry(pw, 0.012, pd);
+      g.translate(px, PLATE_H + 0.028 + p2 * 0.006, pz);
+      parts.push({ geometry: g, colorHex: p2 % 2 === 0 ? RUBBLE_COL : RUBBLE_HI });
+    }
   }
-  // scattered girder debris (thin low bars, tilted) — clamped by half-length so a rotated bar
-  // can't exit the footprint at any angle.
+  // printed girder-silhouette streaks (flat decals, tilted) — clamped by half-length so a
+  // rotated streak can't exit the footprint at any angle.
   for (let i = 0; i < 5; i++) {
     const gl = 0.8 + rnd() * 1.6, half = gl / 2;
     let x = clamp((rnd() * 2 - 1) * hw * 0.85, -hw + half, hw - half), z = clamp((rnd() * 2 - 1) * hh * 0.85, -hh + half, hh - half);
     if (hw - half < 0 || hh - half < 0 || !inFoot(x, z)) continue;
-    const g = new THREE.BoxGeometry(gl, 0.14, 0.16);
-    g.rotateY(rnd() * Math.PI); g.translate(x, PLATE_H + 0.12 + rnd() * 0.25, z);
+    const g = new THREE.BoxGeometry(gl, 0.012, 0.16);
+    g.rotateY(rnd() * Math.PI); g.translate(x, PLATE_H + 0.052, z);
     parts.push({ geometry: g, colorHex: GIRDER_COL });
   }
-  // ruined BUILDING shell rising from the footprint: 2-storey bone-rockcrete walls with window
-  // bays along an L-corner (rect) or the two right-angle legs (triangle). Small footprints get a
-  // shorter 1-storey stub. The flat deck + rubble below still reads as the official footprint card.
-  // Storey count from footprint size: large ruins are 3-storey gothic ruins (like the WTC set),
-  // medium are 2-storey, the smallest are a 1-storey corner ruin.
   const longSide = Math.max(w, h);
-  const H = longSide >= 9 ? 8.5 : longSide >= 6.5 ? 5 : 3.4;
+  // WP3D-v6b (owner box-top reference): the kit's SMALL rect cards mostly carry freestanding
+  // centerpiece pieces — thermic generator / pipe gantry / vox tower — with the card's own
+  // printed rubble around them, NOT building shells. Deterministic per id, ~3-in-5 of small
+  // cards; the rest (and every big/triangle card) get a building.
+  const objRoll = (longSide < 6.5 && shape !== 'tri') ? wp3dHash('bz-objective:' + id) % 5 : -1;
+  if (objRoll >= 0 && objRoll <= 2) {
+    const Lhalf = Math.max(hw, hh), Shalf = Math.min(hw, hh);
+    const s = Math.min(1.1, (Lhalf - 0.05) / 1.75, (Shalf - 0.05) / 0.95);
+    if (objRoll === 0 || s < 0.35) {
+      const gen = generatorMesh(ctx, generatorPlan(id, w, h));
+      gen.position.y = PLATE_H;
+      group.add(gen);
+      maxTop = Math.max(maxTop, PLATE_H + gen.userData.terrainHeight);
+    } else {
+      const objParts = [];
+      const topY = objRoll === 1 ? gantryParts(THREE, objParts, s) : voxTowerParts(THREE, objParts, s);
+      if (h > w) for (const p of objParts) p.geometry.rotateY(Math.PI / 2);
+      for (const p of objParts) parts.push(p);
+      maxTop = Math.max(maxTop, PLATE_H + topY);
+    }
+    group.add(mergedMesh(ctx, parts));
+    group.userData.terrainHeight = maxTop;
+    group.userData.builtBy = 'wp3d-6-terrain2';
+    return group;
+  }
+  // ruined BUILDING shell: an L-corner (rect) or the two right-angle legs (triangle) of dark
+  // battle-metal walls — but COMPACT, anchored at the corner and covering only ~60-80% of
+  // each footprint edge, so the card shows open rubble beyond the building (the kit look;
+  // full-edge walls read as a courtyard stockade, which the kit never does).
+  // kit-true heights: the Battlezone big ruins stand ~5in (two broken storeys, floor @3in),
+  // medium ~4.8, the smallest a ~3.2in wall remnant — no invented 8.5in towers.
+  const H = longSide >= 9 ? 5.4 : longSide >= 6.5 ? 4.8 : 3.2;
   const legs = wallLegs(hw, hh, shape, tc, rnd);
+  const frac = 0.6 + rnd() * 0.2;
+  for (const leg of legs) {
+    leg.x1 = leg.x0 + (leg.x1 - leg.x0) * frac;
+    leg.z1 = leg.z0 + (leg.z1 - leg.z0) * frac;
+  }
   for (const leg of legs) maxTop = Math.max(maxTop, ruinWallLeg(THREE, leg, H, rnd, parts));
   // UPPER FLOORS: partial platforms tucked into the walled corner with TOP faces pinned to exactly
   // y=3 (and y=6 on 3-storey ruins) — the elevationFor contract stands lvl-1/2 models there — plus
@@ -584,19 +776,19 @@ function buildRuin(ctx, kind, w, h, id) {
   const slabMeshes = [];
   if (H >= 4.5 && legs.length) {
     const cx0 = legs[0].x0, cz0 = legs[0].z0, sgx = cx0 > 0 ? -1 : 1, sgz = cz0 > 0 ? -1 : 1;
-    const slabW = Math.min(w * 0.6, w - 0.5), slabD = Math.min(h * 0.6, h - 0.5);
+    const slabW = Math.min(w * frac * 0.8, w - 0.5), slabD = Math.min(h * frac * 0.8, h - 0.5);
     const scx = cx0 + sgx * slabW / 2, scz = cz0 + sgz * slabD / 2;
     if (slabW > 1 && slabD > 1 && inFoot(scx, scz) && inFoot(cx0 + sgx * (slabW - 0.2), cz0 + sgz * (slabD - 0.2))) {
       const sThick = 0.35, floors = H >= 7.5 ? [3, 6] : [3];
       for (const fy of floors) {
         const sg = new THREE.BoxGeometry(slabW, sThick, slabD); sg.translate(scx, fy - sThick / 2, scz);
-        const sm = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: BONE_WALL }));
+        const sm = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: DECK_RUST }));
         sm.userData.isSlab = true; sm.userData.slabTopY = fy;
         slabMeshes.push(sm); maxTop = Math.max(maxTop, fy);
       }
       const colH = maxTop;   // full-height gothic support column at the floors' inner corner
       const cg = new THREE.BoxGeometry(0.46, colH, 0.46); cg.translate(cx0 + sgx * (slabW - 0.3), PLATE_H + colH / 2, cz0 + sgz * (slabD - 0.3));
-      parts.push({ geometry: cg, colorHex: BONE_WALL });
+      parts.push({ geometry: cg, colorHex: GIRDER_COL });
     }
   }
   group.add(mergedMesh(ctx, parts));
@@ -646,7 +838,8 @@ function barricadePlan(id, w, h) {
   const rnd = rngFor('barricade', id);
   const longIsX = w >= h;
   const length = Math.max(w, h), thickness = Math.max(0.4, Math.min(w, h));
-  const nSeg = Math.max(2, Math.round(length / 1.0));
+  // kit fence panels are ~1.8in wide — narrow 1in segments read as a tombstone row
+  const nSeg = Math.max(2, Math.round(length / 1.8));
   const step = length / nSeg;
   const segs = [];
   for (let i = 0; i < nSeg; i++) {
@@ -724,39 +917,53 @@ function wallFacadeMesh(ctx, plan) {
   return group;
 }
 
+/* barricadeMesh — WP3D-v6: the Battlezone FENCE panel run (owner reference IMG_7002/7005):
+ * per segment, two full-height grey posts with base feet, a solid weathered lower panel
+ * carrying a dark embossed aquila block, and above it an open band — silvery wire-mesh
+ * grille between two horizontal rails. The kit fence stands 60mm ≈ 2.4in. Sits on the
+ * narrow grate-strip footprint card, same deck-plate read as the ruins. */
 function barricadeMesh(ctx, plan) {
   const { THREE } = ctx;
   const group = new THREE.Object3D();
   const parts = [];
-  // WP3D-v4: thin footprint plate under the defence line, matching the buildings' plates.
   const plw = plan.longIsX ? plan.length : plan.thickness, pld = plan.longIsX ? plan.thickness : plan.length;
   const pg = new THREE.BoxGeometry(plw, PLATE_H, pld); pg.translate(0, PLATE_H / 2, 0);
   parts.push({ geometry: pg, colorHex: PLATE_COL });
-  let maxH = 1.5;
+  const FH = 2.3;                       // kit fence height: 60mm ≈ 2.4in incl. the deck plate
+  const panelTk = Math.min(0.16, plan.thickness * 0.4);
+  let maxH = FH;
+  // a box aligned to the run: along = length axis, tk = thickness axis
+  const runBox = (t, along, tk, y0, y1, col) => {
+    const g = new THREE.BoxGeometry(plan.longIsX ? along : tk, Math.max(0.02, y1 - y0), plan.longIsX ? tk : along);
+    g.translate(plan.longIsX ? t : 0, (y0 + y1) / 2, plan.longIsX ? 0 : t);
+    parts.push({ geometry: g, colorHex: col });
+  };
   for (const s of plan.segs) {
-    maxH = Math.max(maxH, s.h);
-    const cx = plan.longIsX ? s.t : 0, cz = plan.longIsX ? 0 : s.t;
-    const bw = plan.longIsX ? s.w : plan.thickness, bd = plan.longIsX ? plan.thickness : s.w;
-    const capH = 0.12;
-    const bodyH = Math.max(0.2, s.h - capH);
-    const g = new THREE.BoxGeometry(bw * 0.92, bodyH, bd * 0.92);
-    g.translate(cx, bodyH / 2, cz);
-    parts.push({ geometry: g, colorHex: s.alt ? BARRICADE_PAL.panelAlt : BARRICADE_PAL.panel });
-    // end posts anchor the panel visually
+    const half = s.w / 2;
+    // end posts with splayed base feet
     for (const side of [-1, 1]) {
-      const pw = Math.min(bw * 0.14, 0.18);
-      const pg = new THREE.BoxGeometry(plan.longIsX ? pw : bd * 0.95, bodyH + 0.05, plan.longIsX ? bd * 0.95 : pw);
-      const pcx = plan.longIsX ? cx + side * (bw / 2 - pw / 2) : cx;
-      const pcz = plan.longIsX ? cz : cz + side * (bd / 2 - pw / 2);
-      pg.translate(pcx, (bodyH + 0.05) / 2, pcz);
-      parts.push({ geometry: pg, colorHex: BARRICADE_PAL.post });
+      runBox(s.t + side * (half - 0.07), 0.14, panelTk + 0.08, PLATE_H, PLATE_H + FH, FENCE_PAL.post);
+      runBox(s.t + side * (half - 0.07), 0.3, plan.thickness * 0.9, PLATE_H, PLATE_H + 0.12, FENCE_PAL.frame);
     }
-    // plain rusted metal cap (no hazard yellow — matches the official rusty footprint look)
-    const capG = new THREE.BoxGeometry(bw * 0.9, capH, bd * 0.9); capG.translate(cx, bodyH + capH / 2, cz);
-    parts.push({ geometry: capG, colorHex: GIRDER_COL });
+    // solid lower panel (weathered grey-green → ochre variant), crenellated top edge implied
+    // by a thinner cap strip
+    const panelCol = s.alt ? FENCE_PAL.panelWeather : FENCE_PAL.panel;
+    runBox(s.t, s.w - 0.3, panelTk, PLATE_H, PLATE_H + 1.15, panelCol);
+    runBox(s.t, (s.w - 0.3) * 0.6, panelTk + 0.02, PLATE_H + 1.15, PLATE_H + 1.28, panelCol);
+    // dark embossed aquila block proud on the panel face — width jittered by the segment's
+    // rolled height so distinct ids keep distinct geometry (kit fences are uniform-height)
+    runBox(s.t, Math.min(0.62, s.w * 0.5) * (0.8 + (s.h - 1.5) * 0.2), panelTk + 0.05, PLATE_H + 0.35, PLATE_H + 0.85, AQUILA_BRONZE);
+    // occasional small teal lamp on a post top
+    if (s.lamp) runBox(s.t - half + 0.07, 0.1, 0.1, PLATE_H + FH + 0.02, PLATE_H + FH + 0.12, TEAL_GLOW);
+    // open band above: mesh grille between two rails
+    runBox(s.t, s.w - 0.36, 0.04, PLATE_H + 1.45, PLATE_H + 1.9, FENCE_PAL.mesh);
+    runBox(s.t, s.w - 0.3, 0.07, PLATE_H + 1.35, PLATE_H + 1.45, FENCE_PAL.post);
+    runBox(s.t, s.w - 0.3, 0.07, PLATE_H + 1.9, PLATE_H + 2.0, FENCE_PAL.post);
+    // thin top rail capping the posts' span
+    runBox(s.t, s.w - 0.3, 0.06, PLATE_H + FH - 0.08, PLATE_H + FH, FENCE_PAL.frame);
   }
   group.add(mergedMesh(ctx, parts));
-  group.userData.terrainHeight = Math.min(2.5, Math.max(1.5, maxH));
+  group.userData.terrainHeight = PLATE_H + maxH;
   group.userData.builtBy = 'wp3d-6-terrain2';
   group.userData.barricade = true;
   return group;
@@ -766,10 +973,54 @@ function wallMesh(ctx, plan) {
   return plan.mode === 'barricade' ? barricadeMesh(ctx, plan) : wallFacadeMesh(ctx, plan);
 }
 
+/* electroFenceMesh — the kit's tesla ELECTRO-COIL fence variant (reference IMG_7005 top
+ * right): per segment a dark plinth carrying a stacked bronze coil unit with a teal emitter
+ * tip, joined by a low red cable rail and a thin teal arc line near the tops. Same strip
+ * footprint card and the same [1.5,2.5] barricade height envelope as the plain fence. */
+function electroFenceMesh(ctx, plan) {
+  const { THREE } = ctx;
+  const group = new THREE.Object3D();
+  const parts = [];
+  const plw = plan.longIsX ? plan.length : plan.thickness, pld = plan.longIsX ? plan.thickness : plan.length;
+  const pg = new THREE.BoxGeometry(plw, PLATE_H, pld); pg.translate(0, PLATE_H / 2, 0);
+  parts.push({ geometry: pg, colorHex: PLATE_COL });
+  const runBox = (t, along, tk, y0, y1, col) => {
+    const g = new THREE.BoxGeometry(plan.longIsX ? along : tk, Math.max(0.02, y1 - y0), plan.longIsX ? tk : along);
+    g.translate(plan.longIsX ? t : 0, (y0 + y1) / 2, plan.longIsX ? 0 : t);
+    parts.push({ geometry: g, colorHex: col });
+  };
+  let tipTop = PLATE_H;
+  for (const s of plan.segs) {
+    runBox(s.t, Math.min(1.0, s.w * 0.55), Math.min(0.8, plan.thickness * 0.7), PLATE_H, PLATE_H + 0.5, METAL_WALL_ALT);
+    let y = PLATE_H + 0.5;
+    for (const [r, ch] of [[0.26, 0.55], [0.22, 0.5], [0.17, 0.45]]) {
+      const c = new THREE.CylinderGeometry(r, r, ch, 10);
+      c.translate(plan.longIsX ? s.t : 0, y + ch / 2, plan.longIsX ? 0 : s.t);
+      parts.push({ geometry: c, colorHex: GEN_PAL.body });
+      y += ch;
+    }
+    const tip = new THREE.BoxGeometry(0.16, 0.16, 0.16);
+    tip.translate(plan.longIsX ? s.t : 0, y + 0.08, plan.longIsX ? 0 : s.t);
+    parts.push({ geometry: tip, colorHex: TEAL_GLOW });
+    tipTop = Math.max(tipTop, y + 0.16);
+  }
+  runBox(0, plan.length * 0.96, 0.05, PLATE_H + 1.1, PLATE_H + 1.16, PIPE_PAL.red);
+  runBox(0, plan.length * 0.9, 0.03, tipTop - 0.28, tipTop - 0.23, TEAL_GLOW);
+  group.add(mergedMesh(ctx, parts));
+  group.userData.terrainHeight = Math.min(2.5, tipTop);
+  group.userData.builtBy = 'wp3d-6-terrain2';
+  group.userData.barricade = true;
+  return group;
+}
+
 function buildWall(ctx, kind, w, h, id) {
   // WP3D-v4b: a defence line is ALWAYS a low barricade on a flat footprint — never a tall
   // paired façade (that v3 "building" behaviour doesn't belong in the flat 11th-ed terrain).
-  return barricadeMesh(ctx, barricadePlan(id, w, h));
+  // WP3D-v6b: ~1-in-3 strips (deterministic by id, kept out of the plan's own rng) carry the
+  // kit's tesla electro-coil fence instead of the mesh fence.
+  const plan = barricadePlan(id, w, h);
+  if (wp3dHash('bz-fence:' + id) % 3 === 0) return electroFenceMesh(ctx, plan);
+  return barricadeMesh(ctx, plan);
 }
 
 /* =========================================================================================
@@ -847,33 +1098,22 @@ function buildWood(ctx, kind, w, h, id) { return woodMesh(ctx, woodPlan(id, w, h
  * container variant's own roll sequence) is instead a GENERATOR: cylindrical body, vent
  * stacks, cable spool, small glow-lamp dots.
  * ======================================================================================= */
+/* WP3D-v6: the Battlezone THERMIC GENERATOR centerpiece (owner reference IMG_7001) — twin
+ * bronze-brown barrel-coil banks whose gaps glow energy-teal, flanking a dark central control
+ * block with green cogitator screens and a gilded aquila crest, twin tesla pylons rising off
+ * the top. Kit piece stands ~110mm ≈ 4.3in. */
 function generatorPlan(id, w, h) {
   const rnd = rngFor('generator', id);
   const hw = w / 2, hh = h / 2;
-  const bodyRRaw = Math.min(hw, hh) * (0.55 + rnd() * 0.15);
-  const bf = fit(0, bodyRRaw, Math.min(hw, hh));
-  const bodyR = bf.half;
-  const cx = 0, cz = 0;
-  const bodyH = 1.1 + rnd() * 0.6;
-  // vent stacks are ROOF-MOUNTED (base sits at y=bodyH, on top of the body's flat top disc,
-  // within the top radius) — NOT ground-based cylinders inside the body's own footprint,
-  // which would sit fully swallowed inside the solid body and never render (the same "hidden
-  // overlapping box" pitfall the crate ribs comment flags elsewhere in this file).
-  const nVents = 2 + Math.floor(rnd() * 2);
-  const vents = [];
-  for (let i = 0; i < nVents; i++) {
-    const ang = (i / nVents) * Math.PI * 2 + rnd() * 0.5;
-    const vr = Math.max(0.06, bodyR * 0.18);
-    const reach = Math.max(0, bodyR - vr - 0.03); // stays on the roof, inside the top rim
-    const vfx = fit(cx + Math.cos(ang) * reach, vr, hw);
-    const vfz = fit(cz + Math.sin(ang) * reach, vr, hh);
-    vents.push({ x: vfx.center, z: vfz.center, r: vr, ventH: bodyH * (0.25 + rnd() * 0.35) });
-  }
-  const spoolR = Math.min(0.26, Math.max(hw, hh) * 0.12);
-  const spx = fit(cx - bodyR * 1.05, spoolR, hw), spz = fit(cz + bodyR * 0.35, spoolR, hh);
-  const spool = { x: spx.center, z: spz.center, r: spx.half, len: 0.4 };
+  const lim = Math.min(hw, hh);
+  const coilR = Math.max(0.3, Math.min(0.75, lim * 0.42));
+  const coilH = Math.min(3.4, 2.2 + rnd() * 0.9);
+  const coilGap = Math.min(hw - coilR - 0.05, coilR * 1.5); // bank centers at ±coilGap on x
+  const coreW = Math.max(0.5, coilGap * 1.1), coreH = coilH * 0.92, coreD = Math.min(coilR * 1.4, hh * 1.2);
+  const nBands = 4;
+  const pylonH = Math.min(1.6, coilH * 0.55);
   const lampCount = 1 + (rnd() < 0.5 ? 1 : 0);
-  return { mode: 'generator', bodyR, bodyH, cx, cz, vents, spool, lampCount };
+  return { mode: 'generator', coilR, coilH, coilGap, coreW, coreH, coreD, nBands, pylonH, lampCount };
 }
 
 export function cratePlan(id, w, h) {
@@ -960,36 +1200,58 @@ function generatorMesh(ctx, plan) {
   const { THREE } = ctx;
   const group = new THREE.Object3D();
   const parts = [];
-  const bodyG = new THREE.CylinderGeometry(plan.bodyR, plan.bodyR * 1.04, plan.bodyH, 12);
-  bodyG.translate(plan.cx, plan.bodyH / 2, plan.cz);
-  parts.push({ geometry: bodyG, colorHex: GEN_PAL.body });
-  const bandG = new THREE.CylinderGeometry(plan.bodyR * 1.06, plan.bodyR * 1.06, plan.bodyH * 0.14, 12);
-  bandG.translate(plan.cx, plan.bodyH * 0.62, plan.cz);
-  parts.push({ geometry: bandG, colorHex: GEN_PAL.dark });
-  let maxTop = plan.bodyH;
-  // vent stacks stand ON TOP of the body's roof (base at bodyH), never embedded inside the
-  // solid body — a vent whose whole y-span sits below bodyH would be entirely swallowed by
-  // the body cylinder and never actually render.
-  for (const v of plan.vents) {
-    const vg = new THREE.CylinderGeometry(v.r, v.r * 1.1, v.ventH, 8);
-    vg.translate(v.x, plan.bodyH + v.ventH / 2, v.z);
-    parts.push({ geometry: vg, colorHex: GEN_PAL.dark });
-    maxTop = Math.max(maxTop, plan.bodyH + v.ventH);
+  let maxTop = plan.coilH;
+  // twin barrel-coil banks at ±coilGap: bronze-brown barrel with thin teal COIL BANDS glowing
+  // in the gaps — the bands are slightly larger-radius short cylinders so they read as bright
+  // rings wrapping the barrel from every camera angle.
+  for (const side of [-1, 1]) {
+    const cx = side * plan.coilGap;
+    const barrel = new THREE.CylinderGeometry(plan.coilR, plan.coilR, plan.coilH, 12);
+    barrel.translate(cx, plan.coilH / 2, 0);
+    parts.push({ geometry: barrel, colorHex: GEN_PAL.body });
+    for (let b = 0; b < plan.nBands; b++) {
+      const by = plan.coilH * (0.16 + 0.66 * (b / Math.max(1, plan.nBands - 1)));
+      const band = new THREE.CylinderGeometry(plan.coilR * 1.07, plan.coilR * 1.07, plan.coilH * 0.09, 12);
+      band.translate(cx, by, 0);
+      parts.push({ geometry: band, colorHex: TEAL_GLOW });
+    }
+    // dark end caps top and bottom — top cap rises a hair ABOVE the barrel's top face so the
+    // two coplanar discs never z-fight into speckle
+    for (const [cy, chh] of [[plan.coilH * 0.04, plan.coilH * 0.08], [plan.coilH * 0.98, plan.coilH * 0.1]]) {
+      const cap = new THREE.CylinderGeometry(plan.coilR * 1.05, plan.coilR * 1.05, chh, 12);
+      cap.translate(cx, cy, 0);
+      parts.push({ geometry: cap, colorHex: GEN_PAL.dark });
+    }
   }
-  // cable spool: a cylinder lying on its side, resting flush on the ground beside the body
-  const spoolG = new THREE.CylinderGeometry(plan.spool.r, plan.spool.r, plan.spool.len, 10);
-  spoolG.rotateX(Math.PI / 2);
-  spoolG.translate(plan.spool.x, plan.spool.r, plan.spool.z);
-  parts.push({ geometry: spoolG, colorHex: GEN_PAL.cable });
-  maxTop = Math.max(maxTop, plan.spool.r * 2);
+  // central control block: dark housing, green cogitator screens, gilded aquila crest
+  const core = new THREE.BoxGeometry(plan.coreW, plan.coreH, plan.coreD);
+  core.translate(0, plan.coreH / 2, 0);
+  parts.push({ geometry: core, colorHex: GEN_PAL.dark });
+  for (const [sy, sw] of [[plan.coreH * 0.55, 0.3], [plan.coreH * 0.35, 0.24]]) {
+    const scr = new THREE.BoxGeometry(Math.min(sw, plan.coreW * 0.5), 0.2, plan.coreD + 0.04);
+    scr.translate(0, sy, 0);
+    parts.push({ geometry: scr, colorHex: GEN_PAL.screen });
+  }
+  const crest = new THREE.BoxGeometry(Math.min(0.5, plan.coreW * 0.7), 0.3, plan.coreD * 0.5);
+  crest.translate(0, plan.coreH + 0.15, 0);
+  parts.push({ geometry: crest, colorHex: AQUILA_GOLD });
+  maxTop = Math.max(maxTop, plan.coreH + 0.3);
+  // twin tesla pylons rising off the core top, dark shafts with bronze caps
+  for (const side of [-1, 1]) {
+    const px = side * plan.coreW * 0.32;
+    const shaft = new THREE.CylinderGeometry(0.07, 0.09, plan.pylonH, 8);
+    shaft.translate(px, plan.coreH + plan.pylonH / 2, 0);
+    parts.push({ geometry: shaft, colorHex: GEN_PAL.dark });
+    const capG = new THREE.BoxGeometry(0.2, 0.24, 0.2);
+    capG.translate(px, plan.coreH + plan.pylonH + 0.12, 0);
+    parts.push({ geometry: capG, colorHex: GEN_PAL.body });
+    maxTop = Math.max(maxTop, plan.coreH + plan.pylonH + 0.24);
+  }
   group.add(mergedMesh(ctx, parts));
-  // glow-lamp dots sit proud on the roof rim, between the vents — small emissive-tint accents
-  const lampY = plan.bodyH + 0.03;
+  // teal arc-lamp dots between the pylon tips
   for (let i = 0; i < plan.lampCount; i++) {
-    const ang = (i / Math.max(1, plan.lampCount)) * Math.PI * 2 + 0.6;
-    const lx = plan.cx + Math.cos(ang) * plan.bodyR * 0.65, lz = plan.cz + Math.sin(ang) * plan.bodyR * 0.65;
-    const dot = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), new THREE.MeshBasicMaterial({ color: GLOW_LAMP }));
-    dot.position.set(lx, lampY, lz);
+    const dot = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), new THREE.MeshBasicMaterial({ color: TEAL_GLOW }));
+    dot.position.set((i - (plan.lampCount - 1) / 2) * 0.25, plan.coreH + plan.pylonH * (0.7 + 0.2 * i), 0);
     group.add(dot);
   }
   group.userData.terrainHeight = maxTop;
