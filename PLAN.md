@@ -840,6 +840,39 @@ tiles. That kit IS the physical realization of the official 11th-ed layout footp
 - Palette-identity tests rewritten to assert the Battlezone read (1,645 green); env test's
   board-fallback color updated. Own lookalike geometry — NO GW models copied (public repo).
 
+### WP3D-v7 — mini remodel + TTS feel pass ("better model renders, more fun") — BUILT (2026-07-31, deploy pending Paul)
+
+Paul's ask: more playable, more fun, better model renders — steal from Tabletop Simulator and
+GW. Three layers, all inside the existing pack architecture (no new files, no bridge change):
+- **Geometry engine** (`wp3d-1-geometry.js`, additive): `voxelsToGeometry` entries may now be
+  `s:'cyl'` (axis `ax`, `seg`, far-cap taper `tp` — barrels/wheels/masts/cones) or `s:'dome'`
+  (ellipsoid — pauldrons/helms/turrets/carapaces); boxes accept top-face taper `tx/tz`
+  (wedges/frustums — glacis, pyramids) + shear `shx/shz` (swept hulls/wings) and all parts
+  accept `rx/rz` tilts. `opts.ao` bakes vertical AO into **mid/lo vertex colors only** —
+  'hi'/'glow'/named tints stay EXACT (the palette.hi assertions and the vehicle pack's
+  glow=palette.hi identity depend on that). Plain boxes keep the exact 24-vert/12-tri
+  contract, so all count-based suites pass unchanged. `mergeGeometries` accepts optional
+  per-vertex `colors` per part.
+- **All kits remodeled** (`wp3d-7-troops.js` 12 kits, `wp3d-8-vehicles.js` 21 chassis +
+  monsters): GW-heroic troop reads (dome pauldrons + helm snouts, knee-break `legRig`,
+  cylinder gun barrels w/ dark stocks, chest eagles, skeletal necron w/ gauss glow + muzzle
+  bloom, hunched tyranid w/ arcing tapered talons, lens-disc drone, round-wheeled bike);
+  vehicle reads (sloped glacis via shear, tapered turrets + dome cupolas, `gunFwd` barrels
+  w/ muzzle brakes, track sprockets, ork ramshackle wheels + deff-rolla drum, faceted 5-seg
+  drop pod w/ deployed doors, Drukhari mast+raked blade sail, true stepped Monolith pyramid
+  w/ glow conduits, swept-wing aircraft w/ canopy + engine pods). Routing/keys/heights/
+  hover-skirt conventions untouched; 2 visual-iteration rounds each per the render mandate.
+- **TTS feel** (`wp3d-10-motion.js`): (1) **casualty topple** — a token removed from state
+  spawns a local ghost of its pooled geometry that tips ~83° about its base edge and fades
+  over 850ms (pure core `casualtyPose()`; >6 removals in one tick = clear/load, skipped;
+  ghost cap 10; new `'casualty'` event → felt-table thunk in wp3d-13). (2) **drag lift** —
+  own-drag continuation (streak>0 deltas) eases the mini 0.45in off the table; 140ms of
+  quiet drops it with the existing squash and emits `'tweenland'` (thunk plays free).
+- **Gate**: full run_all (all suites incl. 100 geometry / 95 troops / 254 vehicles / 114
+  motion / 259 extras) + wp3d-smoke + p2p + pip + battlecam-dice + extras smokes ALL GREEN;
+  2D pixel-identity preserved. SW bumped v15. Renders filed at
+  `reports/inbox/2026-07-31-wh40k-3d-minis-v7/`. Deploy needs Paul (`ALLOW_PUBLIC_PUSH=1`).
+
 ## 5. Execution model for agents
 
 **Sequencing.** WP0 first, alone, merged before anything else. Then three parallel

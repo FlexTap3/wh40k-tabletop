@@ -1,61 +1,61 @@
 {
-  "gen": 8061,
-  "seed": 42,
-  "tier": "S",
+  "gen": 37,
+  "seed": 7,
+  "tier": "N",
   "layout": "Official 1A · T&H vs T&H",
   "mission": "Battlefield Dominance / Battlefield Dominance",
   "sideA": {
-    "fid": "AS",
-    "name": "Adepta Sororitas",
-    "pts": 1975,
-    "units": 16,
-    "models": 34,
-    "reserves": 1
-  },
-  "sideB": {
     "fid": "SM",
     "name": "Space Marines",
-    "pts": 1985,
-    "units": 9,
-    "models": 38,
+    "pts": 1980,
+    "units": 11,
+    "models": 62,
+    "reserves": 0
+  },
+  "sideB": {
+    "fid": "TAU",
+    "name": "T’au Empire",
+    "pts": 1975,
+    "units": 10,
+    "models": 26,
     "reserves": 1
   },
   "finalVp": {
-    "side1": 40,
-    "side2": 45
+    "side1": 30,
+    "side2": 40
   },
   "finalCp": {
     "side1": 10,
     "side2": 10
   },
   "winner": 2,
-  "marginToAi": 5,
+  "marginToAi": 10,
   "reachedRound5": true,
   "finalOc": {
     "held1": 1,
-    "held2": 2,
+    "held2": 3,
     "contested": 0
   },
-  "runtimeMs": 1097,
+  "runtimeMs": 563,
   "findings": {
-    "total": 1,
+    "total": 0,
     "critical": 0,
-    "major": 1,
+    "major": 0,
     "minor": 0,
-    "rulesViolations": 1
+    "rulesViolations": 0
   },
-  "aiTotalShots": 74,
+  "aiTotalShots": 67,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 1452,
-    "lostByAi": 888,
-    "diff": 564,
+    "killedByAi": 1214,
+    "lostByAi": 380,
+    "diff": 834,
     "s1Models": [
-      34,
-      9
+      62,
+      24
     ],
     "s2Models": [
-      38,
+      26,
       21
     ]
   }

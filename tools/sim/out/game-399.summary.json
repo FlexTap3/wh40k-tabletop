@@ -1,42 +1,42 @@
 {
-  "gen": 8063,
-  "seed": 42,
-  "tier": "S",
+  "gen": 399,
+  "seed": 99,
+  "tier": "N",
   "layout": "Official 1A · T&H vs T&H",
   "mission": "Battlefield Dominance / Battlefield Dominance",
   "sideA": {
-    "fid": "DRU",
-    "name": "Drukhari",
-    "pts": 2000,
-    "units": 13,
-    "models": 70,
-    "reserves": 1
-  },
-  "sideB": {
     "fid": "SM",
     "name": "Space Marines",
-    "pts": 1990,
-    "units": 10,
-    "models": 29,
+    "pts": 1980,
+    "units": 12,
+    "models": 51,
+    "reserves": 0
+  },
+  "sideB": {
+    "fid": "TAU",
+    "name": "T’au Empire",
+    "pts": 1965,
+    "units": 11,
+    "models": 48,
     "reserves": 1
   },
   "finalVp": {
-    "side1": 50,
-    "side2": 30
+    "side1": 35,
+    "side2": 35
   },
   "finalCp": {
     "side1": 10,
     "side2": 10
   },
-  "winner": 1,
-  "marginToAi": -20,
+  "winner": 0,
+  "marginToAi": 0,
   "reachedRound5": true,
   "finalOc": {
-    "held1": 0,
+    "held1": 2,
     "held2": 2,
     "contested": 0
   },
-  "runtimeMs": 1178,
+  "runtimeMs": 686,
   "findings": {
     "total": 0,
     "critical": 0,
@@ -44,19 +44,19 @@
     "minor": 0,
     "rulesViolations": 0
   },
-  "aiTotalShots": 146,
+  "aiTotalShots": 58,
   "pointsCap": 2000,
   "attrition": {
-    "killedByAi": 1971,
-    "lostByAi": 137,
-    "diff": 1834,
+    "killedByAi": 466,
+    "lostByAi": 1064,
+    "diff": -598,
     "s1Models": [
-      70,
-      1
+      51,
+      39
     ],
     "s2Models": [
-      29,
-      27
+      48,
+      22
     ]
   }
 }

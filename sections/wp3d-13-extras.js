@@ -366,6 +366,7 @@ export function createExtras(deps) {
   if (motion && typeof motion.on === 'function') {
     motion.on('tweenland', () => playThunk());
     motion.on('diceland', (payload) => playDice(payload && payload.count));
+    motion.on('casualty', () => playThunk()); // model tips over — same felt-table thunk
   }
 
   // =======================================================================================
