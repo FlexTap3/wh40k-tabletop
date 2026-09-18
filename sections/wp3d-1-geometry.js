@@ -1,3 +1,4 @@
+import {floorContains} from './battlezone-layout.js';
 /* ==== WP3D-1: geometry factories (voxel minis, terrain, board, scene sync) ==== */
 /* Pure ES-module fragment per WP3D-CONTRACT.md. No cross-section imports; no top-level
  * side effects. The integrator concatenates this file into wh40k-3d.js and rewrites the
@@ -770,6 +771,7 @@ function createSceneSync(THREE, scene, bridge) {
     if (!terrain) return 0;
     for (const g of terrain) {
       if (g.kind !== 'ruin') continue;
+      if(g.features && !floorContains(g,t.x,t.y)) continue;
       const cx = g.x + g.w / 2, cz = g.y + g.h / 2;
       if (pointInRotatedRect(t.x, t.y, cx, cz, g.w, g.h, g.rot || 0)) {
         const kit = terrainById.get(g.id)?.obj.userData;
@@ -816,7 +818,7 @@ function createSceneSync(THREE, scene, bridge) {
     for (const t of list) {
       seen.add(t.id);
       let entry = terrainById.get(t.id);
-      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + (t.shape || '') + (t.tc || 0) + '|' + pairKeys.get(t.id) + '|' + (t.kitId || '') + '|' + JSON.stringify(t.fp || null) + '|' + kitOrder;
+      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + (t.shape || '') + (t.tc || 0) + '|' + pairKeys.get(t.id) + '|' + (t.kitId || '') + '|' + JSON.stringify([t.fp || null,t.features || null]) + '|' + kitOrder;
       if (!entry || entry.sig !== sig) {
         if (entry) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
         const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, list);

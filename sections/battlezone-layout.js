@@ -1,3 +1,4 @@
+import {SHAPES} from './battlezone-shapes.js';
 // Shared deterministic placement for 2D sprites and 3D meshes. Units: inches.
 export const KIT_IDS=["ruin-door", "ruin-pipes", "ruin-high", "ruin-broken", "wall-relic", "wall-pipes", "wall-corner", "wall-door", "pylon-a", "pylon-b", "shrine", "barricade", "capacitor", "shock"];
 export function kitFor(piece,all=[]){
@@ -33,4 +34,30 @@ export function placementFor(outline,size,piece,w,h){
   }
   // Very small manual cards: a uniformly reduced display model, never stretched axes.
   const scale=Math.max(.02,Math.min(w/Math.max(size.x,.01),h/Math.max(size.z,.01))*.3);return {scale,angle:0,x:0,z:0};
+}
+// Official layouts carry every measured feature pose from the current PDF. Centers
+// are fixed, in footprint-local inches; no packing search, arbitrary rotation or scaling.
+// Gallery geometry has an independent origin, so compensate for its actual bbox center.
+export function featurePose(feature,shape){
+  const swap=['pylon-a','pylon-b','ruin-broken'].includes(feature.kitId);
+  const angle=feature.angle-(swap?Math.PI/2:0),mirror=!!feature.mirror!==swap;
+  const c=Math.cos(angle),s=Math.sin(angle),mz=mirror?-1:1;
+  const x=shape.center.x,z=shape.center.z*mz;
+  return {scale:1,angle,mirror,x:feature.x-(x*c+z*s),z:feature.z-(-x*s+z*c)};
+}
+
+// Full base support on a real deck, in board coordinates. Empty areas of a footprint
+// are not floors. Shared by the rules action and the 3D token elevation path.
+export function floorContains(piece,x,z,radius=0){
+  if(!piece.features)return null; // legacy/manual board retains its existing rules
+  const a=(piece.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+  const dx=x-piece.x-piece.w/2,dz=z-piece.y-piece.h/2,lx=dx*c+dz*s,lz=-dx*s+dz*c;
+  return piece.features.some(f=>{
+    const shape=SHAPES[f.kitId];if(!shape?.deck)return false;
+    const p=featurePose(f,shape),cc=Math.cos(p.angle),ss=Math.sin(p.angle);
+    const xx=lx-p.x,zz=lz-p.z,kx=xx*cc-zz*ss,kz=(xx*ss+zz*cc)*(p.mirror?-1:1);
+    if(!inside(kx,kz,shape.deck))return false;
+    for(let i=0;i<16;i++){const t=i*Math.PI/8;if(!inside(kx+Math.cos(t)*radius,kz+Math.sin(t)*radius,shape.deck))return false;}
+    return true;
+  });
 }

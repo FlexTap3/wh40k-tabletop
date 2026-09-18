@@ -6,7 +6,7 @@
  */
 import * as T from '../vendor/three.module.min.js';
 import { areaCanvas } from './battlezone-area.js';
-import { kitFor, placementFor } from './battlezone-layout.js';
+import { kitFor, placementFor, featurePose } from './battlezone-layout.js';
 export {kitFor,footprintPoints} from './battlezone-layout.js';
 import { registerTerrainBuilder } from './wp3d-1-geometry.js';
 
@@ -187,31 +187,75 @@ function panel(p,x,width,height,mode='relic',broken=false){
     }
   }
 }
-function upper(p,x,w,h,broken=false){
-  const y=78;
-  // Tall open arched windows are built as extruded holed plates, not recess decals.
-  const holes=[];for(let i=0;i<Math.floor(w/18);i++){const cx=x+10+i*18;holes.push([[cx-5,y+5],[cx+5,y+5],...Array.from({length:9},(_,j)=>[cx+Math.cos(j*Math.PI/8)*5,y+h-8+Math.sin(j*Math.PI/8)*5])]);}
-  const pts=broken?[[x,y],[x+w,y],[x+w,y+10],[x+w-7,y+13],[x+w-7,y+h-5],[x+w-13,y+h-7],[x+w-13,y+h],[x,y+h]]:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
-  // Keep holes away from the jagged edge.
-  p.plate(pts,2.4,0,C.steel,holes.filter((_,i)=>!broken||i<Math.floor(w/18)-1));
-  for(let xx=x+1;xx<x+w-3;xx+=18){p.box(xx,y+h/2,2,2,h,2,C.edge);for(let yy=y+6;yy<y+h;yy+=9)p.sphere(xx,yy,3,.6,C.bronze);}
-  for(let yy=y+8;yy<y+h-4;yy+=7)p.box(x+w/2,yy,0,w-5,.7,1.2,C.bronze);
-  // Header/footer steel frame, with crossed bracing on the opaque side bay.
-  p.box(x+w/2,y+1,0,w,3,4,C.edge);
-  if(w>45){p.rod([x+w-15,y+3,2],[x+w-3,y+22,2],1.2,C.edge);p.rod([x+w-3,y+3,2],[x+w-15,y+22,2],1.2,C.edge);}
+// Upper storeys use the large structural bays visible on sprues 06–08: solid
+// X-braced panels, one arched end window and broken open return frames.
+function upper(p,x,w,h,style='braced'){
+  const y=77, bay=38, end=x+w;
+  for(let left=x;left<end-4;left+=bay){
+    const right=Math.min(left+bay,end),bw=right-left,last=right===end;
+    const window=style==='window'&&last, open=style==='open'||(style==='broken'&&last);
+    const top=y+h-(last&&style==='broken'?12:0);
+    if(!open){
+      const outline=[[left,y],[right,y],[right,top-4],[right-4,top-4],[right-4,top],[left,top]];
+      const cx=(left+right)/2, wy=top-12,r=Math.min(10,bw/2-5);
+      const hole=[[cx-r,y+7],[cx+r,y+7],[cx+r,wy],...Array.from({length:13},(_,i)=>[cx+Math.cos(i*Math.PI/12)*r,wy+Math.sin(i*Math.PI/12)*r])];
+      p.plate(outline,2.6,0,C.steel,window?[hole]:[]);
+      if(window){
+        for(let xx=cx-r+4;xx<cx+r;xx+=4)p.box(xx,(y+7+wy)/2,0,.8,wy-y-7,1,C.bronze);
+        for(let yy=y+12;yy<wy;yy+=6)p.box(cx,yy,0,r*2,.8,1,C.bronze);
+      }
+    }
+    for(const xx of [left,right]){
+      p.box(xx,(y+top)/2,0,3,top-y,5,C.edge);
+      for(let yy=y+5;yy<top-2;yy+=9)p.sphere(xx,yy,3,.65,C.bronze);
+    }
+    p.box((left+right)/2,y+1,0,bw,3,5,C.edge);
+    if(!open)p.box((left+right)/2,top-1,0,bw,2.5,5,C.edge);
+    if(!window){
+      const mid=style==='braced'?(y+top)/2:top;
+      const levels=style==='braced'?[[y+3,mid-2],[mid+2,top-3]]:[[y+3,top-3]];
+      if(style==='braced')p.box((left+right)/2,mid,0,bw,2.5,5,C.edge);
+      for(const [lo,hi] of levels)for(const z of [-2,2]){
+        p.rod([left+3,lo,z],[right-3,hi,z],1.1,C.edge);
+        if(!open)p.rod([right-3,lo,z],[left+3,hi,z],1.1,C.edge);
+      }
+    }
+  }
 }
 function wallRun(p,panels,upperW,upperH){let x=0;for(const [w,h,mode,broken] of panels){panel(p,x,w,h,mode,broken);x+=w;}
   for(let xx=0;xx<=x-5;xx+=38){p.box(xx,38,0,5,76,8,C.steel);p.box(xx,4,0,9,8,11,C.bronze);bolts(p,xx-1.7,10,3.4,60,4.3,10);}
   p.box(Math.min(x,upperW)/2,74,0,Math.min(x,upperW)+3,7,7,C.steel);
-  if(upperW)upper(p,0,upperW,upperH,true);
+  // Upper sections are assembled separately per sprue, below.
   return x;
 }
+// Distinct panel-floor silhouettes traced from the four assembled ruins and sprues.
+// Exposed fracture edges, large inset floor panels and underside joists replace the
+// old generic slab with little raised gratings. All walking surfaces remain at 3 inches.
+export const DECKS={
+ 'ruin-door':[[0,0],[114,0],[114,34],[104,38],[105,44],[80,43],[76,51],[75,76],[43,76],[39,70],[0,76]],
+ 'ruin-pipes':[[0,0],[114,0],[114,49],[105,46],[107,56],[87,53],[79,64],[62,59],[57,76],[38,72],[34,76],[0,76]],
+ 'ruin-high':[[0,0],[76,0],[76,37],[68,38],[70,47],[57,46],[52,58],[40,54],[38,76],[0,76]],
+ 'ruin-broken':[[0,0],[76,0],[76,28],[69,27],[66,38],[43,35],[38,49],[28,44],[26,58],[0,58]],
+};
+function inDeck(x,z,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+ const a=poly[i],b=poly[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])inside=!inside;
+}return inside;}
 function deck(p,w,d,variant){
-  const poly=[[0,0],[w,0],[w,d*.58],[w-12,d*.55],[w-15,d*.82],[w-31,d*.77],[w-36,d],[0,d]];
-  // Rotate XY plate onto XZ, keeping top walking surface at 76.2mm = 3 board inches.
-  const m=p.matrix;p.matrix=m.clone().multiply(new T.Matrix4().makeTranslation(0,76.2-1.5,0)).multiply(new T.Matrix4().makeRotationX(Math.PI/2));p.plate(poly,3,0,C.bronze);p.matrix=m;
-  for(let x=8;x<w-10;x+=18){p.box(x,76.4,d*.34,2,1,d*.67,C.steel);for(let z=8;z<d*.65;z+=18){p.box(x+8,76.35,z,13,.6,13,C.dark);for(let k=0;k<4;k++)p.box(x+8,76.8,z-5+k*3,12,.45,.65,C.bronze);}}
-  p.rod([2,56,2],[2,74,28],2,C.steel);p.rod([28,74,2],[2,55,2],2,C.steel);
+  const poly=DECKS[variant],m=p.matrix;
+  p.matrix=m.clone().multiply(new T.Matrix4().makeTranslation(0,74.7,0)).multiply(new T.Matrix4().makeRotationX(Math.PI/2));p.plate(poly,3,0,C.bronze);p.matrix=m;
+  // Large square modular floor tiles; clip every surface detail to the broken outline.
+  const W=Math.max(...poly.map(v=>v[0])),D=Math.max(...poly.map(v=>v[1]));
+  for(let x=3;x<W-2;x+=3)for(let z=3;z<D-2;z+=3){
+    if(![[x-1,z-1],[x+1,z-1],[x+1,z+1],[x-1,z+1]].every(q=>inDeck(...q,poly)))continue;
+    const edge=x%38<3||z%38<3||x%38>35||z%38>35;
+    if(edge)p.box(x,76.3,z,2.8,.35,2.8,C.edge,'floor-frame');
+    else p.box(x,76.25,z,1.5,.15,.5,(x+z)%2?C.edge:C.steel,'floor-tread');
+  }
+  // Each joist stops at the fracture, so no beams float across missing floor tiles.
+  for(let x=1;x<W;x+=38)for(let z=2;z<D;z+=2)if(inDeck(x,z,poly))p.box(x,72.5,z,2.5,3.5,2,C.steel,'floor-joist');
+  for(let z=1;z<D;z+=38)for(let x=2;x<W;x+=2)if(inDeck(x,z,poly))p.box(x,72.5,z,2,3.5,2.5,C.steel,'floor-joist');
+  for(let i=2;i<poly.length-1;i+=2){const [x,z]=poly[i];p.rod([x-2,74,z-2],[x+3,73,z+3],.65,C.edge);}
+  p.rod([2,56,2],[2,72,28],2,C.steel);p.rod([28,72,2],[2,55,2],2,C.steel);
 }
 const RUINS={
  'ruin-door':{a:[[38,76,'relic'],[48,76,'door'],[38,76,'relic'],[38,61,'pipes',true]],b:[[38,76,'pipes'],[38,53,'relic',true]],uw:74,uh:45,d:61},
@@ -223,12 +267,21 @@ function ruin(p,id){const s=RUINS[id],w=s.a.reduce((n,a)=>n+a[0],0),d=s.b.reduce
   wallRun(p,s.a,s.uw,s.uh);
   p.at(0,0,0,-Math.PI/2,()=>wallRun(p,s.b,id==='ruin-high'?38:0,42));
   deck(p,Math.min(w-12,105),s.d,id);
-  // Braced steel panel beside the upper windows, with real open triangular spaces.
-  const xx=Math.min(w-24,s.uw+10);p.box(xx,92,0,3,32,5,C.steel);p.rod([xx,78,0],[xx-20,108,0],1.4,C.edge);
+  if(id==='ruin-door'){
+    upper(p,0,38,45,'braced');upper(p,38,36,45,'window');
+    p.at(0,0,0,-Math.PI/2,()=>upper(p,0,38,43,'open'));
+  }else if(id==='ruin-high'){
+    upper(p,0,38,46,'window');upper(p,38,36,44,'open');
+    p.at(0,0,0,-Math.PI/2,()=>upper(p,0,38,43,'braced'));
+  }else if(id==='ruin-pipes'){
+    upper(p,0,38,45,'braced');p.at(0,0,0,-Math.PI/2,()=>upper(p,0,38,40,'open'));
+  }else{
+    upper(p,0,38,46,'broken');p.at(0,0,0,-Math.PI/2,()=>upper(p,0,38,37,'open'));
+  }
   for(const [x,z] of [[3,3],[w-12,0],[0,d-12]])for(let i=0;i<7;i++){const g=new T.DodecahedronGeometry(1.7+i%3*.3,0);g.translate(x+(i%3-1)*3,1.2,z+Math.floor(i/3)*2);p.add(g,C.rust,'base-rubble');}
 });}
 function small(p,id){const cfg={ 'wall-relic':[49,43,'relic'], 'wall-pipes':[55,40,'pipes'], 'wall-corner':[33,36,'relic'], 'wall-door':[63,43,'relic']}[id];p.at(-cfg[0]/2,0,-6,0,()=>{panel(p,0,...cfg,true);if(id==='wall-corner')p.at(0,0,0,-Math.PI/2,()=>panel(p,0,24,30,'pipes',true));});}
-export function buildKit(id){const p=new Parts();if(RUINS[id])ruin(p,id);else if(id.startsWith('wall-'))small(p,id);else if(id==='pylon-a'||id==='pylon-b')pylon(p,id==='pylon-b');else if(id==='shrine')shrine(p);else if(id==='barricade')barricade(p);else if(id==='capacitor')capacitor(p);else if(id==='shock')shockArray(p);else throw Error('Unknown Battlezone kit: '+id);return p.finish(id);}
+export function buildKit(id){const p=new Parts();if(RUINS[id])ruin(p,id);else if(id.startsWith('wall-'))small(p,id);else if(id==='pylon-a'||id==='pylon-b')pylon(p,id==='pylon-b');else if(id==='shrine')shrine(p);else if(id==='barricade')barricade(p);else if(id==='capacitor')capacitor(p);else if(id==='shock')shockArray(p);else throw Error('Unknown Battlezone kit: '+id);const out=p.finish(id);if(RUINS[id]){const q=RUINS[id],w=q.a.reduce((n,a)=>n+a[0],0),d=q.b.reduce((n,a)=>n+a[0],0);out.userData.deck=DECKS[id].map(([x,z])=>[(x-w/2)/25.4,(z-d/2)/25.4]);}return out;}
 
 // Kit assignment is based on stable layout ORDER, never on random object IDs. This keeps
 // saved boards and remote peers visually consistent. Large tournament boards may repeat
@@ -262,9 +315,14 @@ export function placeKit(model,piece,w,h){
 
 function terrain(ctx,kind,w,h,id){
   const piece=ctx.piece||{kind,w,h,id},kitId=kitFor(piece,ctx.all||[piece]);if(!kitId)return null;
-  const root=new T.Group(),model=buildKit(kitId);
-  const {scale}=placeKit(model,piece,w,h);
-  root.add(footprint(piece,w,h));
-  root.add(model);root.userData={...model.userData,kitScale:scale,terrainHeight:model.userData.terrainHeight*scale,upperFloors:RUINS[kitId]?1:0,floorHeight:RUINS[kitId]?3*scale:0};return root;
+  const root=new T.Group();root.add(footprint(piece,w,h));
+  const features=piece.features||[{kitId}];let height=0,upperFloors=0;
+  for(const f of features){
+    const model=buildKit(f.kitId),box=new T.Box3().setFromObject(model),sz=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
+    const pose=piece.features?featurePose(f,{center:{x:center.x,z:center.z},size:sz}):placementFor(kitOutline(model),sz,piece,w,h);
+    model.rotation.y=pose.angle;model.scale.set(pose.scale,pose.scale,pose.scale*(pose.mirror?-1:1));model.position.set(pose.x,0,pose.z);model.userData.cover=f.cover;
+    root.add(model);height=Math.max(height,model.userData.terrainHeight*pose.scale);if(RUINS[f.kitId])upperFloors=1;
+  }
+  root.userData={builtBy:'battlezone-reference-20260918',kitId:features[0]?.kitId||kitId,featureCount:features.length,kitScale:1,terrainHeight:height,upperFloors,floorHeight:upperFloors?3:0};return root;
 }
 export function register(){for(const kind of ['ruin','wall','crate'])registerTerrainBuilder(kind,terrain);}
