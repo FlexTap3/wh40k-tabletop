@@ -771,7 +771,11 @@ function createSceneSync(THREE, scene, bridge) {
     for (const g of terrain) {
       if (g.kind !== 'ruin') continue;
       const cx = g.x + g.w / 2, cz = g.y + g.h / 2;
-      if (pointInRotatedRect(t.x, t.y, cx, cz, g.w, g.h, g.rot || 0)) return t.lvl * 3;
+      if (pointInRotatedRect(t.x, t.y, cx, cz, g.w, g.h, g.rot || 0)) {
+        const kit = terrainById.get(g.id)?.obj.userData;
+        if (kit && kit.upperFloors != null) return Math.min(t.lvl,kit.upperFloors) * (kit.floorHeight || 3);
+        return t.lvl * 3;
+      }
     }
     return 0;
   }
@@ -808,10 +812,11 @@ function createSceneSync(THREE, scene, bridge) {
         ? q(t.x) + ',' + q(t.y) + ',' + q(t.rot) + '|' + nbrs.join(';')
         : '');
     }
+    const kitOrder = list.map(t => [t.id,t.kind,t.w,t.h,t.kitId||''].join(':')).join(';');
     for (const t of list) {
       seen.add(t.id);
       let entry = terrainById.get(t.id);
-      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + (t.shape || '') + (t.tc || 0) + '|' + pairKeys.get(t.id);
+      const sig = t.kind + '|' + t.w + '|' + t.h + '|' + (t.shape || '') + (t.tc || 0) + '|' + pairKeys.get(t.id) + '|' + (t.kitId || '') + '|' + JSON.stringify(t.fp || null) + '|' + kitOrder;
       if (!entry || entry.sig !== sig) {
         if (entry) { scene.remove(entry.obj); disposeObject3D(entry.obj); }
         const obj = buildTerrain(t.kind, t.w, t.h, t.id, t, list);

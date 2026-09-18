@@ -13,6 +13,7 @@ import { createLabelLayer } from './sections/wp3d-3-labels.js';
 import { createInteraction } from './sections/wp3d-4-interaction.js';
 /* ==== WP3D-v2 content packs ==== registered/created below; each lives in its own file. */
 import { register as registerTerrainPack } from './sections/wp3d-6-terrain2.js';
+import { register as registerBattlezone } from './sections/wp3d-14-battlezone.js';
 import { register as registerTroopKits } from './sections/wp3d-7-troops.js';
 import { register as registerVehicleKits } from './sections/wp3d-8-vehicles.js';
 import { createEnvironment } from './sections/wp3d-9-environment.js';
@@ -27,7 +28,7 @@ function registerPacks() {
   if (packsRegistered) return;
   packsRegistered = true;
   // Vehicles register after troops but carry higher priority (name-specific beats keyword).
-  try { registerTerrainPack(); } catch (e) {}
+  try { registerTerrainPack(); registerBattlezone(); } catch (e) { console.error("Terrain pack failed", e); }
   try { registerTroopKits(); } catch (e) {}
   try { registerVehicleKits(); } catch (e) {}
 }

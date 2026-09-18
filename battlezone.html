@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Battlezone terrain kit</title><style>
+*{box-sizing:border-box}body{margin:0;background:#e8e5df;color:#263339;font:15px system-ui}header{padding:16px 22px;background:#fcfbf8;border-bottom:1px solid #bcbab3;display:flex;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:19px;margin:0}select,button,a{padding:9px 12px;border:1px solid #a8ada8;border-radius:6px;background:white;color:inherit;text-decoration:none}main{height:calc(100dvh - 150px);min-height:340px}canvas{display:block;width:100%;height:100%;touch-action:none}footer{padding:12px 22px;font-size:13px;line-height:1.5;background:#fcfbf8}#status{font-weight:600}button{cursor:pointer}
+</style></head><body><header><h1>Battlezone terrain kit</h1><select id="piece" aria-label="Terrain piece"></select><button id="paint">Clay view</button><button id="front">Front</button><button id="angle">Three-quarter</button><button id="rear">Rear</button><a href="./">Back to tabletop</a></header><main><canvas id="view"></canvas></main><footer><div id="status"></div>Drag to orbit · scroll to zoom. Reconstructed from painted and sprue references; dimensions are photo-derived. These are display models, not print-ready STLs.</footer>
+<script type="module">
+import * as T from './vendor/three.module.min.js';
+import {areaCanvas} from './sections/battlezone-area.js';
+import {KIT,buildKit} from './sections/wp3d-14-battlezone.js';
+const select=document.querySelector('#piece');
+select.innerHTML='<option value="box">Complete box · 15 pieces</option><option value="board">Sample board · pieces on footprints</option>'+KIT.map(k=>`<option value="${k.id}">${k.name}</option>`).join('');
+const canvas=document.querySelector('canvas'),renderer=new T.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xe8e5df);renderer.outputColorSpace=T.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+const scene=new T.Scene();scene.add(new T.HemisphereLight(0xffffff,0x7c7368,1.2));const key=new T.DirectionalLight(0xfff5e7,2.5);key.position.set(-12,24,20);scene.add(key);const fill=new T.DirectionalLight(0xe4f0ff,.8);fill.position.set(15,8,-12);scene.add(fill);
+let group,center=new T.Vector3(),radius=12,theta=.65,phi=1.12,clay=false;
+const camera=new T.PerspectiveCamera(34,1,.02,300);
+function paint(){group.traverse(o=>{if(o.isMesh&&o.userData.kitId){o.material.userData.paintedMap ||= o.material.map;o.material.map=clay?null:o.material.userData.paintedMap;o.material.vertexColors=!clay;o.material.color.set(clay?0xb9b3a8:0xffffff);o.material.needsUpdate=true;}});}
+function render(){const rect=canvas.parentElement.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.position.set(center.x+radius*Math.sin(phi)*Math.sin(theta),center.y+radius*Math.cos(phi),center.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(center);camera.updateProjectionMatrix();renderer.render(scene,camera);}
+function clear(){if(group){scene.remove(group);group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});}}
+function ground(w,d){const m=new T.Mesh(new T.BoxGeometry(w,.025,d),new T.MeshStandardMaterial({color:0x9f8969,roughness:1}));m.position.y=-.05;group.add(m);}
+function card(x,z,w,d,angle=0){const map=new T.CanvasTexture(areaCanvas(w,d));map.colorSpace=T.SRGBColorSpace;const m=new T.Mesh(new T.BoxGeometry(w,.015,d),new T.MeshStandardMaterial({map,roughness:1}));m.position.set(x,-.018,z);m.rotation.y=angle;group.add(m);}
+const boxIds=KIT.flatMap(k=>Array(k.qty).fill(k.id));
+function load(id){select.value=id;clear();group=new T.Group();scene.add(group);
+ if(id==='box'){boxIds.forEach((k,i)=>{const o=buildKit(k);o.position.set((i%4-1.5)*8,0,Math.floor(i/4)*7-10);group.add(o);});}
+ else if(id==='board'){
+ ground(44,30);
+ const placements=[['ruin-door',-8,4,0],['ruin-pipes',10,-5,Math.PI],['ruin-high',-12,-5,1.57],['ruin-broken',10,5,-1.57],['capacitor',-16,-10,0],['shrine',12,10,0],['pylon-a',1,-10,1.57],['pylon-b',18,8,0],['shock',-5,11,0],['barricade',8,12,0],['barricade',-15,4,1.57],['wall-relic',-17,1,0],['wall-pipes',17,-8,0],['wall-corner',3,7,0],['wall-door',0,-3,0]];
+ placements.forEach(([k,x,z,a])=>{const large=k.startsWith('ruin-'),w=large?11.5:k.startsWith('wall-')||k==='barricade'||k==='shock'?6:6,d=large?7:k.startsWith('wall-')||k==='barricade'||k==='shock'?2:4;card(x,z,w,d,a);const o=buildKit(k);o.position.set(x,0,z);o.rotation.y=a;group.add(o);});
+ }else group.add(buildKit(id));
+ paint();const b=new T.Box3().setFromObject(group),size=b.getSize(new T.Vector3());b.getCenter(center);radius=size.length()*1.65;theta=.65;phi=1.12;render();
+ document.querySelector('#status').textContent=id==='box'?'One box: 15 pieces · 14 geometry variants':id==='board'?'Illustrative assembly · 44 × 30 inch board · not a tournament mission':`${KIT.find(k=>k.id===id).name} · ${size.toArray().map(v=>(v*25.4).toFixed(1)).join(' × ')} mm (W × H × D)`;
+ window.terrainReady=true;return {id,size:size.toArray(),triangles:renderer.info.render.triangles};
+}
+select.onchange=()=>load(select.value);document.querySelector('#paint').onclick=()=>{clay=!clay;document.querySelector('#paint').textContent=clay?'Painted view':'Clay view';paint();render();};document.querySelector('#front').onclick=()=>{theta=0;phi=Math.PI/2;render();};document.querySelector('#angle').onclick=()=>{theta=.65;phi=1.12;render();};document.querySelector('#rear').onclick=()=>{theta=Math.PI+.65;phi=1.12;render();};let drag;
+canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);drag=[e.clientX,e.clientY];};canvas.onpointerup=()=>drag=null;canvas.onpointermove=e=>{if(!drag)return;theta-=(e.clientX-drag[0])*.008;phi=Math.max(.08,Math.min(1.65,phi+(e.clientY-drag[1])*.008));drag=[e.clientX,e.clientY];render();};canvas.onwheel=e=>{e.preventDefault();radius*=Math.exp(e.deltaY*.001);render();};window.onresize=render;
+window.terrainPreview={sprite:id=>{
+  const o=buildKit(id),b=new T.Box3().setFromObject(o),sz=b.getSize(new T.Vector3()),c=b.getCenter(new T.Vector3());
+  const sc=new T.Scene();sc.add(o);sc.add(new T.HemisphereLight(0xffffff,0x55504a,2));const light=new T.DirectionalLight(0xffffff,2);light.position.set(-5,15,8);sc.add(light);
+  const pad=.06,w=sz.x+pad*2,h=sz.z+pad*2,cam=new T.OrthographicCamera(-w/2,w/2,h/2,-h/2,.01,100);cam.position.set(c.x,40,c.z);cam.up.set(0,0,-1);cam.lookAt(c.x,0,c.z);
+  const r=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(Math.ceil(w*100),Math.ceil(h*100));r.outputColorSpace=T.SRGBColorSpace;r.render(sc,cam);const png=r.domElement.toDataURL('image/png');r.dispose();o.traverse(m=>{m.geometry?.dispose();m.material?.dispose();});return {png,w,h,width:sz.x,depth:sz.z,height:sz.y};
+},load,view:(t,p)=>{theta=t;phi=p;render();},clay:v=>{clay=v;paint();render();},stats:()=>({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles})};load(new URLSearchParams(location.search).get('piece')||'box');
+</script></body></html>

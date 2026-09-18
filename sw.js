@@ -1,6 +1,6 @@
 /* WH40k Tabletop service worker — offline shell caching.
    Bump CACHE when you ship a new wh40k-tabletop.html so clients pull the update. */
-const CACHE = 'wh40k-tabletop-v19';
+const CACHE = 'wh40k-tabletop-v20';
 const SHELL = [
   './',
   './index.html',
@@ -23,6 +23,27 @@ const SHELL = [
   './sections/wp3d-11-modes.js',
   './sections/wp3d-12-battlecam.js',
   './sections/wp3d-13-extras.js',
+  './sections/wp3d-14-battlezone.js',
+  './battlezone.html',
+  './sections/battlezone-layout.js',
+  './sections/battlezone-area.js',
+  './sections/battlezone-shapes.js',
+  './sections/battlezone-2d.js',
+  './terrain/ruin-door.png',
+  './terrain/ruin-pipes.png',
+  './terrain/ruin-high.png',
+  './terrain/ruin-broken.png',
+  './terrain/wall-relic.png',
+  './terrain/wall-pipes.png',
+  './terrain/wall-corner.png',
+  './terrain/wall-door.png',
+  './terrain/pylon-a.png',
+  './terrain/pylon-b.png',
+  './terrain/shrine.png',
+  './terrain/barricade.png',
+  './terrain/capacitor.png',
+  './terrain/shock.png',
+
   './vendor/three.module.min.js'
 ];
 

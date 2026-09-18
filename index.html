@@ -397,6 +397,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
         <option value="44x30">Incursion 44"×30"</option>
         <option value="90x44">Onslaught 90"×44"</option></select></div>
       <h3>Terrain & objectives</h3>
+      <div class="small" style="margin-bottom:8px"><a href="./battlezone.html" target="_blank" rel="noopener">View Battlezone terrain kit & sample board ↗</a></div>
       <div class="row"><label>Layout</label><select id="terrLayout" style="flex:1"></select></div>
       <div class="row"><button class="primary" onclick="loadLayout()">Load layout + objectives + DZs</button></div>
       <div class="small" id="layoutInfo" style="margin-bottom:6px"></div>
@@ -425,7 +426,7 @@ html.phone #wp13Menu .w13row button{min-height:40px; min-width:40px}
       <h3>Visuals</h3>
       <div class="row"><label><input type="checkbox" id="wpvFaction" checked onchange="wpvSave()"> Faction colours (token bodies tinted per army)</label></div>
       <div class="row"><label><input type="checkbox" id="wpvGlyphs" checked onchange="wpvSave()"> Unit-type silhouettes (tank / claw / wing / helm glyphs)</label></div>
-      <div class="row"><label><input type="checkbox" id="wpvTerrain" checked onchange="wpvSave()"> Detailed terrain (brick ruins, canopy stipple, corrugated containers)</label></div>
+      <div class="row"><label><input type="checkbox" id="wpvTerrain" checked onchange="wpvSave()"> Detailed terrain (Battlezone kit, woodland and craters)</label></div>
       <div class="small" style="margin-bottom:6px">Cosmetic only. The red/blue base rim always shows who owns a model; the body colour is its faction. Untick to go back to plain red-vs-blue tokens.</div>
       <!-- ==== end WP-VISUALS ==== -->
       <!-- ==== WP3D-0: 3D foundation ==== Setup toggle for the optional lazy-loaded 3D board. Disabled + tooltipped by wp3dInit() when unavailable (file:// or no WebGL2). -->
@@ -651,7 +652,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Line of sight — 👁 tool</b>: click one of your units to see a line to every enemy unit: <b>green</b> = visible, <b>yellow</b> = visible with Benefit of Cover (tick Cover in the Attack tab: −1 to hit), <b>red</b> = not visible (or Hidden beyond 15"). Visibility is 11th-ed <i>area</i> style: a target only counts as out of sight when every sight line crosses a ruin/wood/container/low-wall area, ignoring any area either model is inside — craters never block. Approximations used: sight lines are sampled centre-to-centre plus 4 base-edge points each way; cover = a sight line clipped by an area, or an INFANTRY/BEASTS/SWARM model standing inside one. Select a unit and press <kbd>H</kbd> to toggle <b>Hidden</b> for quiet infantry sitting wholly in dense terrain (ruin/wood/container) — while hidden it reads as not visible beyond 15". The tool advises; you two still apply the exact rules.</li>
       <!-- ==== end WP4 ==== -->
       <!-- ==== WP5: terrain ==== -->
-      <li><b>Terrain physicality</b>: a model can't end a move with its base overlapping a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (own "impassable terrain" toggle in Setup, on by default; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle floor level 0–3 (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximations: wall/container overlap uses the base circle; "inside a ruin" is judged by base centre.</li>
+      <li><b>Terrain physicality</b>: a model can't end a move with its base overlapping a low wall or container, and only INFANTRY/BEASTS/SWARM can end inside a ruin footprint — illegal drops snap back (own "impassable terrain" toggle in Setup, on by default; deploys that land badly just warn). Select models standing in a ruin and press <kbd>F</kbd> to cycle between ground and the available upper floor (INFANTRY/BEASTS/SWARM/FLY only): the ▲ badge shows the level, each level counts 3" of movement, and a raised model sees over low walls when checking line of sight. Approximations: wall/container overlap uses the base circle; "inside a ruin" is judged by base centre.</li>
       <!-- ==== end WP5 ==== -->
       <!-- ==== WP7: phases ==== -->
       <li><b>Turn sequence &amp; reserves</b>: the top-bar phase stepper walks Command→Movement→Shooting→Charge→Fight→End for each player in turn. Entering a Command phase gives both players +1 CP automatically (once per turn — the manual CP buttons still work) and logs a battle-shock reminder listing your units at half strength or less. Click one of your units and use the inspector's <b>→ Reserves</b> to lift it into the Reserves tray (bottom-left); <b>Deploy</b> from the tray shades where it may arrive — from round 2, within 6" of a battlefield edge and more than 8" from enemy models, keeping out of the enemy deployment zone before round 3, or anywhere more than 8" away with the <b>DS</b> box ticked. Shift-click places anyway (logged) if you two agree. Select a CHARACTER and another of your units (shift-click) and press <kbd>A</kbd> (or the inspector's <b>Attach</b>) to attach them — they then move, check coherency and count OC as one unit; <kbd>A</kbd> again (or <b>Detach</b>) splits them back to their original units.</li>
@@ -1963,11 +1964,16 @@ function wp9FootOutline(t,w,h){ // px points of the footprint edge in local spac
   if(t.shape==="tri") return wp9TriPts(w,h,t.tc);
   return [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]];
 }
+let wpBattlezoneDraw=null;
+if(typeof location!=="undefined" && /^https?:$/.test(location.protocol)){
+  import('./sections/battlezone-2d.js').then(m=>m.createTerrainSprites()).then(fn=>{wpBattlezoneDraw=fn;draw();}).catch(()=>{});
+}
 function wp9Terrain(t,w,h){
   const seed=wp9Hash(t.id);
   const path=wp9FootOutline(t,w,h);
   ctx.save(); wp9PolyPath(path); ctx.clip(); wp9DrawKind(t,w,h,seed); ctx.restore();
   ctx.strokeStyle="rgba(22,17,9,.7)"; ctx.lineWidth=1.8; wp9PolyPath(path); ctx.stroke();
+  if(wpBattlezoneDraw) wpBattlezoneDraw(ctx,t,state.terrain,view.s);
 }
 const WP9_P1={hi:"#e07a6a",mid:"#b23a34",lo:"#5f1e1a"}, WP9_P2={hi:"#74aade",mid:"#3a72ae",lo:"#1c3d63"};
 /* ==== end WP9 ==== */
@@ -2934,13 +2940,10 @@ function wp5DeployWarn(toks){
   if(n) logSys("⚠ "+n+" deployed model(s) landed on impassable terrain — drag them clear.");
 }
 function ruinMaxLvl(ter){
-  // How many UPPER floors a ruin actually renders, derived from its footprint size — this MUST
-  // stay in sync with the storey thresholds in sections/wp3d-6-terrain2.js (longSide>=9 builds
-  // slabs at y=3 AND y=6 → 2 upper floors; >=6.5 builds y=3 only → 1; smaller = 1-storey stub,
-  // no upper floor). Keeps the rules layer from offering a floor the 3D building has no slab for
-  // (a model set above the top slab would otherwise float in mid-air).
-  const longSide=Math.max(ter.w||0,ter.h||0);
-  return longSide>=9?2:longSide>=6.5?1:0;
+  // Reference kit ruins have ONE upper deck, at 76.2mm (3 inches).
+  // Machinery and small fragments have no playable upper floor.
+  if(ter.kitId) return ter.kitId.startsWith("ruin-")?1:0;
+  return Math.max(ter.w||0,ter.h||0)>=6.5?1:0;
 }
 function cycleFloor(){
   // F cycles floor level 0→…→maxLvl→0 on selected models; ruins only, INFANTRY/BEASTS/SWARM only.

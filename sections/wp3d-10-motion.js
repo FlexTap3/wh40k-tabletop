@@ -595,7 +595,7 @@ export function createMotion(deps) {
   scene.add(hoverRing);
 
   let lastPointer = null;
-  let lastHoverCheck = 0;
+  let lastHoverCheck = -Infinity; // First pointer event must never be throttled.
   const onPointerMove = (e) => { lastPointer = { x: e.clientX, y: e.clientY }; };
   canvas.addEventListener('pointermove', onPointerMove, { passive: true });
 
