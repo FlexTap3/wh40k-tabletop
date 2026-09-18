@@ -320,7 +320,7 @@ function terrain(ctx,kind,w,h,id){
   for(const f of features){
     const model=buildKit(f.kitId),box=new T.Box3().setFromObject(model),sz=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
     const pose=piece.features?featurePose(f,{center:{x:center.x,z:center.z},size:sz}):placementFor(kitOutline(model),sz,piece,w,h);
-    model.rotation.y=pose.angle;model.scale.set(pose.scale,pose.scale,pose.scale*(pose.mirror?-1:1));model.position.set(pose.x,0,pose.z);model.userData.cover=f.cover;
+    model.rotation.y=pose.angle;model.scale.set(pose.scaleX||pose.scale,pose.scale,(pose.scaleZ||pose.scale)*(pose.mirror?-1:1));model.position.set(pose.x,0,pose.z);model.userData.cover=f.cover;
     root.add(model);height=Math.max(height,model.userData.terrainHeight*pose.scale);if(RUINS[f.kitId])upperFloors=1;
   }
   root.userData={builtBy:'battlezone-reference-20260918',kitId:features[0]?.kitId||kitId,featureCount:features.length,kitScale:1,terrainHeight:height,upperFloors,floorHeight:upperFloors?3:0};return root;

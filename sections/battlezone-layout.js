@@ -36,14 +36,18 @@ export function placementFor(outline,size,piece,w,h){
   const scale=Math.max(.02,Math.min(w/Math.max(size.x,.01),h/Math.max(size.z,.01))*.3);return {scale,angle:0,x:0,z:0};
 }
 // Official layouts carry every measured feature pose from the current PDF. Centers
-// are fixed, in footprint-local inches; no packing search, arbitrary rotation or scaling.
+// are fixed, in footprint-local inches. Ruin plan dimensions come from the PDF,
+// independently of the photographic gallery model; their heights remain unchanged.
 // Gallery geometry has an independent origin, so compensate for its actual bbox center.
 export function featurePose(feature,shape){
   const swap=['pylon-a','pylon-b','ruin-broken'].includes(feature.kitId);
   const angle=feature.angle-(swap?Math.PI/2:0),mirror=!!feature.mirror!==swap;
   const c=Math.cos(angle),s=Math.sin(angle),mz=mirror?-1:1;
-  const x=shape.center.x,z=shape.center.z*mz;
-  return {scale:1,angle,mirror,x:feature.x-(x*c+z*s),z:feature.z-(-x*s+z*c)};
+  const measured=feature.kitId.startsWith('ruin-')&&feature.sourceSize?.length===2;
+  const scaleX=measured?feature.sourceSize[swap?1:0]/shape.size.x:1;
+  const scaleZ=measured?feature.sourceSize[swap?0:1]/shape.size.z:1;
+  const x=shape.center.x*scaleX,z=shape.center.z*scaleZ*mz;
+  return {scale:1,scaleX,scaleZ,angle,mirror,x:feature.x-(x*c+z*s),z:feature.z-(-x*s+z*c)};
 }
 
 // Full base support on a real deck, in board coordinates. Empty areas of a footprint
@@ -55,9 +59,9 @@ export function floorContains(piece,x,z,radius=0){
   return piece.features.some(f=>{
     const shape=SHAPES[f.kitId];if(!shape?.deck)return false;
     const p=featurePose(f,shape),cc=Math.cos(p.angle),ss=Math.sin(p.angle);
-    const xx=lx-p.x,zz=lz-p.z,kx=xx*cc-zz*ss,kz=(xx*ss+zz*cc)*(p.mirror?-1:1);
-    if(!inside(kx,kz,shape.deck))return false;
-    for(let i=0;i<16;i++){const t=i*Math.PI/8;if(!inside(kx+Math.cos(t)*radius,kz+Math.sin(t)*radius,shape.deck))return false;}
+    const supported=(x,z)=>inside(((x-p.x)*cc-(z-p.z)*ss)/p.scaleX,((x-p.x)*ss+(z-p.z)*cc)*(p.mirror?-1:1)/p.scaleZ,shape.deck);
+    if(!supported(lx,lz))return false;
+    for(let i=0;i<16;i++){const t=i*Math.PI/8;if(!supported(lx+Math.cos(t)*radius,lz+Math.sin(t)*radius))return false;}
     return true;
   });
 }

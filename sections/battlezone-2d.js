@@ -14,7 +14,7 @@ export async function createTerrainSprites(){
     const id=feature.kitId,s=SHAPES[id],im=images[id];if(!s||!im)continue;
     const key=JSON.stringify([feature,piece.w,piece.h,piece.shape,piece.tc,piece.fp]);let p=memo.get(key);
     if(!p){p=piece.features?featurePose(feature,s):placementFor(s.outline,s.size,piece,piece.w,piece.h);memo.set(key,p);}
-    ctx.save();ctx.translate(p.x*pixelsPerInch,p.z*pixelsPerInch);ctx.rotate(-p.angle);if(p.mirror)ctx.scale(1,-1);const sc=p.scale*pixelsPerInch;
+    ctx.save();ctx.translate(p.x*pixelsPerInch,p.z*pixelsPerInch);ctx.rotate(-p.angle);ctx.scale(p.scaleX||1,(p.scaleZ||1)*(p.mirror?-1:1));const sc=p.scale*pixelsPerInch;
     ctx.drawImage(im,(s.center.x-s.imageWidth/2)*sc,(s.center.z-s.imageHeight/2)*sc,s.imageWidth*sc,s.imageHeight*sc);ctx.restore();
   }
  };
