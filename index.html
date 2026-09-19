@@ -671,6 +671,7 @@ Close combat weapon | Melee | 3 | 3+ | 4 | 0 | 1'></textarea>
       <li><b>Documented approximations</b>: the AI fires its unit's best non-pistol/grenade weapon once per model and every other profile once (the database doesn't say who carries what); the database has no Deep Strike flag, so it uses Strategic Reserves (board-edge arrivals) instead; it spends no CP and uses no stratagems; cover and visibility use the same area-rule approximations as the 👁 tool; charges "pile in" as a straight move into contact — swing your own engaged units back manually in its Fight phase. Its 2D6/advance rolls come from a seedable RNG (<code>aiSeed(n)</code> in the console reproduces a game); attack-sequence dice are the ordinary roller's dice.</li>
       <!-- ==== WP11: allocation + doctrine ==== -->
       <li><b>You allocate your own casualties</b>: when an AI attack damages one of your units, the AI pauses and a banner shows the pending damage packets (one per failed save, mortal wounds one at a time). Click models in the target unit to assign packets — if a model in the unit has already lost wounds it must take them first, so clicks are redirected there. <kbd>A</kbd> (or the banner button) auto-assigns the rest exactly the way the automatic mode would (wounded first, closest to the attacker next, leaders last). Esc can't cancel — the damage is owed — but Undo works afterwards, and clearing/loading a game discards pending packets. Tick <i>Auto-apply my casualties</i> in Setup for the old hands-off behaviour. The AI's own casualties stay automatic: it is the defender there and allocates the same way. <!-- ==== WP18 ==== --> In a network game the attacker's button <i>sends</i> the rolled damage across and this same banner appears on the defender's screen — gold rings and numbered badges suggest the order auto-assign would use, but the defender clicks whatever legal model they want. Pending damage doesn't survive a reconnect — re-send if that happens. <!-- ==== end WP18 ==== --></li>
+      <li><b>Ork practice</b>: choose <b>⚔ Solo → Orks — practice army</b>, select 500–2000 points, then Start solo game. Load a layout first and muster your own army as Red.</li>
       <li><b>Meta opponents</b>: the Solo dialog can field one of five embedded tournament archetypes (real GT-winning lists from 11th edition's opening weeks — unit names, sizes and points only). Each carries a one-line note on what it stress-tests. The AI reads the list's Force Disposition and announces its game plan at muster, plus a one-line strategic brief each round.</li>
       <li><b>The AI's doctrine</b> (in its own words): it plays its plan — kill-focused, objective-first, or spread-and-scout — and pushes the primary hardest in rounds 1–3, easing off late when it is ahead. Quiet infantry sitting wholly in dense terrain goes Hidden after the shooting phase, and fragile shooters prefer spots that keep that option. When you hold reserves or fast melee, its cheap units picket 6–8" ahead of its valuable units and backfield objective to deny drops and charge lanes. Early on, if it is outgunned, shooters stage out of sight rather than trade in the open. It concentrates fire to remove whole units (with a modest overkill allowance) and prefers finishing hurt units that sit on objectives; it won't move a unit into the open when the expected loss beats the gain; and its slow melee refuses to chase faster shooters — it parks on objectives and makes you come.</li>
       <!-- ==== end WP11 ==== -->
@@ -4480,9 +4481,9 @@ function aiSoloToggle(){
 function aiStartFromDlg(){
   /* ==== WP11: meta opponents ==== a picked meta list musters via importArmyList instead of auto-build */
   const metaSel=document.getElementById("aiMetaSel");
-  if(metaSel&&metaSel.value!==""&&typeof wp11StartMeta==="function"){ document.getElementById("aiDlg").close(); wp11StartMeta(parseInt(metaSel.value)); return; }
+  if(metaSel&&/^\d+$/.test(metaSel.value)&&typeof wp11StartMeta==="function"){ document.getElementById("aiDlg").close(); wp11StartMeta(parseInt(metaSel.value)); return; }
   /* ==== end WP11 ==== */
-  const fid=document.getElementById("aiFactionSel").value||((DB.factions[0]||[])[0]);
+  const fid=metaSel&&metaSel.value==="orks"?"ORK":document.getElementById("aiFactionSel").value||((DB.factions[0]||[])[0]);
   const pts=parseInt(document.getElementById("aiPtsSel").value)||1000;
   document.getElementById("aiDlg").close();
   if(state.tokens.some(t=>t.owner===2)){ // e.g. a resumed autosave of a solo game
@@ -5609,15 +5610,18 @@ function wp11ParseList(text){ // header parsing the way importArmyList does it
 }
 function wp11PopulateMeta(){
   const sel=document.getElementById("aiMetaSel"); if(!sel) return;
-  sel.innerHTML='<option value="">Auto-build (faction + points below)</option>'
+  sel.innerHTML='<option value="">Auto-build (faction + points below)</option><option value="orks">Orks — practice army</option>'
     +AI_META_LISTS.map((m,i)=>`<option value="${i}">${esc(m.name)}</option>`).join("");
   wp11MetaBlurb();
 }
 function wp11MetaBlurb(){
   const sel=document.getElementById("aiMetaSel"), el=document.getElementById("aiMetaBlurbEl");
   if(!sel||!el) return;
-  const m=AI_META_LISTS[parseInt(sel.value)];
-  el.textContent=m?(m.blurb+" · Force Disposition: "+m.disposition):"";
+  const orks=sel.value==="orks",m=AI_META_LISTS[parseInt(sel.value)];
+  const faction=document.getElementById("aiFactionSel"),points=document.getElementById("aiPtsSel");
+  if(faction){if(orks)faction.value="ORK";else if(m)faction.value=m.fid;faction.disabled=orks||!!m;}
+  if(points)points.disabled=!!m;
+  el.textContent=orks?"Fight an automatically built Ork army at the points level below. You play Red; the Orks play Blue. The AI uses the app’s standard solo rules.":m?(m.blurb+" · Force Disposition: "+m.disposition):"";
 }
 function wp11StartMeta(i){
   const m=AI_META_LISTS[i]; if(!m) return;
