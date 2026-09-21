@@ -991,10 +991,15 @@ function weaponLines(u){
 }
 function profilesFromDb(u,targetSize){
   // parse composition lines like "9 Boyz", "1 Boss Nob"
-  let profs=(u.m||[]).map(m=>({n:m.n,count:0,base:m.b,M:m.M,T:m.T,Sv:m.Sv,Inv:m.iv||"-",W:+m.W||1,Ld:m.Ld,OC:m.OC}));
+  // Shared stat lines can cover several visibly different members. Keep those
+  // names when mustering the two command groups so their actual figures appear.
+  let modelProfiles=u.m||[];
+  if(u.n==="Wardens of Ultramar") modelProfiles=modelProfiles.flatMap(m=>m.n.split(",").map(n=>({...m,n:n.trim()})));
+  if(u.n==="Company Heroes"&&modelProfiles.length===1) modelProfiles=["Ancient","Company Champion","Company Veteran"].map(n=>({...modelProfiles[0],n}));
+  let profs=modelProfiles.map(m=>({n:m.n,count:0,base:m.b,M:m.M,T:m.T,Sv:m.Sv,Inv:m.iv||"-",W:+m.W||1,Ld:m.Ld,OC:m.OC}));
   (u.c||[]).forEach(line=>{
     const mm=line.match(/(\d+)[-–]?(\d+)?\s+(.+)/); if(!mm) return;
-    const cnt=+mm[1], nm=norm(mm[3]).replace(/s$/,"");
+    const cnt=+mm[1], nm=norm(mm[3].replace(/\s*[-–]\s*EPIC HERO.*$/i,"")).replace(/s$/,"");
     let p=profs.find(p=>norm(p.n).replace(/s$/,"")===nm)||profs.find(p=>nm.includes(norm(p.n).replace(/s$/,""))||norm(p.n).replace(/s$/,"").includes(nm));
     if(p) p.count+=cnt;
   });
@@ -1326,7 +1331,7 @@ function deployCard(raw){
     const isLeader=u.profiles.length>1 && (+p.count||0)<maxCount;
     for(let c=0;c<(+p.count||0);c++){
       const col=k%per, row=Math.floor(k/per); k++;
-      const t={id:uid(),owner:mySide,unit:unitId,name:p.n||u.name,rot:0,wounds:+p.W||1,maxW:+p.W||1,
+      const t={id:uid(),owner:mySide,unit:unitId,name:p.n||u.name,datasheet:u.name,modelIndex:c,rot:0,wounds:+p.W||1,maxW:+p.W||1,
         x:cx+(col-per/2)*gap, y:cy+(mySide===1?-row:row)*gap, ...b,
         /* ==== WP0: stat-bearing tokens ==== */
         Mv:mvNum(p.M), OC:+p.OC||0, T:+p.T||0, Sv:p.Sv??"", iv:p.Inv??"-", kw:(u.kw||[]).slice(),

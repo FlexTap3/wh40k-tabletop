@@ -4,22 +4,48 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { registerMiniKit, wp3dHash } from './wp3d-1-geometry.js';
 import { MINIS } from '../assets/miniatures/catalog.js';
+import { MINIATURE_UNITS } from '../assets/miniatures/coverage.js';
+export { MINIATURE_UNITS };
 export { MINIS };
 
 const entries = new Map(MINIS.map(m => [m.id, m]));
 const loaded = new Map();
 const baseMaterial = new THREE.MeshLambertMaterial({color:0x17191a});
-let pending = null, registered = false;
+const jobs = new Map(), failed = new Map(), requested = new Set();
+let registered = false;
 const norm = s => String(s || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const pick = (...ids) => ids.map(id => entries.get(id)).find(Boolean) || null;
 const choices = (t, ids) => {
   const available = ids.filter(id => entries.has(id));
-  return available.length ? entries.get(available[wp3dHash(t.id || t.name || '') % available.length]) : null;
+  return available.length ? entries.get(available[(Number.isInteger(t.modelIndex)&&t.modelIndex>=0?t.modelIndex:wp3dHash(t.id || t.name || '')) % available.length]) : null;
 };
+
+// Explicit datasheet identity wins over broad words such as "Captain" or "Nob".
+const byUnit = new Map(), byAlias = new Map();
+for (const row of MINIATURE_UNITS) {
+  byUnit.set(row.faction+':'+norm(row.name),row);
+  for (const alias of row.aliases || []) {
+    const key=row.faction+':'+norm(alias);
+    if (!byAlias.has(key)) byAlias.set(key,row);
+    else if (byAlias.get(key)?.name !== row.name) byAlias.set(key,null);
+  }
+}
+export function miniatureUnit(token, fid) {
+  return byUnit.get(fid+':'+norm(token?.datasheet || '')) ||
+    byUnit.get(fid+':'+norm(token?.name || '')) || byAlias.get(fid+':'+norm(token?.name || '')) || null;
+}
+function unitModel(token, fid) {
+  const row=miniatureUnit(token,fid);
+  if (!row) return null;
+  const profile=row.profiles?.[norm(token.name)];
+  return choices(token,profile ? [profile].flat() : row.models);
+}
 
 /** Exact family routing takes precedence over broad faction/keyword defaults.
  * Unknown vehicles are deliberately left to their existing chassis kits. */
 export function resolveMiniature(token, fid) {
+  const exact = unitModel(token, fid);
+  if (exact) return exact;
   const t = token || {}, n = norm(t.name), kw = (t.kw || []).map(x => String(x).toUpperCase());
   const weapon = norm(typeof t.weaponName === 'string' ? t.weaponName : typeof t.loadout === 'string' ? t.loadout : '');
   if (fid === 'ORK') {
@@ -108,48 +134,55 @@ export function decodeMiniature(buffer) {
   return g;
 }
 
-export async function loadMiniatures() {
-  if (pending) return pending;
-  pending = (async () => {
-    const failures = [], queue = MINIS.slice();
-    async function worker() {
-      while (queue.length) {
-        const entry = queue.shift();
-        try {
-          const base = new URL('../assets/miniatures/',import.meta.url);
-          const [response, texture] = await Promise.all([
-            fetch(new URL(entry.mesh,base)),
-            new THREE.TextureLoader().loadAsync(new URL(entry.texture,base).href),
-          ]);
-          if (!response.ok) { texture.dispose(); throw new Error('Mesh HTTP '+response.status); }
-          const geometry = decodeMiniature(await response.arrayBuffer());
-          // These KT3 sculpts were authored facing -Z; the app's infantry front is +Z.
-          if (['sm-intercessor-modern','sm-intercessor-modern-2','sm-assault-intercessor-modern','sm-assault-intercessor-modern-2','sm-incursor-modern','sm-infiltrator-veteran'].includes(entry.id)) {
-            geometry.rotateY(Math.PI);geometry.computeBoundingBox();geometry.computeBoundingSphere();
-          }
-          // Oval rules bases use local X as their long axis. Some TTS mounted
-          // sculpts were authored along Z; align art and base without stretching.
-          if (Array.isArray(entry.baseMm) && entry.baseMm[0] > entry.baseMm[1] && entry.depthIn > entry.widthIn) {
-            geometry.rotateY(Math.PI/2);geometry.computeBoundingBox();geometry.computeBoundingSphere();
-          }
-          texture.colorSpace = THREE.SRGBColorSpace;
-          texture.anisotropy = 4;
-          const material = new THREE.MeshLambertMaterial({map:texture, color:0xffffff});
-          loaded.set(entry.id,{geometry,material});
-        } catch(error) { failures.push({id:entry.id,error:String(error.message || error)}); }
-      }
-    }
-    await Promise.all(Array.from({length:6},worker));
-    const status = {loaded:loaded.size,total:MINIS.length,failures};
-    if (typeof window !== 'undefined') {
-      window.wpMiniatureStatus = status;
-      window.dispatchEvent(new CustomEvent('miniatures-ready',{detail:status}));
-      if (window.wp3dOnDraw) window.wp3dOnDraw();
-    }
-    return status;
-  })();
-  return pending;
+// Bounded shared queue: concurrent cabinet/board requests never duplicate an asset.
+const loadQueue=[];
+let activeLoads=0;
+async function fetchMiniature(id) {
+  const entry=entries.get(id);let texture;
+  try {
+    const base=new URL('../assets/miniatures/',import.meta.url);
+    const response=await fetch(new URL(entry.mesh,base));
+    if(!response.ok)throw new Error('Mesh HTTP '+response.status);
+    const geometry=decodeMiniature(await response.arrayBuffer());
+    try {texture=await new THREE.TextureLoader().loadAsync(new URL(entry.texture,base).href);}
+    catch(error){geometry.dispose();throw error;}
+    if(['sm-intercessor-modern','sm-intercessor-modern-2','sm-assault-intercessor-modern','sm-assault-intercessor-modern-2','sm-incursor-modern','sm-infiltrator-veteran'].includes(id))geometry.rotateY(Math.PI);
+    if(Array.isArray(entry.baseMm)&&entry.baseMm[0]>entry.baseMm[1]&&entry.depthIn>entry.widthIn)geometry.rotateY(Math.PI/2);
+    if(entry.rotateY)geometry.rotateY(entry.rotateY*Math.PI/180);
+    geometry.computeBoundingBox();geometry.computeBoundingSphere();
+    texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
+    loaded.set(id,{geometry,material:new THREE.MeshLambertMaterial({map:texture,color:0xffffff})});failed.delete(id);
+  } catch(error) {texture?.dispose();failed.set(id,String(error.message||error));}
 }
+function drainLoads(){
+  while(activeLoads<6&&loadQueue.length){
+    const {id,done}=loadQueue.shift();activeLoads++;
+    fetchMiniature(id).finally(()=>{activeLoads--;jobs.delete(id);done();drainLoads();});
+  }
+}
+function requestMiniature(id){
+  if(loaded.has(id))return Promise.resolve();
+  if(jobs.has(id))return jobs.get(id);
+  let done;const job=new Promise(resolve=>{done=resolve;});jobs.set(id,job);
+  loadQueue.push({id,done});drainLoads();return job;
+}
+// Omit IDs to load the full catalog for offline verification. Normal game/cabinet
+// requests only decode the models in use, keeping large codex libraries affordable.
+export async function loadMiniatures(ids=MINIS.map(entry=>entry.id)){
+  const selected=[...new Set(ids)].filter(id=>entries.has(id));
+  selected.forEach(id=>requested.add(id));
+  if(typeof window!=='undefined')window.wpMiniatureStatus=miniatureStatus();
+  await Promise.all(selected.map(requestMiniature));
+  const status=miniatureStatus();
+  if(typeof window!=='undefined'){
+    window.wpMiniatureStatus=status;
+    window.dispatchEvent(new CustomEvent('miniatures-ready',{detail:status}));
+    if(window.wp3dOnDraw)window.wp3dOnDraw();
+  }
+  return status;
+}
+
+export function miniatureLoaded(id) { return loaded.has(id); }
 
 function baseGeometry(entry, footprint) {
   if (!entry.baseMm) return null;
@@ -231,4 +264,4 @@ export function register() {
   });
 }
 
-export function miniatureStatus() { return {loaded:loaded.size,total:MINIS.length}; }
+export function miniatureStatus() { return {loaded:loaded.size,total:MINIS.length,requested:requested.size,ready:[...requested].every(id=>loaded.has(id)),failures:[...failed].map(([id,error])=>({id,error}))}; }

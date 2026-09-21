@@ -14,8 +14,9 @@
 <div class="shell">
 <aside aria-label="Choose a miniature">
  <div><span class="label faction-label">Choose your army</span><div class="factions"><button class="faction" data-faction="ORK" aria-pressed="true">Orks <span id="orkCount"></span></button><button class="faction" data-faction="SM" aria-pressed="false">Space Marines <span id="marineCount"></span></button></div></div>
+ <div class="field"><label class="label" for="unit">Codex unit</label><select id="unit" disabled><option>Loading roster…</option></select><p id="coverage" style="font-size:12px;margin:8px 0 0;color:var(--muted)"></p></div>
  <div class="field"><label class="label" for="piece">Miniature</label><select id="piece" disabled><option>Loading collection…</option></select></div>
- <div class="field"><label class="label" for="variant">Display</label><select id="variant"><option value="single">Single miniature</option><option value="squad">Four-model squad</option></select></div>
+ <div class="field"><label class="label" for="variant">Display</label><select id="variant"><option value="single">Single miniature</option><option value="squad">Squad / unit display</option></select></div>
  <p class="aside-note"><strong>The figures used in your games.</strong><br>Inspect the paintwork, equipment and silhouettes from every angle. Game movement and measurements continue to use each unit’s actual base.</p>
 </aside>
 <main class="workspace">
@@ -25,8 +26,9 @@
 </div>
 <script type="module">
 import * as THREE from './vendor/three.module.min.js';
-import {MINIS,loadMiniatures,buildMiniature} from './sections/wp3d-15-miniatures.js';
+import {MINIS,MINIATURE_UNITS,loadMiniatures,buildMiniature,miniatureLoaded} from './sections/wp3d-15-miniatures.js';
 const $=s=>document.querySelector(s),select=$('#piece'),canvas=$('#view'),status=$('#status');
+let selectionTicket=0,selectedUnit=null;
 let renderer,scene,camera,group,current,faction='ORK',radius=5,fitRadius=5,theta=.52,phi=1.15,spinning=false,spinFrame=0,loaded=false;
 const center=new THREE.Vector3(),pointers=new Map();
 try{
@@ -39,17 +41,42 @@ try{
 function fail(message,error){status.hidden=false;status.classList.add('error');status.textContent=message;window.miniaturesError=String(error?.message||error||message);console.error(error||message);}
 function factionName(id){return id==='ORK'?'Orks':'Space Marines';}
 function entries(){return MINIS.filter(m=>m.faction===faction);}
-function updateChoices(id){const list=entries();select.replaceChildren(...list.map(m=>new Option(m.name,m.id)));select.disabled=!loaded;const selected=list.find(m=>m.id===id)||list[0];if(selected)select.value=selected.id;document.querySelectorAll('[data-faction]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.faction===faction)));document.documentElement.style.setProperty('--army',faction==='ORK'?'#638640':'#3d6996');return selected;}
+function updateUnits(){
+ const units=MINIATURE_UNITS.filter(u=>u.faction===faction&&u.scope==='codex');
+ const select=$('#unit');select.replaceChildren(new Option('Browse by unit…',''),...units.map(u=>new Option(u.name,u.name)));
+ select.disabled=!units.length;select.value=selectedUnit?.faction===faction?selectedUnit.name:'';
+ $('#coverage').textContent=units.length?`${units.length} codex units · choose a unit to inspect its game model`:'';
+}
+function unitCaption(){
+ if(!selectedUnit)return;
+ $('#captionTitle').textContent=selectedUnit.name;
+ $('#caption').textContent=selectedUnit.note||'The miniature selected for this datasheet in the game.';
+ $('#modelSubtitle').textContent=selectedUnit.representation==='conversion'?'Adapted sculpt · '+selectedUnit.name:'Game miniature · '+selectedUnit.name;
+}
+async function selectUnit(name){
+ selectedUnit=MINIATURE_UNITS.find(u=>u.faction===faction&&u.name===name)||null;
+ if(!selectedUnit)return null;
+ const result=await safeLoad(selectedUnit.models[0],true);unitCaption();updateUnits();return result;
+}
+$('#unit').onchange=()=>selectUnit($('#unit').value);
+function updateChoices(id){updateUnits();const list=entries();select.replaceChildren(...list.map(m=>new Option(m.name,m.id)));select.disabled=!loaded;const selected=list.find(m=>m.id===id)||list[0];if(selected)select.value=selected.id;document.querySelectorAll('[data-faction]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.faction===faction)));document.documentElement.style.setProperty('--army',faction==='ORK'?'#638640':'#3d6996');return selected;}
 function render(){if(!renderer||!camera)return;const box=canvas.parentElement.getBoundingClientRect(),w=Math.max(1,box.width),h=Math.max(1,box.height);const ratio=renderer.getPixelRatio();if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio))renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.set(center.x+radius*Math.sin(phi)*Math.sin(theta),center.y+radius*Math.cos(phi),center.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(center);camera.updateProjectionMatrix();renderer.render(scene,camera);}
 function clear(){if(!group)return;scene.remove(group);/* Geometry and materials belong to the shared miniature catalog cache. */group=null;}
-function load(id,options={}){if(!loaded)return null;const entry=MINIS.find(m=>m.id===id);if(!entry)throw new Error('Unknown miniature: '+id);faction=entry.faction;updateChoices(id);current=entry;clear();group=new THREE.Group();const squad=$('#variant').value==='squad';const count=squad?4:1;const baseDims=(Array.isArray(entry.baseMm)?entry.baseMm:[entry.baseMm]).map(Number).filter(n=>Number.isFinite(n)&&n>0);const spacing=Math.max(1.4,(Math.max(0,...baseDims)/25.4)*1.7,Number(entry.widthIn||0)*1.2,Number(entry.depthIn||0)*1.2);
- for(let i=0;i<count;i++){const model=buildMiniature(entry.id,i);if(!model)throw new Error('Miniature unavailable: '+entry.id);if(squad){model.position.x=(i%2-.5)*spacing;model.position.z=(Math.floor(i/2)-.5)*spacing;model.rotation.y=i%2?-.12:.12;}group.add(model);}
+function load(id,options={}){if(!loaded)return null;const entry=MINIS.find(m=>m.id===id);if(!entry)throw new Error('Unknown miniature: '+id);faction=entry.faction;updateChoices(id);current=entry;clear();group=new THREE.Group();const squad=$('#variant').value==='squad';const display=squad?(selectedUnit?.displayModels||Array(4).fill(entry.id)):[entry.id];const count=display.length;const baseDims=(Array.isArray(entry.baseMm)?entry.baseMm:[entry.baseMm]).map(Number).filter(n=>Number.isFinite(n)&&n>0);const spacing=Math.max(1.4,(Math.max(0,...baseDims)/25.4)*1.7,Number(entry.widthIn||0)*1.2,Number(entry.depthIn||0)*1.2,...display.map(id=>{const m=MINIS.find(m=>m.id===id);return Math.max(m.widthIn,m.depthIn)*1.2;}));
+ for(let i=0;i<count;i++){const model=buildMiniature(display[i],i);if(!model)throw new Error('Miniature unavailable: '+entry.id);if(squad){model.position.x=(i%2-.5)*spacing;model.position.z=(Math.floor(i/2)-.5)*spacing;model.rotation.y=i%2?-.12:.12;}group.add(model);}
  scene.add(group);const box=new THREE.Box3().setFromObject(group),size=box.getSize(new THREE.Vector3());box.getCenter(center);center.y-=size.y*.03;const aspect=Math.max(.45,canvas.parentElement.clientWidth/Math.max(1,canvas.parentElement.clientHeight));fitRadius=Math.max(size.y,size.x/aspect,size.z)*2.6;radius=fitRadius;theta=.52;phi=1.15;
- $('#armyName').textContent=factionName(entry.faction);$('#modelName').textContent=entry.name;$('#modelSubtitle').textContent=squad?'Four-model display · shared game miniature':'Painted miniature · interactive 3D view';$('#captionTitle').textContent=entry.name;$('#caption').textContent=squad?'A small squad at tabletop scale. Rotate to inspect how the silhouettes and equipment read together.':'Rotate to inspect the sculpt, painted equipment and rear details. Switch to a squad to see the miniature at tabletop scale.';$('#baseSize').textContent=baseDims.length?`${baseDims.join(' × ')} mm`:'Hull';$('#figureCount').textContent=String(count);$('#sourceText').textContent=typeof entry.source==='string'?entry.source:(entry.source?.name||'Custom display miniature.');$('#sourceSculpt').textContent=entry.sourceName?'Source sculpt: '+entry.sourceName:'';const sourceUrl=entry.sourceUrl;const safeUrl=typeof sourceUrl==='string'&&/^https?:\/\//i.test(sourceUrl);$('#sourceLink').hidden=!safeUrl;if(safeUrl)$('#sourceLink').href=sourceUrl;status.hidden=true;status.classList.remove('error');render();
- if(!options.noHistory){const url=new URL(location.href);url.searchParams.set('piece',entry.id);url.searchParams.set('display',squad?'squad':'single');history.replaceState(null,'',url);}
+ $('#armyName').textContent=factionName(entry.faction);$('#modelName').textContent=entry.name;$('#modelSubtitle').textContent=squad?`${count}-model display · game miniatures`:'Painted miniature · interactive 3D view';$('#captionTitle').textContent=entry.name;$('#caption').textContent=squad?'A small squad at tabletop scale. Rotate to inspect how the silhouettes and equipment read together.':'Rotate to inspect the sculpt, painted equipment and rear details. Switch to a squad to see the miniature at tabletop scale.';$('#baseSize').textContent=baseDims.length?`${baseDims.join(' × ')} mm`:'Hull';$('#figureCount').textContent=String(count);$('#sourceText').textContent=typeof entry.source==='string'?entry.source:(entry.source?.name||'Custom display miniature.');$('#sourceSculpt').textContent=entry.sourceName?'Source sculpt: '+entry.sourceName:'';const sourceUrl=entry.sourceUrl;const safeUrl=typeof sourceUrl==='string'&&/^https?:\/\//i.test(sourceUrl);$('#sourceLink').hidden=!safeUrl;if(safeUrl)$('#sourceLink').href=sourceUrl;status.hidden=true;status.classList.remove('error');render();
+ if(!options.noHistory){const url=new URL(location.href);url.searchParams.set('piece',entry.id);url.searchParams.set('display',squad?'squad':'single');if(selectedUnit)url.searchParams.set('unit',selectedUnit.name);else url.searchParams.delete('unit');history.replaceState(null,'',url);}
  window.miniaturesReady=true;return {id:entry.id,faction:entry.faction,count,size:size.toArray(),triangles:renderer.info.render.triangles};}
-function safeLoad(id){try{return load(id);}catch(error){fail('This miniature could not be displayed. Choose another model or reload.',error);return null;}}
-select.onchange=()=>safeLoad(select.value);$('#variant').onchange=()=>{if(current)safeLoad(current.id);};document.querySelectorAll('[data-faction]').forEach(button=>button.onclick=()=>{faction=button.dataset.faction;const first=updateChoices();if(first&&loaded)safeLoad(first.id);});
+function safeLoad(id,keepUnit=false){
+ const ticket=++selectionTicket;if(!keepUnit)selectedUnit=null;
+ const show=()=>{if(ticket!==selectionTicket)return null;try{const result=load(id);unitCaption();return result;}catch(error){fail('This miniature could not be displayed. Choose another model or reload.',error);return null;}};
+ const required=keepUnit&&selectedUnit?.displayModels?[...new Set([id,...selectedUnit.displayModels])]:[id];
+ if(required.every(miniatureLoaded))return show();
+ window.miniaturesReady=false;status.hidden=false;status.classList.remove('error');status.textContent='Loading miniature…';
+ return loadMiniatures(required).then(()=>show()).catch(error=>{if(ticket===selectionTicket)fail('This miniature could not load. Reconnect and try again.',error);return null;});
+}
+select.onchange=()=>safeLoad(select.value);$('#variant').onchange=()=>{if(current)safeLoad(current.id,!!selectedUnit);};document.querySelectorAll('[data-faction]').forEach(button=>button.onclick=()=>{faction=button.dataset.faction;const first=updateChoices();if(first&&loaded)safeLoad(first.id);});
 $('#front').onclick=()=>{theta=0;phi=Math.PI/2;render();};$('#rear').onclick=()=>{theta=Math.PI;phi=1.3;render();};$('#reset').onclick=()=>{theta=.52;phi=1.15;radius=fitRadius;render();};
 function spin(){if(!spinning||document.hidden)return;theta+=.006;render();spinFrame=requestAnimationFrame(spin);}
 function setSpin(on){spinning=on;$('#spin').setAttribute('aria-pressed',String(on));$('#spin').textContent=on?'Pause':'Rotate';cancelAnimationFrame(spinFrame);if(on)spin();}
@@ -60,8 +87,8 @@ canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.po
 canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});const next=pointerState();if(next&&gesture){if(next.distance&&gesture.distance)radius=Math.max(fitRadius*.32,Math.min(fitRadius*2.8,radius*gesture.distance/Math.max(1,next.distance)));else{theta-=(next.x-gesture.x)*.009;phi=Math.max(.18,Math.min(1.72,phi+(next.y-gesture.y)*.007));}render();}gesture=next;};
 function endPointer(e){pointers.delete(e.pointerId);gesture=pointerState();}
 canvas.onpointerup=endPointer;canvas.onpointercancel=endPointer;canvas.onlostpointercapture=endPointer;canvas.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(fitRadius*.32,Math.min(fitRadius*2.8,radius*Math.exp(e.deltaY*.001)));render();},{passive:false});window.addEventListener('resize',render);new ResizeObserver(render).observe(canvas.parentElement);
-window.miniaturePreview={getState:()=>({id:current?.id,faction,variant:$('#variant').value,radius,theta,phi,loaded}),select:safeLoad,setFaction:fid=>{faction=fid==='SM'?'SM':'ORK';const entry=updateChoices();return loaded&&entry?safeLoad(entry.id):null;},render,getObject:()=>group,load:safeLoad,view:(t,p)=>{theta=t;phi=p;render();},squad:on=>{$('#variant').value=on?'squad':'single';return current?safeLoad(current.id):null;},stats:()=>({id:current?.id,faction,count:group?.children.length||0,calls:renderer?.info.render.calls,triangles:renderer?.info.render.triangles}),catalog:()=>MINIS.map(m=>({id:m.id,name:m.name,faction:m.faction})),spin:setSpin};
-async function start(){if(!renderer)return;try{$('#orkCount').textContent=MINIS.filter(m=>m.faction==='ORK').length;$('#marineCount').textContent=MINIS.filter(m=>m.faction==='SM').length;const result=await loadMiniatures();if(result?.failures?.length)throw new Error(`${result.failures.length} miniature assets failed to load: ${result.failures.map(f=>f.id).join(', ')}`);loaded=true;const params=new URLSearchParams(location.search);const requested=MINIS.find(m=>m.id===params.get('piece'));faction=requested?.faction||(params.get('faction')==='SM'?'SM':'ORK');$('#variant').value=params.get('display')==='squad'?'squad':'single';const entry=updateChoices(requested?.id);if(!entry)throw new Error('No miniatures available');load(entry.id,{noHistory:true});}catch(error){fail('The miniature collection could not load. Reconnect and reload the page.',error);}}
+window.miniaturePreview={getState:()=>({id:current?.id,unit:selectedUnit?.name||null,faction,variant:$('#variant').value,radius,theta,phi,loaded}),select:safeLoad,selectUnit,setFaction:fid=>{faction=fid==='SM'?'SM':'ORK';const entry=updateChoices();return loaded&&entry?safeLoad(entry.id):null;},render,getObject:()=>group,load:safeLoad,view:(t,p)=>{theta=t;phi=p;render();},squad:on=>{$('#variant').value=on?'squad':'single';return current?safeLoad(current.id,!!selectedUnit):null;},stats:()=>({id:current?.id,faction,count:group?.children.length||0,calls:renderer?.info.render.calls,triangles:renderer?.info.render.triangles}),catalog:()=>MINIS.map(m=>({id:m.id,name:m.name,faction:m.faction})),spin:setSpin};
+async function start(){if(!renderer)return;try{$('#orkCount').textContent=MINIS.filter(m=>m.faction==='ORK').length;$('#marineCount').textContent=MINIS.filter(m=>m.faction==='SM').length;loaded=true;const params=new URLSearchParams(location.search);const requested=MINIS.find(m=>m.id===params.get('piece'));faction=requested?.faction||(params.get('faction')==='SM'?'SM':'ORK');$('#variant').value=params.get('display')==='squad'?'squad':'single';const entry=updateChoices(requested?.id);if(!entry)throw new Error('No miniatures available');await safeLoad(entry.id);const unit=params.get('unit');if(unit)await selectUnit(unit);}catch(error){fail('The miniature collection could not load. Reconnect and reload the page.',error);}}
 start();
 </script>
 </body>

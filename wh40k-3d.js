@@ -36,6 +36,7 @@ function registerPacks() {
 }
 
 let bridge = null, canvasEl = null, ctx = null, running = false, dirty = true, labelEvery = 1;
+let miniatureRequestKey = null;
 
 /* Label anchor height above the base, per archetype (world inches). Matches the
    WP3D-1 voxel tables' target heights + a small margin. */
@@ -123,7 +124,15 @@ function build() {
     governor.sample(dtMs);
     rig.update(dtMs);
     const s = bridge.state();
-    if (dirty) { sceneSync.tick(s); dirty = false; }
+    if (dirty) {
+      const ids=[...new Set((s.tokens||[]).map(t=>resolveMiniature(t,bridge.wpvSideFid?.(t.owner))?.id).filter(Boolean))].sort();
+      const key=ids.join('|');
+      if(key!==miniatureRequestKey) {
+        miniatureRequestKey=key;
+        loadMiniatures(ids).then(()=>{dirty=true;}).catch(e=>console.warn('Miniature load failed',e));
+      }
+      sceneSync.tick(s);dirty=false;
+    }
     motion.tick(dtMs, s);
     modes.tick(dtMs, s);
     battlecam.tick(dtMs, s);
@@ -168,7 +177,7 @@ export function init(canvas, WP3D) {
   canvasEl = canvas;
   build();
   start();
-  loadMiniatures().then(() => { dirty = true; }).catch(e => console.warn('Painted miniatures could not load', e));
+
 }
 
 export function start() {

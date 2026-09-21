@@ -921,6 +921,11 @@ function createSceneSync(THREE, scene, bridge) {
         slotTokenId[i] = t.id;
       }
       mesh.instanceMatrix.needsUpdate = true;
+      // Three caches instance bounds separately from the matrix upload. A reused
+      // pool can move outside its old sphere or change count without reallocating.
+      // Recompute lazily for the next culling, ray-picking or bounds query.
+      mesh.boundingSphere = null;
+      mesh.boundingBox = null;
     }
 
     // ---- owner rim (all tokens) ----
@@ -942,6 +947,8 @@ function createSceneSync(THREE, scene, bridge) {
     }
     _scl.set(1, 1, 1);
     rimPool.mesh.instanceMatrix.needsUpdate = true;
+    rimPool.mesh.boundingSphere = null;
+    rimPool.mesh.boundingBox = null;
     if (rimPool.mesh.instanceColor) rimPool.mesh.instanceColor.needsUpdate = true;
 
     // ---- selection rings ----
@@ -969,6 +976,8 @@ function createSceneSync(THREE, scene, bridge) {
     selectionPool.mesh.count = selCount;
     selSlotTokenId.length = selCount;
     selectionPool.mesh.instanceMatrix.needsUpdate = true;
+    selectionPool.mesh.boundingSphere = null;
+    selectionPool.mesh.boundingBox = null;
 
     syncTerrain((state && state.terrain) || []);
     syncObjectives((state && state.objectives) || []);
