@@ -1,6 +1,6 @@
 /* WH40k Tabletop service worker — offline shell caching.
    Bump CACHE when you ship a new wh40k-tabletop.html so clients pull the update. */
-const CACHE = 'wh40k-tabletop-v25';
+const CACHE = 'wh40k-tabletop-v26';
 const SHELL = [
   './',
   './index.html',
@@ -495,7 +495,8 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network-first (always get the freshest app when online, and cache the
-  // exact document URL visited), falling back to that cached document — then the shell —
+  // exact document URL visited), falling back to the same cached path (selection query
+  // parameters do not change a static page) — then the shell —
   // when offline so the app still opens at the table with no connection.
   if (req.mode === 'navigate') {
     e.respondWith(
@@ -504,7 +505,7 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
       }).catch(() =>
-        caches.match(req).then((r) => r || caches.match('./index.html').then((i) => i || caches.match('./')))
+        caches.match(req, {ignoreSearch:true}).then((r) => r || caches.match('./index.html').then((i) => i || caches.match('./')))
       )
     );
     return;
