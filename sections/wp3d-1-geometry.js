@@ -900,7 +900,8 @@ function createSceneSync(THREE, scene, bridge) {
           try { geometry = g.kit.build(kitCtx(bridge), g.rep, g.footprint, g.palette); } catch (e) { geometry = null; }
         }
         if (!geometry) geometry = buildArchetypeGeometry(g.archetype, g.footprint, g.palette);
-        pool = createInstancedPool(THREE, geometry, poolMaterialFactory ? poolMaterialFactory(THREE) : sharedMaterial, false);
+        const kitMaterial = g.kit && g.kit.material ? g.kit.material(kitCtx(bridge), g.rep, g.footprint, g.palette) : null;
+        pool = createInstancedPool(THREE, geometry, kitMaterial || (poolMaterialFactory ? poolMaterialFactory(THREE) : sharedMaterial), false);
         decorate(pool.mesh, 'tokens');
         scene.add(pool.mesh);
         archPools.set(poolKey, pool);

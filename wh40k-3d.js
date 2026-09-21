@@ -16,6 +16,7 @@ import { register as registerTerrainPack } from './sections/wp3d-6-terrain2.js';
 import { register as registerBattlezone } from './sections/wp3d-14-battlezone.js';
 import { register as registerTroopKits } from './sections/wp3d-7-troops.js';
 import { register as registerVehicleKits } from './sections/wp3d-8-vehicles.js';
+import { register as registerPaintedMiniatures, loadMiniatures, resolveMiniature } from './sections/wp3d-15-miniatures.js';
 import { createEnvironment } from './sections/wp3d-9-environment.js';
 import { createMotion } from './sections/wp3d-10-motion.js';
 /* ==== WP3D-v3 packs ==== */
@@ -31,6 +32,7 @@ function registerPacks() {
   try { registerTerrainPack(); registerBattlezone(); } catch (e) { console.error("Terrain pack failed", e); }
   try { registerTroopKits(); } catch (e) {}
   try { registerVehicleKits(); } catch (e) {}
+  registerPaintedMiniatures();
 }
 
 let bridge = null, canvasEl = null, ctx = null, running = false, dirty = true, labelEvery = 1;
@@ -39,6 +41,8 @@ let bridge = null, canvasEl = null, ctx = null, running = false, dirty = true, l
    WP3D-1 voxel tables' target heights + a small margin. */
 const ARCH_TOP = { titan: 7.2, tank: 2.9, claw: 2.1, steed: 1.7, wing: 1.9, helm: 1.8, shield: 1.6, skull: 1.5 };
 function modelTop(tok) {
+  const mini = resolveMiniature(tok, bridge && bridge.wpvSideFid ? bridge.wpvSideFid(tok.owner) : null);
+  if (mini) return mini.heightIn;
   const arch = (bridge && bridge.wpvGlyphFor && bridge.wpvGlyphFor(tok.kw || [])) || null;
   return (arch && ARCH_TOP[arch]) || 1.4;
 }
@@ -164,6 +168,7 @@ export function init(canvas, WP3D) {
   canvasEl = canvas;
   build();
   start();
+  loadMiniatures().then(() => { dirty = true; }).catch(e => console.warn('Painted miniatures could not load', e));
 }
 
 export function start() {
